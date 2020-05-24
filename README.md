@@ -2,7 +2,7 @@
 
 This is a homebridge plugin support for Ademco Envisalink. Work in progress
 
-Added support for Leak and Smoke Detectors.
+
 
 ```javascript
  "platforms": [
