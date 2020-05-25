@@ -74,11 +74,20 @@ function EnvisalinkPlatform(log, config) {
 
 
 EnvisalinkPlatform.prototype.systemUpdate = function (data) {
-    this.log('System status changed to: ', data.alarmstatus);
+    this.log('System status changed to: ', data.mode);
+    if (data.partition) {
+        for (var i = 0; i < this.platformPartitionAccessories.length; i++) {
+            var partitionAccessory = this.platformPartitionAccessories[i];
+            if (partitionAccessory.partition == data.partition) {
+                partitionAccessory.status = data.mode;
+                console.log("Set system status on accessory " + partitionAccessory.name + ' to ' + JSON.stringify(partitionAccessory.status));
+            }
+        }
+    }
 }
 
 EnvisalinkPlatform.prototype.zoneUpdate = function (data) {
-    this.log('ZoneUpdate status changed to: ', data.status);
+    this.log('ZoneUpdate status changed to: ', data.mode);
 }
 
 EnvisalinkPlatform.prototype.partitionUpdate = function (data) {
@@ -163,7 +172,7 @@ EnvisalinkAccessory.prototype.getServices = function () {
 
 EnvisalinkAccessory.prototype.getMotionStatus = function (callback) {
     
-    if (this.status && this.status.send == "open") {
+    if (this.status  == "OPEN") {
         callback(null, true);
     } else {
         callback(null, false);
@@ -175,7 +184,7 @@ EnvisalinkAccessory.prototype.getReadyState = function (callback) {
     var currentState = this.status;
     var status = true;
     if (currentState && currentState.partition === this.partition) {
-        if (currentState.send == "ready" || currentState.send == "readyforce") {
+        if (currentState.status == "READY" ) {
             status = false;
         }
     }
@@ -184,8 +193,29 @@ EnvisalinkAccessory.prototype.getReadyState = function (callback) {
 EnvisalinkAccessory.prototype.getAlarmState = function (callback) {
   
     var currentState = this.status;
+    //Default to disarmed
     var status = Characteristic.SecuritySystemCurrentState.DISARMED;
+  
+   if (currentState) 
+    {
+        if (currentState == "ALARM") {
+            status = Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED;
+        } else if (currentState.substring(0,5) == "ARMED") {
 
+            if ((currentState == "ARMED_STAY") || (currentState == "ARMED_STAY_BYPASS")) {
+                status = Characteristic.SecuritySystemCurrentState.STAY_ARM;
+            }
+            else if ((currentState == "ARMED_NIGHT") || (currentState == "ARMED_NIGHT_BYPASS")) {
+                status = Characteristic.SecuritySystemCurrentState.NIGHT_ARM;
+            }
+            else status = Characteristic.SecuritySystemCurrentState.AWAY_ARM;
+
+        } else if (currentState == "EXIT_DELAY") {
+            //Use the target alarm state during the exit and entrance delays.
+            status = this.lastTargetState;
+        }
+    } 
+    
     callback(null, status);
 }
 
@@ -196,7 +226,7 @@ EnvisalinkAccessory.prototype.setAlarmState = function (state, callback) {
 
 EnvisalinkAccessory.prototype.getContactSensorState = function (callback) {
    
-    if (this.status && this.status.send == "open") {
+    if (this.status == "OPEN") {
         callback(null, Characteristic.ContactSensorState.CONTACT_NOT_DETECTED);
     } else {
         callback(null, Characteristic.ContactSensorState.CONTACT_DETECTED);
@@ -205,7 +235,7 @@ EnvisalinkAccessory.prototype.getContactSensorState = function (callback) {
 
 EnvisalinkAccessory.prototype.getLeakStatus = function (callback) {
 
-    if (this.status && this.status.send == "open") {
+    if (this.status == "OPEN") {
         callback(null, Characteristic.LeakDetected.LEAK_DETECTED);
     } else {
         callback(null, Characteristic.LeakDetected.LEAK_NOT_DETECTED);
@@ -214,7 +244,7 @@ EnvisalinkAccessory.prototype.getLeakStatus = function (callback) {
 
 EnvisalinkAccessory.prototype.getSmokeStatus = function (callback) {
     
-    if (this.status && this.status.send == "open") {
+    if (this.status == "OPEN") {
         callback(null, Characteristic.SmokeDetected.SMOKE_DETECTED);
     } else {
         callback(null, Characteristic.SmokeDetected.SMOKE_NOT_DETECTED);

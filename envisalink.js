@@ -51,7 +51,7 @@ EnvisaLink.prototype.connect = function () {
 
   actual.on('end', function () {
    // console.log('log-trace: ',"Envisalink received end, disconnecting");
-    console.log('disconnect')
+    console.log('Disconnect TPI session.')
   })
 
   actual.on('data', function (data) {
@@ -66,7 +66,7 @@ EnvisaLink.prototype.connect = function () {
 	  console.log('log-error:', "Login failed!");
 	  // The session will be closed.. not sure how to have this try and reconnect.
 	} else if ( datapacket.substring(0, 2) === 'OK' ) {
-	  // ignore, OK is good. or report successful connection.
+	  // ignore, OK is good. or report successful connection.    
     console.log('Successful TPI session established.')
     // console.log('log-trace: ', 'Successfully logged in. Requesting current state.')
         } else { 
@@ -148,6 +148,7 @@ EnvisaLink.prototype.connect = function () {
 }
     
     var z_string ="";
+    var mode = "OPEN";
     var initialUpdate; // this isn't good. After the for each, initialUpdate will be the value of the last one... 
 
     zone_array.forEach( function( z,i,a ) { 
@@ -163,6 +164,7 @@ EnvisaLink.prototype.connect = function () {
     _this.emit('zoneupdate',
           { zone: z_string,
             code: data[0],
+            mode: mode,
             status: tpi.name,
             initialUpdate: initialUpdate 
     });
@@ -226,11 +228,11 @@ EnvisaLink.prototype.connect = function () {
     else if (mode.ready) { readableCode = 'READY'; }
     else if (mode.bypass && mode.armed_stay) { readableCode = 'ARMED_STAY_BYPASS'; }
     else if (mode.bypass && mode.armed_away) { readableCode = 'ARMED_AWAY_BYPASS'; }
-    else if (mode.bypass && mode.armed_zero_entry_delay) { readableCode = 'ARMED_AWAY_BYPASS'; }
+    else if (mode.bypass && mode.armed_zero_entry_delay) { readableCode = 'ARMED_NIGHT_BYPASS'; }
     else if (mode.bypass) { readableCode = 'READY_BYPASS'; }
     else if (mode.armed_stay) { readableCode = 'ARMED_STAY'; }
     else if (mode.armed_away) { readableCode = 'ARMED_AWAY'; }
-    else if (mode.armed_zero_entry_delay) { readableCode = 'ARMED_AWAY'; }
+    else if (mode.armed_zero_entry_delay) { readableCode = 'ARMED_NIGHT'; }
     else if (mode.not_used2 && mode.not_used3) { readableCode = 'NOT_READY'; } // added to handle 'Hit * for faults'
     return readableCode;
   }
@@ -258,7 +260,7 @@ EnvisaLink.prototype.connect = function () {
 // 00: ALARM (System is in Alarm)
     var ICON = data[2]; //two byte, HEX, representation of the bitfield.
     var keypadledstatus = getKeyPadLedStatus(data[2]);
-    var alarmstatus = keyPadToHumanReadable(keypadledstatus);
+    var mode = keyPadToHumanReadable(keypadledstatus);
     var zone = data[3]; // one byte field, representing extra info, either the user or the zone.
     var beep = tpidefs.virtual_keypad_beep[data[4]]; // information for the keypad on how to beep.
     var keypad_txt = data[5]; // 32 byte ascii string, a concat of 16 byte top and 16 byte bottom of display
@@ -287,7 +289,7 @@ EnvisaLink.prototype.connect = function () {
 	  },
     status: tpi.name,
     keypadledstatus: keypadledstatus,
-    alarmstatus: alarmstatus,
+    mode: mode,
 	  initialUpdate: initialUpdate });
     }
   }
