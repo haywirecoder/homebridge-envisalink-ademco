@@ -1,4 +1,6 @@
 // 'use strict'
+const openZoneTimeout = 30000;
+
 var net = require('net')
 var events = require('events')
 var EventEmitter = require('events').EventEmitter;
@@ -6,6 +8,10 @@ var util = require('util')
 var tpidefs = require('./tpi.js')
 var ciddefs = require('./cid.js')
 var actual;
+var activezones =  [];
+var timeoutObj = undefined;
+
+
 
 
 function EnvisaLink (config) {
@@ -17,6 +23,7 @@ function EnvisaLink (config) {
     zones: config.maxzones,
     partitions: config.partitions
   }
+  this.pollId = undefined;
 }
 
 util.inherits(EnvisaLink, EventEmitter)
@@ -30,6 +37,8 @@ EnvisaLink.prototype.connect = function () {
   this.users = {};
   this.shouldReconnect = true;
   this.cid = {};
+  //this.lastmessage = new Date();
+  //this.timeout = setTimeout( Handle_Timer(), 20000 ); // Check every 20 seconds...
 
   // console.log('log-trace: ',"Making connection to host:"+ this.options.host +" port:"+ this.options.port);
 
@@ -55,6 +64,7 @@ EnvisaLink.prototype.connect = function () {
   })
 
   actual.on('data', function (data) {
+    // this.lastmessage = new Date(); // Everytime a message comes in, reset the lastmessage timer
     var dataslice = data.toString().replace(/[\n\r]/g, '|').split('|');
     for (var i = 0; i < dataslice.length; i++) {
       var datapacket = dataslice[i]
@@ -146,25 +156,20 @@ EnvisaLink.prototype.connect = function () {
 		position++;
 	}
 }
-    
-    var z_string ="";
-    var mode = "OPEN";
+    console.log('log-debug: Zone update');
+    var z_list =[];
     var initialUpdate; // this isn't good. After the for each, initialUpdate will be the value of the last one... 
 
-    zone_array.forEach( function( z,i,a ) { 
-	  z_string = z_string + z + ",";
-	  initialUpdate = _this.zones[z] === undefined;
-  	_this.zones[z] = { send: tpi.send, name: tpi.name, code: z };
+    zone_array.forEach( function( z,i,a ) 
+    { 
+        z_list.push(z);
+	      initialUpdate = _this.zones[z] === undefined;
+        _this.zones[z] = { send: tpi.send, name: tpi.name, code: z };
+        zoneTimeOpen(tpi,z);
     });
-    if ( z_string.length > 0 ) {
-       z_string = z_string.substring(0, z_string.length-1); // chop off last "," from string.
-    } else {
-       z_string = "";
-    }
     _this.emit('zoneupdate',
-          { zone: z_string,
+          { zone: z_list,
             code: data[0],
-            mode: mode,
             status: tpi.name,
             initialUpdate: initialUpdate 
     });
@@ -188,7 +193,7 @@ EnvisaLink.prototype.connect = function () {
          var mode = modeToHumanReadable( byte );
          var initialUpdate = _this.partitions[partition] === undefined
          _this.partitions[partition] = { send: tpi.send, name: tpi.name, code: { "partition" : partition, "value" : mode } }
-         _this.emit('partitionupdate', {
+         _this.emit('updatepartition', {
              partition: partition,
 	           mode: mode,
              code: byte,
@@ -196,6 +201,100 @@ EnvisaLink.prototype.connect = function () {
              initialUpdate: initialUpdate })
       }
    } 
+  }
+
+  // Idle timeout handler for connection
+  /*function Handle_Timer() {
+      if ( ( Date() - this.lastmessage ) / 1000 >  20 ) { // we didn't receive any messages for > 20 seconds. Assume dropped connect.
+	      this.emit('disconnect');
+      } else {
+	    this.timeout = setTimeout( Handle_Timer(), 20000 ); // Check every 20 seconds...
+    }
+  };*/
+
+  function findZone(zonelist, zone) 
+  {
+
+    console.log("log-debug: Finding zone - ", zone)
+    console.log("log-debug: Finding list - ", zonelist)
+     for( var i = 0; i < zonelist.length; i++ ) {
+         if( zone == zonelist[i].zone ) {
+          console.log("log-debug: Found zone - ", zone);
+             return i;
+         }
+     }
+     // return undefined if not found
+     console.log("log-debug: Not Found zone - ", zone);
+     return undefined;
+ }
+
+ function zoneTimeOpen(tpi,zone)
+ { 
+   var mode = "OPEN" ;
+   var triggerZoneEvent = false;
+   
+   var zoneid = findZone(activezones,zone);
+   if ( Number.isInteger(zoneid)) {  
+      console.log('log-debug: Zone found in active zone list index - ', zoneid);
+      activezones[zoneid].eventepoch = Math.round(Date.now() / 1000);
+    } else {
+        console.log('log-debug: New zone - ', zone);
+        activezones.push({ 
+          zone: zone, 
+          eventepoch: Math.round(Date.now() / 1000) 
+        });
+        triggerZoneEvent = true;
+    }
+
+    if (activezones.length > 0) { 
+      if (timeoutObj == undefined) 
+      {  
+        console.log('log-debug: Activating zone timer');
+        timeoutObj = setInterval(zoneTimeOut,openZoneTimeout);
+      }
+    }
+
+    if (triggerZoneEvent == true) {
+    _this.emit('zoneevent',
+            { zone: [parseInt(zone, 10)],
+            mode: mode,
+            source: tpi.name
+    });
+    }
+}
+
+  function zoneTimeOut()
+  {
+    var mode = "CLOSE" ;
+    var z_close = [];
+    var z = activezones.length;
+    var l_timeout = openZoneTimeout/500;
+    while (z--)
+    {
+          // determine if zone hasn't been report on for allocated time in sec, if so mark as close
+          if ((Math.round(Date.now() / 1000) - activezones[z].eventepoch) > l_timeout)
+          {
+            z_close.push(parseInt(activezones[z].zone));
+            // remove from active list
+            activezones.splice(z, 1);
+          }
+    }
+    if ( z_close.length > 0 ) {
+      // zones that are now closed
+      _this.emit('zoneevent',
+          { zone: z_close,
+            mode: mode,
+            source: "Zone Time Out"
+      });
+       
+    } 
+    if (activezones.length == 0)
+    {
+       //Clean up and disable timer
+       console.log('log-debug: Disabling timer');
+       clearInterval(timeoutObj);
+       timeoutObj = undefined;
+    }
   }
 
   function modeToHumanReadable (mode) {
@@ -269,7 +368,7 @@ EnvisaLink.prototype.connect = function () {
 
 // This loop, take a two byte hex string, and for every bit set to one in the HEX string
 // adds an element to an array indicating the position of the bit set to one... LittleEndian.
-    for ( var n=parseInt(ICON,16); n>0; n=n>>1) {
+  for ( var n=parseInt(ICON,16); n>0; n=n>>1) {
 	if ( ( n & 0x01 ) == 1 ) { // is the right most bit a 1?
 		icon_array.push( position ); 
 	}
@@ -279,6 +378,8 @@ EnvisaLink.prototype.connect = function () {
     if (partition <= _this.options.partitions ) {
       var initialUpdate = _this.partitions[partition] === undefined;
       _this.partitions[partition] = { send: tpi.send, name: tpi.name, code: data };
+      // update zone information
+      zoneTimeOpen(tpi,zone);
       _this.emit('keypadupdate',
         { partition: partition,
 	  code: {
@@ -332,12 +433,10 @@ EnvisaLink.prototype.connect = function () {
     { zonedump: zone_time,
       status: tpi.name,
       initialUpdate: initialUpdate });
-
 }
 
   function cidEvent( tpi, data ) {
 	var cid = data[1];
-    
 	var qualifier = cid.substr(0,1);
 	if ( qualifier == 1 ) { // Event
 		qualifier = "Event";
@@ -365,8 +464,6 @@ EnvisaLink.prototype.connect = function () {
 	an_object[cid_obj.type] = zone_or_user;
 	_this.emit('cidupdate',an_object);
   }
-
-
 }
 
 EnvisaLink.prototype.disconnect = function () {

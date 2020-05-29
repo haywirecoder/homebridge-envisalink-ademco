@@ -66,10 +66,8 @@ function EnvisalinkPlatform(log, config) {
     this.alarm.connect();
     
    this.alarm.on('keypadupdate', this.systemUpdate.bind(this));
-   this.alarm.on('zoneupdate', this.zoneUpdate.bind(this));
+   this.alarm.on('zoneevent', this.zoneUpdate.bind(this));
    this.alarm.on('updatepartition',this.partitionUpdate.bind(this));
-   this.alarm.on('zoneTimerDump',this.zoneTimerUpdate.bind(this));
-
 }
 
 
@@ -87,14 +85,52 @@ EnvisalinkPlatform.prototype.systemUpdate = function (data) {
 }
 
 EnvisalinkPlatform.prototype.zoneUpdate = function (data) {
+
     this.log('ZoneUpdate status changed to: ', data.mode);
+    for (var i = 0; i < data.zones.length; i++) {
+        var accessoryIndex = this.platformZoneAccessoryMap['z.' + data.zone];
+        if (accessoryIndex !== undefined) {
+            var accessory = this.platformZoneAccessories[accessoryIndex];
+            if (accessory) {
+                accessory.status = data.mode;
+                console.log("Set status on accessory " + accessory.name + ' to ' + JSON.stringify(accessory.status));
+
+                var accservice = (accessory.getServices())[0];
+
+                if (accservice) {
+                    if (accessory.accessoryType == "motion") {
+
+                    accessory.getMotionStatus(function (nothing, resultat) {
+                        accservice.getCharacteristic(Characteristic.MotionDetected).setValue(resultat);
+                    });
+
+                    } else if (accessory.accessoryType == "door" || accessory.accessoryType == "window") {
+
+                    accessory.getContactSensorState(function (nothing, resultat) {
+                        accservice.getCharacteristic(Characteristic.ContactSensorState).setValue(resultat);
+                    });
+
+                    } else if (accessory.accessoryType == "leak") {
+
+                    accessory.getLeakStatus(function (nothing, resultat) {
+                        accservice.getCharacteristic(Characteristic.LeakDetected).setValue(resultat);
+                    });
+
+                    } else if (accessory.accessoryType == "smoke") {
+
+                    accessory.getSmokeStatus(function (nothing, resultat) {
+                        accservice.getCharacteristic(Characteristic.SmokeDetected).setValue(resultat);
+                    });
+
+                    }
+                }
+            }
+        }
+    }
 }
 
 EnvisalinkPlatform.prototype.partitionUpdate = function (data) {
     this.log('partitionupdate status changed to: ', data.status);
-}
-EnvisalinkPlatform.prototype.zoneTimerUpdate = function (data) {
-    this.log('Timer update: ', data.zonedump);
 }
 
 EnvisalinkPlatform.prototype.accessories = function (callback) {
