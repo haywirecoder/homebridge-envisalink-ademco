@@ -1,4 +1,4 @@
-# Homebridge-envisalink-Ademco
+# Homebridge-Envisalink-Ademco
 
 This is a homebridge plugin leverages using a modified version of a node-red implementation ( https://www.npmjs.com/package/node-red-contrib-envisalink-ademco ) and Homebridge envisalink module ( https://www.npmjs.com/package/homebridge-envisalink )
 This module was designed to work with Ademco Envisalink module with the Vista series alarm boards.
