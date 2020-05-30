@@ -1,19 +1,26 @@
-# homebridge-envisalink-ademco
+# Homebridge-envisalink-Ademco
 
-This is a homebridge plugin support for Ademco Envisalink. Work in progress
+This is a homebridge plugin leverages using modified version node-red implementation (https://www.npmjs.com/package/node-red-contrib-envisalink-ademco) and Homebridge envisalink module (https://www.npmjs.com/package/homebridge-envisalink)
+This was designed to work with Ademco Envisalink module with the Vista series alarm boards.
+
+Limits:
+  * Ademco panels provide limited zone information to their peripherals. Ademco panels only provide real-time information of when a zone is faulted (opened) but not when it is restored (closed). However, the viritual key constant is updated with zones information, this module auto set zone faulted (opened) to expired in 30 second if the virtual panel no reports as open.
+
+  * When system is Armed board no longer report the state of each zone. All zone will age out and consider close once armed. 
 
 
+Example configuration is below:
+
+Added support for Leak and Smoke Detectors.
 
 ```javascript
  "platforms": [
     {
-      "platform": "Envisalink-ademco",
+      "platform": "Envisalink-Ademco",
       "host": "192.168.0.XXX",
       "deviceType": "Honeywell Vista",
       "password": "---envisalink password (default is user)---",
       "pin": "---panel pin for disarming---",
-      "suppressZoneAccessories": false,
-      "suppressClockReset": false,
       "partitions": [
         {
           "name": "Alarm"
@@ -29,36 +36,35 @@ This is a homebridge plugin support for Ademco Envisalink. Work in progress
           "name": "Master Bedroom Door",
           "type": "door",
           "partition": 1
-        },
-        {
-          "name": "Downstairs Windows",
-          "type": "window",
-          "partition": 1
-        },
-        {
-          "name": "Basement Leak",
-          "type": "leak",
-          "partition": 1
-        },
-        {
-          "name": "Upstairs Smoke",
-          "type": "smoke",
-          "partition": 1
-        },
-        {
-          "name": "Living Room Motion",
-          "type": "motion",
-          "partition": 1
         }
-      ],
-      "userPrograms": [
-        {
-          "name": "Basement Smoke",
-          "type": "smoke",
-          "partition": 1
-        }
-      ]
     }
   ]
 ```
 
+## Non-Consecutive Zones (Recommened)
+If your system has unused zones, simply include a *zoneNumber* integer property on ***each*** zone you have in the config. Make sure you put the property on each zone.
+
+Ex:
+```javascript
+...
+"zones": [
+  {
+    "name": "Front Entry",
+    "type": "door",
+    "partition": 1,
+    "zoneNumber": 1
+  },
+  {
+    "name": "Patio Door",
+    "type": "door",
+    "partition": 1,
+    "zoneNumber": 2
+  },
+  {
+    "name": "Garage Door",
+    "type": "door",
+    "partition": 1,
+    "zoneNumber": 5
+  }
+]
+...

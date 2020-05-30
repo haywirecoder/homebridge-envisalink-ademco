@@ -18,7 +18,7 @@ module.exports = function (homebridge) {
     for (var mn in acc) {
         EnvisalinkAccessory.prototype[mn] = acc[mn];
     }
-    homebridge.registerPlatform("homebridge-envisalink", "Envisalink", EnvisalinkPlatform);
+    homebridge.registerPlatform("homebridge-envisalink-ademco", "Envisalink-Ademco", EnvisalinkPlatform);
 }
 
 function EnvisalinkPlatform(log, config) {
@@ -29,7 +29,7 @@ function EnvisalinkPlatform(log, config) {
     this.partitions = config.partitions;
     this.zones = config.zones ? config.zones : [];
 
-    this.log("Configuring Envisalink platform,  Host: " + config.host + ", port: " + config.port + ", type: " + this.deviceType);
+    this.log("Configuring Envisalink Ademco platform,  Host: " + config.host + ", port: " + config.port + ", type: " + this.deviceType);
 
     this.platformPartitionAccessories = [];
     for (var i = 0; i < this.partitions.length; i++) {
