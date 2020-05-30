@@ -1,7 +1,7 @@
 # Homebridge-envisalink-Ademco
 
-This is a homebridge plugin leverages using modified version node-red implementation (https://www.npmjs.com/package/node-red-contrib-envisalink-ademco) and Homebridge envisalink module (https://www.npmjs.com/package/homebridge-envisalink)
-This was designed to work with Ademco Envisalink module with the Vista series alarm boards.
+This is a homebridge plugin leverages using a modified version of a node-red implementation ( https://www.npmjs.com/package/node-red-contrib-envisalink-ademco ) and Homebridge envisalink module ( https://www.npmjs.com/package/homebridge-envisalink )
+This module was designed to work with Ademco Envisalink module with the Vista series alarm boards.
 
 Limits:
   * Ademco panels provide limited zone information to their peripherals. Ademco panels only provide real-time information of when a zone is faulted (opened) but not when it is restored (closed). However, the viritual key constant is updated with zones information, this module auto set zone faulted (opened) to expired in 30 second if the virtual panel no reports as open.
@@ -11,7 +11,6 @@ Limits:
 
 Example configuration is below:
 
-Added support for Leak and Smoke Detectors.
 
 ```javascript
  "platforms": [
@@ -44,7 +43,7 @@ Added support for Leak and Smoke Detectors.
 ## Non-Consecutive Zones (Recommened)
 If your system has unused zones, simply include a *zoneNumber* integer property on ***each*** zone you have in the config. Make sure you put the property on each zone.
 
-Ex:
+Examaple:
 ```javascript
 ...
 "zones": [
