@@ -1,0 +1,90 @@
+0 info it worked if it ends with ok
+1 verbose cli [ 'C:\\Program Files (x86)\\nodejs\\\\node.exe',
+1 verbose cli   'C:\\Program Files (x86)\\nodejs\\node_modules\\npm\\bin\\npm-cli.js',
+1 verbose cli   'publish' ]
+2 info using npm@2.7.4
+3 info using node@v0.12.2
+4 verbose node symlink C:\Program Files (x86)\nodejs\\node.exe
+5 verbose publish [ '.' ]
+6 silly cache add args [ '.', null ]
+7 verbose cache add spec .
+8 silly cache add parsed spec { raw: '.',
+8 silly cache add   scope: null,
+8 silly cache add   name: null,
+8 silly cache add   rawSpec: '.',
+8 silly cache add   spec: 'C:\\Users\\JSylvestre\\Documents\\Homekit Plug-in\\homebridge-envisalink-ademco',
+8 silly cache add   type: 'directory' }
+9 verbose addLocalDirectory C:\Users\JSylvestre\AppData\Roaming\npm-cache\homebridge-envisalink-ademco\1.0.0\package.tgz not in flight; packing
+10 verbose tar pack [ 'C:\\Users\\JSylvestre\\AppData\\Roaming\\npm-cache\\homebridge-envisalink-ademco\\1.0.0\\package.tgz',
+10 verbose tar pack   'C:\\Users\\JSylvestre\\Documents\\Homekit Plug-in\\homebridge-envisalink-ademco' ]
+11 verbose tarball C:\Users\JSylvestre\AppData\Roaming\npm-cache\homebridge-envisalink-ademco\1.0.0\package.tgz
+12 verbose folder C:\Users\JSylvestre\Documents\Homekit Plug-in\homebridge-envisalink-ademco
+13 info prepublish homebridge-envisalink-ademco@1.0.0
+14 verbose addLocalTarball adding from inside cache C:\Users\JSylvestre\AppData\Roaming\npm-cache\homebridge-envisalink-ademco\1.0.0\package.tgz
+15 silly cache afterAdd homebridge-envisalink-ademco@1.0.0
+16 verbose afterAdd C:\Users\JSylvestre\AppData\Roaming\npm-cache\homebridge-envisalink-ademco\1.0.0\package\package.json not in flight; writing
+17 verbose afterAdd C:\Users\JSylvestre\AppData\Roaming\npm-cache\homebridge-envisalink-ademco\1.0.0\package\package.json written
+18 silly publish { name: 'homebridge-envisalink-ademco',
+18 silly publish   version: '1.0.0',
+18 silly publish   description: 'Homebridge Plug-in Envisalink for Ademco/Honeywell',
+18 silly publish   main: 'index.js',
+18 silly publish   directories: { doc: 'doc' },
+18 silly publish   scripts: { test: 'echo "Error: no test specified" && exit 1' },
+18 silly publish   repository:
+18 silly publish    { type: 'git',
+18 silly publish      url: 'https://github.com/haywirecoder/homebridge-envisalink-ademco' },
+18 silly publish   keywords: [ 'envisalink', 'ademco', 'alarm', 'vista' ],
+18 silly publish   author: { name: 'Haywirecoder' },
+18 silly publish   license: 'ISC',
+18 silly publish   bugs: { url: 'https://github.com/haywirecoder/homebridge-envisalink-ademco/issues' },
+18 silly publish   homepage: 'https://github.com/haywirecoder/homebridge-envisalink-ademco',
+18 silly publish   readme: 'ERROR: No README data found!',
+18 silly publish   _id: 'homebridge-envisalink-ademco@1.0.0',
+18 silly publish   _shasum: '49324a275bf9df66ea32a9a83f6c7043130452c9',
+18 silly publish   _from: '.' }
+19 silly mapToRegistry name homebridge-envisalink-ademco
+20 silly mapToRegistry using default registry
+21 silly mapToRegistry registry https://registry.npmjs.org/
+22 silly mapToRegistry uri https://registry.npmjs.org/homebridge-envisalink-ademco
+23 verbose publish registryBase https://registry.npmjs.org/
+24 silly publish uploading C:\Users\JSylvestre\AppData\Roaming\npm-cache\homebridge-envisalink-ademco\1.0.0\package.tgz
+25 verbose request uri https://registry.npmjs.org/homebridge-envisalink-ademco
+26 verbose request sending authorization for write operation
+27 info attempt registry request try #1 at 5:23:12 PM
+28 verbose request using bearer token for auth
+29 verbose request id e1a7cc78d4a4eb5b
+30 http request PUT https://registry.npmjs.org/homebridge-envisalink-ademco
+31 http 403 https://registry.npmjs.org/homebridge-envisalink-ademco
+32 verbose headers { date: 'Sat, 30 May 2020 21:23:14 GMT',
+32 verbose headers   'content-type': 'application/json',
+32 verbose headers   'transfer-encoding': 'chunked',
+32 verbose headers   connection: 'keep-alive',
+32 verbose headers   'set-cookie': [ '__cfduid=df4cd1b8b8de86ea0a17e8cfa351928881590873793; expires=Mon, 29-Jun-20 21:23:13 GMT; path=/; domain=.npmjs.org; HttpOnly; SameSite=Lax' ],
+32 verbose headers   'cf-ray': '59bb83d75caa748a-IAD',
+32 verbose headers   'cf-cache-status': 'DYNAMIC',
+32 verbose headers   'cf-request-id': '030910ba950000748a7c103200000001',
+32 verbose headers   'expect-ct': 'max-age=604800, report-uri="https://report-uri.cloudflare.com/cdn-cgi/beacon/expect-ct"',
+32 verbose headers   vary: 'Accept-Encoding',
+32 verbose headers   server: 'cloudflare',
+32 verbose headers   'content-encoding': 'gzip' }
+33 verbose request invalidating C:\Users\JSylvestre\AppData\Roaming\npm-cache\registry.npmjs.org\homebridge-envisalink-ademco on PUT
+34 error publish Failed PUT 403
+35 verbose stack Error: You cannot publish over the previously published versions: 1.0.0. : homebridge-envisalink-ademco
+35 verbose stack     at CachingRegistryClient.<anonymous> (C:\Program Files (x86)\nodejs\node_modules\npm\node_modules\npm-registry-client\lib\request.js:247:14)
+35 verbose stack     at C:\Program Files (x86)\nodejs\node_modules\npm\node_modules\npm-registry-client\lib\request.js:176:7
+35 verbose stack     at Gunzip.onEnd (zlib.js:227:5)
+35 verbose stack     at Gunzip.emit (events.js:129:20)
+35 verbose stack     at _stream_readable.js:908:16
+35 verbose stack     at process._tickCallback (node.js:355:11)
+36 verbose statusCode 403
+37 verbose pkgid homebridge-envisalink-ademco
+38 verbose cwd C:\Users\JSylvestre\Documents\Homekit Plug-in\homebridge-envisalink-ademco
+39 error Windows_NT 6.3.9600
+40 error argv "C:\\Program Files (x86)\\nodejs\\\\node.exe" "C:\\Program Files (x86)\\nodejs\\node_modules\\npm\\bin\\npm-cli.js" "publish"
+41 error node v0.12.2
+42 error npm  v2.7.4
+43 error code E403
+44 error You cannot publish over the previously published versions: 1.0.0. : homebridge-envisalink-ademco
+45 error If you need help, you may report this error at:
+45 error     <https://github.com/npm/npm/issues>
+46 verbose exit [ 1, true ]

@@ -1,9 +1,9 @@
 var net = require("net");
 var elink = require('./envisalink.js');
-var dateFormat = require('dateformat');
 var Service, Characteristic, Accessory;
 var inherits = require('util').inherits;
-var enableSet = true;
+var processingAlarm = false;
+var alarm;
 
 /* Register the plugin with homebridge */
 module.exports = function (homebridge) {
@@ -62,38 +62,53 @@ function EnvisalinkPlatform(log, config) {
     this.log("Zone Accessory Configured: ", this.zones.length);
     this.log("Starting connetion to alarm...", config.host);
     
-    this.alarm = new elink(config)
-    this.alarm.connect();
+    alarm = new elink(config)
+    alarm.connect();
     
-   this.alarm.on('keypadupdate', this.systemUpdate.bind(this));
-   this.alarm.on('zoneevent', this.zoneUpdate.bind(this));
-   this.alarm.on('updatepartition',this.partitionUpdate.bind(this));
+    alarm.on('keypadupdate', this.systemUpdate.bind(this));
+    alarm.on('zoneevent', this.zoneUpdate.bind(this));
+    alarm.on('updatepartition', this.partitionUpdate.bind(this));
 }
 
 
 EnvisalinkPlatform.prototype.systemUpdate = function (data) {
-    this.log('System status changed to: ', data.mode);
-    if (data.partition) {
+   // this.log('System status changed to: ', data.mode);
+    if ((data.partition) && (processingAlarm == false)){
         for (var i = 0; i < this.platformPartitionAccessories.length; i++) {
             var partitionAccessory = this.platformPartitionAccessories[i];
             if (partitionAccessory.partition == data.partition) {
                 partitionAccessory.status = data.mode;
-                console.log("Set system status on accessory " + partitionAccessory.name + ' to ' + JSON.stringify(partitionAccessory.status));
+                //this.log("Set system status on accessory " + partitionAccessory.name + ' to ' + JSON.stringify(partitionAccessory.status));
             }
         }
     }
 }
 
+EnvisalinkPlatform.prototype.partitionUpdate = function (data) {
+      //this.log('Partition status changed to: ', data.mode);
+    if (data.partition){
+        for (var i = 0; i < this.platformPartitionAccessories.length; i++) {
+            var partitionAccessory = this.platformPartitionAccessories[i];
+            if (partitionAccessory.partition == data.partition) {
+                partitionAccessory.status = data.mode;
+                //this.log("Set system status on accessory " + partitionAccessory.name + ' to ' + JSON.stringify(partitionAccessory.status));
+            }
+        }
+        // partition update occured, if was due to alarm state change clear state.
+        processingAlarm = false;
+    }
+}
+
 EnvisalinkPlatform.prototype.zoneUpdate = function (data) {
 
-    this.log('ZoneUpdate status changed to: ', data.mode);
-    for (var i = 0; i < data.zones.length; i++) {
-        var accessoryIndex = this.platformZoneAccessoryMap['z.' + data.zone];
+    //this.log('ZoneUpdate status changed to: ', data.mode);
+    for (var i = 0; i < data.zone.length; i++) {
+        var accessoryIndex = this.platformZoneAccessoryMap['z.' + data.zone[i]];
         if (accessoryIndex !== undefined) {
             var accessory = this.platformZoneAccessories[accessoryIndex];
             if (accessory) {
                 accessory.status = data.mode;
-                console.log("Set status on accessory " + accessory.name + ' to ' + JSON.stringify(accessory.status));
+                //this.log("Set status on accessory " + accessory.name + ' to ' + JSON.stringify(accessory.status));
 
                 var accservice = (accessory.getServices())[0];
 
@@ -127,10 +142,6 @@ EnvisalinkPlatform.prototype.zoneUpdate = function (data) {
             }
         }
     }
-}
-
-EnvisalinkPlatform.prototype.partitionUpdate = function (data) {
-    this.log('partitionupdate status changed to: ', data.status);
 }
 
 EnvisalinkPlatform.prototype.accessories = function (callback) {
@@ -229,11 +240,12 @@ EnvisalinkAccessory.prototype.getReadyState = function (callback) {
 EnvisalinkAccessory.prototype.getAlarmState = function (callback) {
   
     var currentState = this.status;
+    if (processingAlarm == false){
+
     //Default to disarmed
-    var status = Characteristic.SecuritySystemCurrentState.DISARMED;
-  
-   if (currentState) 
-    {
+        var status = Characteristic.SecuritySystemCurrentState.DISARMED;
+        if (currentState) 
+        {
         if (currentState == "ALARM") {
             status = Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED;
         } else if (currentState.substring(0,5) == "ARMED") {
@@ -251,13 +263,55 @@ EnvisalinkAccessory.prototype.getAlarmState = function (callback) {
             status = this.lastTargetState;
         }
     } 
-    
     callback(null, status);
+    } else {
+        callback(null, this.lastTargetState);
+    }
 }
 
 EnvisalinkAccessory.prototype.setAlarmState = function (state, callback) {
-    
   
+    var command = null;
+    if (processingAlarm == false) { 
+        if (state == Characteristic.SecuritySystemCurrentState.DISARMED) {
+            this.log("Disarming alarm with PIN.");
+            command = this.pin + "01" + this.partition
+        } else if (state == Characteristic.SecuritySystemCurrentState.STAY_ARM) {
+            this.log("Arming alarm to Stay.");
+            command = this.pin + "03" + this.partition 
+        }
+        else if (state == Characteristic.SecuritySystemCurrentState.NIGHT_ARM) {
+            this.log("Arming alarm to Night.");
+            command = this.pin + "033" + this.partition
+
+        } else if (state == Characteristic.SecuritySystemCurrentState.AWAY_ARM) {
+            this.log("Arming alarm to Away.");
+            command = this.pin + "02" + this.partition 
+        }
+        if (command) {
+            processingAlarm = true;
+            alarm.sendCommand(command);
+            this.lastTargetState = state;
+            setTimeout(this.proccessAlarmTimer.bind(this), 10000)
+            callback(null, state);
+
+        } else {
+            this.log("Unhandled alarm state: " + state);
+            callback();
+        }
+    } else {
+        this.log("Warning: Already handling Alarm state change, igorning request.");
+        callback();
+    }
+
+}
+
+EnvisalinkAccessory.prototype.proccessAlarmTimer = function () {
+    if (processingAlarm)
+    {
+        this.log("Error: Alarm request did not return successful in allocated time.");
+    }
+    processingAlarm = false;
 }
 
 EnvisalinkAccessory.prototype.getContactSensorState = function (callback) {
@@ -288,8 +342,5 @@ EnvisalinkAccessory.prototype.getSmokeStatus = function (callback) {
     
 }
 
-EnvisalinkAccessory.prototype.processAlarmState = function (nextEvent, callback) {
-    
-}
 
 

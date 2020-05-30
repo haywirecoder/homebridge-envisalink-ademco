@@ -1,0 +1,28 @@
+{
+  "name": "homebridge-envisalink-ademco",
+  "version": "1.0.0",
+  "description": "Homebridge Plug-in Envisalink for Ademco/Honeywell",
+  "main": "index.js",
+  "directories": {
+    "doc": "doc"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/haywirecoder/homebridge-envisalink-ademco"
+  },
+  "keywords": [
+    "envisalink",
+    "ademco",
+    "alarm",
+    "vista"
+  ],
+  "author": "Haywirecoder",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/haywirecoder/homebridge-envisalink-ademco/issues"
+  },
+  "homepage": "https://github.com/haywirecoder/homebridge-envisalink-ademco"
+}

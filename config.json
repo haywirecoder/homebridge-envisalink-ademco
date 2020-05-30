@@ -1,0 +1,10 @@
+{
+    "password" : "user",
+    "host" : "192.168.2.132",
+    "port" : 4025,
+    "partitions" : 1,
+    "maxzones" : 121
+    
+}
+
+

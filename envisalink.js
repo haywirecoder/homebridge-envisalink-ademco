@@ -20,8 +20,8 @@ function EnvisaLink (config) {
     host: config.host,
     port: config.port,
     password: config.password,
-    zones: config.maxzones,
-    partitions: config.partitions
+    zones: config.panelzones ? config.panelzones : 64,
+    partitions: config.panelpartition ? config.panelzones : 1,
   }
   this.pollId = undefined;
 }
@@ -156,7 +156,7 @@ EnvisaLink.prototype.connect = function () {
 		position++;
 	}
 }
-    console.log('log-debug: Zone update');
+    // console.log('log-trace: Zone update');
     var z_list =[];
     var initialUpdate; // this isn't good. After the for each, initialUpdate will be the value of the last one... 
 
@@ -165,7 +165,7 @@ EnvisaLink.prototype.connect = function () {
         z_list.push(z);
 	      initialUpdate = _this.zones[z] === undefined;
         _this.zones[z] = { send: tpi.send, name: tpi.name, code: z };
-        zoneTimeOpen(tpi,z);
+        zoneTimerOpen(tpi,z);
     });
     _this.emit('zoneupdate',
           { zone: z_list,
@@ -185,7 +185,7 @@ EnvisaLink.prototype.connect = function () {
 // the different values possible for each byte.
 
    var partition_string = data[1];
-    
+  
    for (var i=0; i<partition_string.length; i=i+2) { // Start at the begining, and move up two bytes at a time.
       var byte = parseInt( partition_string.substr(i, 2), 10); // convert hex (base 10) to int.
       var partition = (i/2)+1;
@@ -215,30 +215,30 @@ EnvisaLink.prototype.connect = function () {
   function findZone(zonelist, zone) 
   {
 
-    console.log("log-debug: Finding zone - ", zone)
-    console.log("log-debug: Finding list - ", zonelist)
+    // console.log("log-trace: Finding zone - ", zone)
+    // console.log("log-trace: Finding list - ", zonelist)
      for( var i = 0; i < zonelist.length; i++ ) {
          if( zone == zonelist[i].zone ) {
-          console.log("log-debug: Found zone - ", zone);
+         // console.log("log-trace: Found zone - ", zone);
              return i;
          }
      }
      // return undefined if not found
-     console.log("log-debug: Not Found zone - ", zone);
+     // console.log("log-trace: Not Found zone - ", zone);
      return undefined;
  }
 
- function zoneTimeOpen(tpi,zone)
+ function zoneTimerOpen(tpi,zone)
  { 
    var mode = "OPEN" ;
    var triggerZoneEvent = false;
    
    var zoneid = findZone(activezones,zone);
    if ( Number.isInteger(zoneid)) {  
-      console.log('log-debug: Zone found in active zone list index - ', zoneid);
+      // console.log('log-trace: Zone found in active zone list index - ', zoneid);
       activezones[zoneid].eventepoch = Math.round(Date.now() / 1000);
     } else {
-        console.log('log-debug: New zone - ', zone);
+        // console.log('log-trace: New zone - ', zone);
         activezones.push({ 
           zone: zone, 
           eventepoch: Math.round(Date.now() / 1000) 
@@ -249,7 +249,7 @@ EnvisaLink.prototype.connect = function () {
     if (activezones.length > 0) { 
       if (timeoutObj == undefined) 
       {  
-        console.log('log-debug: Activating zone timer');
+        // console.log('log-trace: Activating zone timer');
         timeoutObj = setInterval(zoneTimeOut,openZoneTimeout);
       }
     }
@@ -291,7 +291,7 @@ EnvisaLink.prototype.connect = function () {
     if (activezones.length == 0)
     {
        //Clean up and disable timer
-       console.log('log-debug: Disabling timer');
+       //console.log('log-trace: Disabling timer');
        clearInterval(timeoutObj);
        timeoutObj = undefined;
     }
@@ -378,16 +378,18 @@ EnvisaLink.prototype.connect = function () {
     if (partition <= _this.options.partitions ) {
       var initialUpdate = _this.partitions[partition] === undefined;
       _this.partitions[partition] = { send: tpi.send, name: tpi.name, code: data };
+
       // update zone information
-      zoneTimeOpen(tpi,zone);
+      if ( mode != 'READY'){ zoneTimerOpen(tpi,zone); }
+
       _this.emit('keypadupdate',
-        { partition: partition,
-	  code: {
+      { partition: partition,
+	    code: {
 	    icon: icon_array,
 	    zone: zone,
 	    beep: beep,
 	    txt: keypad_txt
-	  },
+	    },
     status: tpi.name,
     keypadledstatus: keypadledstatus,
     mode: mode,
