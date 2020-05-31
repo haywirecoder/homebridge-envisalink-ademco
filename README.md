@@ -6,7 +6,7 @@ This module was designed to work with Ademco Envisalink module with the Vista se
 Limits:
   * Ademco panels provide limited zone information to their peripherals. The panel only provide real-time information when a zone is faulted (opened) but not when it is restored (closed). However, the virtual key panel continuously updated with zones information. This module auto set the faulted zone (opened) to restored (close) after 30 second after the virtual panel no longer reports a fault for the specific zone.
 
-  * When system is "Armed" the panel no longer report the state of each zone. All zone will age out and be considered close once armed. Note: A bypass zone will automatic should as fault once alarm is disarmed.
+  * When system is "Armed" the panel no longer report the state of each zone. All zone will age out and be considered close once armed. Note: A bypass zone will automatic show as fault once alarm is disarmed.
 
 Example configuration is below:
 
