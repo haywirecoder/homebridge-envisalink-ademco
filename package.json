@@ -1,6 +1,6 @@
 {
   "name": "homebridge-envisalink-ademco",
-  "version": "1.0.4",
+  "version": "1.0.6",
   "description": "Homebridge Plug-in Envisalink for Ademco/Honeywell",
   "main": "index.js",
   "directories": {
@@ -12,6 +12,10 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/haywirecoder/homebridge-envisalink-ademco"
+  },
+  "engines": {
+    "homebridge": ">=0.2.0",
+    "node": ">=0.12.0"
   },
   "keywords": [
     "homebridge-plugin",
