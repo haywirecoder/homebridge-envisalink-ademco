@@ -39,7 +39,7 @@ Example configuration is below:
   ]
 ```
 
-## Non-Consecutive Zones (Recommened)
+## Non-Consecutive Zones (Recommended)
 If your system has unused zones, simply include a *zoneNumber* integer property on ***each*** zone you have in the config. Make sure you put the property on each zone. This is the recommended configuration if you don't wish to monitor (display) all the zones within HomeKit or don't know the ordering of your system zone.
 
 Examaple:
