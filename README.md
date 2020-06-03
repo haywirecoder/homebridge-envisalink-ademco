@@ -9,7 +9,9 @@ Limits:
 
   * When system is "Armed" the panel no longer report the state of each zone. All zone will age out and be considered close once armed. Note: A bypass zone will automaticly show as fault (open) once the alarm is disarmed.
 
-Example configuration is below. Please note as version 1.0.8 Attribute "type" has been replace with "sensorType" this allows UX schema for HOOBS to be created.
+Please note: As of version 1.0.8 the attribute for zones "type" has been changed to "sensorType" this is to enabled the UX Hoobs configuration manager.
+
+Example configuration is below. 
 
 
 ```javascript
