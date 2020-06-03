@@ -1,14 +1,15 @@
 # Homebridge-Envisalink-Ademco
 
-This is a homebridge plugin leveraging a modified version of a node-red implementation ( https://www.npmjs.com/package/node-red-contrib-envisalink-ademco ) and a Homebridge envisalink DSC module ( https://www.npmjs.com/package/homebridge-envisalink )
+This is a Homebridge/HOOBS plug-in leveraging a modified version of a node-red implementation ( https://www.npmjs.com/package/node-red-contrib-envisalink-ademco ) and a Homebridge envisalink DSC module ( https://www.npmjs.com/package/homebridge-envisalink )
 This module was designed to work with Ademco Envisalink module with the Vista series alarm boards.
+
 
 Limits:
   * Ademco panels provide limited zone information to their peripherals. The panel only provide real-time information when a zone is faulted (opened) but not when it is restored (closed). However, the virtual key panel continuously updated with zones information. This module auto set the faulted zone (opened) to restored (close) after 30 second after the virtual panel no longer reports a fault for the specific zone.
 
   * When system is "Armed" the panel no longer report the state of each zone. All zone will age out and be considered close once armed. Note: A bypass zone will automaticly show as fault (open) once the alarm is disarmed.
 
-Example configuration is below:
+Example configuration is below. Please note as version 1.0.8 Attribute "type" has been replace with "sensorType" this schema for HOOBS to be created.
 
 
 ```javascript
@@ -27,12 +28,12 @@ Example configuration is below:
       "zones": [
         {
           "name": "Front Door",
-          "type": "door",
+          "sensorType": "door",
           "partition": 1
         },
         {
           "name": "Master Bedroom Window",
-          "type": "window",
+          "sensorType": "window",
           "partition": 1
         }
     }
@@ -48,19 +49,19 @@ Examaple:
 "zones": [
   {
     "name": "Front Entry",
-    "type": "door",
+    "sensorType": "door",
     "partition": 1,
     "zoneNumber": 1
   },
   {
     "name": "Patio Door",
-    "type": "door",
+    "sensorType": "door",
     "partition": 1,
     "zoneNumber": 2
   },
   {
     "name": "Garage Door",
-    "type": "door",
+    "sensorType": "door",
     "partition": 1,
     "zoneNumber": 5
   }

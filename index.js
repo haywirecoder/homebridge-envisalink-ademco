@@ -1,4 +1,3 @@
-var net = require("net");
 var elink = require('./envisalink.js');
 var Service, Characteristic, Accessory;
 var inherits = require('util').inherits;
@@ -46,16 +45,16 @@ function EnvisalinkPlatform(log, config) {
    
    for (var i = 0; i < this.zones.length; i++) {
             var zone = this.zones[i];
-            if (zone.type == "motion" || zone.type == "window" || zone.type == "door" || zone.type == "leak" || zone.type == "smoke") {
+            if (zone.sensorType == "motion" || zone.sensorType == "window" || zone.sensorType == "door" || zone.sensorType == "leak" || zone.sensorType == "smoke") {
                 var zoneNum = zone.zoneNumber ? zone.zoneNumber : (i + 1);
                 if (zoneNum > maxZone) {
                     maxZone = zoneNum;
                 }
-                var accessory = new EnvisalinkAccessory(this.log, zone.type, zone, zone.partition, zoneNum);
+                var accessory = new EnvisalinkAccessory(this.log, zone.sensorType, zone, zone.partition, zoneNum);
                 var accessoryIndex = this.platformZoneAccessories.push(accessory) - 1;
                 this.platformZoneAccessoryMap['z.' + zoneNum] = accessoryIndex;
             } else {
-                this.log("Unhandled accessory type: " + zone.type);
+                this.log("Unhandled accessory type: " + zone.sensorType);
             }
         }
 

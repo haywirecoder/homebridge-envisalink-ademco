@@ -1,0 +1,76 @@
+{
+  "pluginAlias": "EnvisalinkPlatform",
+  "pluginType": "platform",
+  "singular": false,
+  "footerDisplay": "Envisalink Ademco Panel Configuration",
+  "schema": {
+    "type": "object",
+    "properties": {
+        "host": {
+          "title": "Envisalink Host IP Address",
+          "type": "string",
+          "default": "192.168.1.XXX",
+          "required": true,
+          "format": "ipv4"
+        },
+        "port": {
+            "title": "Envisalink Host IP Port Address",
+            "type": "string",
+            "default": "4025",
+            "required": true
+        },
+        "deviceType": {
+          "title": "Device Model",
+          "type": "string",
+          "required": true,
+          "default": "Honeywell Vista"
+        },
+        "password": {
+          "title": "Password",
+          "type": "string",
+          "required": true,
+          "default": "user",
+          "description": "Password to Envisalink server"
+        },
+        "pin": {
+          "title": "Alarm PIN",
+          "type": "string",
+          "description": "Your local alarm PIN"
+        },
+        "partitions": {
+            "title": "Alarm partition list",
+            "type": "array",
+            "name": {
+                "title": "Partion number",
+                "type": "string"
+              }
+        },
+        "zones": {
+            "title": "Alarm zones to Monitor and display in Homekit",
+            "type": "array",
+            "name": {
+                "title": "Zone Name",
+                "type": "string"
+              },
+              "sensorType": {
+                "title": "Sensor Type",
+                "oneOf": [
+                  { "title": "Door", "enum": ["door"] },
+                  { "title": "Leak", "enum": ["leak"] },
+                  { "title": "Motion", "enum": ["motion"] },
+                  { "title": "Smoke", "enum": ["smoke"] },
+                  { "title": "Window", "enum": ["window"] }
+                ]
+              },
+              "partition": {
+                "title": "Sensor Partition Number",
+                "type": "string"
+              },
+              "zoneNumber": {
+                "title": "Zone Number",
+                "type": "string"
+              }
+            }  
+          }
+        }
+   }
