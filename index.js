@@ -274,18 +274,19 @@ EnvisalinkAccessory.prototype.setAlarmState = function (state, callback) {
     if (processingAlarm == false) { 
         if (state == Characteristic.SecuritySystemCurrentState.DISARMED) {
             this.log("Disarming alarm with PIN.");
-            command = this.pin + "01" + this.partition
+            command = this.pin + "1" + this.partition
         } else if (state == Characteristic.SecuritySystemCurrentState.STAY_ARM) {
             this.log("Arming alarm to Stay.");
-            command = this.pin + "03" + this.partition 
+            command = this.pin + "3" + this.partition 
+            this.log(command);
         }
         else if (state == Characteristic.SecuritySystemCurrentState.NIGHT_ARM) {
             this.log("Arming alarm to Night.");
-            command = this.pin + "033" + this.partition
+            command = this.pin + "33" + this.partition
 
         } else if (state == Characteristic.SecuritySystemCurrentState.AWAY_ARM) {
             this.log("Arming alarm to Away.");
-            command = this.pin + "02" + this.partition 
+            command = this.pin + "2" + this.partition 
         }
         if (command) {
             processingAlarm = true;
