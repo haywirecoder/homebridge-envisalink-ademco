@@ -41,7 +41,8 @@ Please note: As of version 1.0.8 the attribute for zones "type" attribute has be
 **zones**
 > name : zone name  
 > sensorType : 'door | leak | motion | smoke | window'
-
+> name : zone name  
+> sensorType : 'door | leak | motion | smoke | window'
 
   
 Example configuration is below.
