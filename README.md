@@ -39,10 +39,7 @@ Please note: As of version 1.0.8 the attribute for zones "type" attribute has be
 > name : partition name
 
 **zones**
-> name : zone name  
-> sensorType : 'door | leak | motion | smoke | window'
-> name : zone name  
-> sensorType : 'door | leak | motion | smoke | window'
+> name : zone name
 
   
 Example configuration is below.
