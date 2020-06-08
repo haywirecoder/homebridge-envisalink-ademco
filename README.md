@@ -11,6 +11,73 @@ Limits:
 
 Please note: As of version 1.0.8 the attribute for zones "type" attribute has been changed to "sensorType" this is to enabled the UX Hoobs configuration manager.
 
+## Configuration options
+
+The following properties can be configured:
+
+<table width="100%">
+	<!-- why, markdown... -->
+	<thead>
+		<tr>
+			<th>Option</th>
+			<th width="100%">Description</th>
+		</tr>
+	<thead>
+	<tbody>	
+		<tr>
+			<td><code>Host</code></td>
+			<td>Envisakit".<br>
+				<br><b>Example:</b> <code>192.168.1.100</code>
+				<br>This value is <b>REQUIRED</b>
+			</td>
+		</tr>		
+		<tr>
+			<td><code>deviceType</code></td>
+			<td>Device Name to appear in homekit<br>
+				<br><b>Example:</b> <code>Honeywell Vista</code>
+				<br><b>Default value:</b> <code>Honeywell Vista</code>
+				<br>This value is <b>OPTIONAL</b>
+			</td>
+		</tr>
+		<tr>
+			<td><code>password</code></td>
+			<td>PIN to enable and disable alarm.<br>
+       <br><b>Example:</b> <code>user</code>
+				<br><b>Default:</b> <code>user</code>
+				<br>This value is <b>OPTIONAL</b>
+			</td>
+		</tr>
+		<tr>
+			<td><code>pin</code></td>
+			<td>PIN to enable and disable alarm.<br>
+				<br><b>Example:</b> <code>1234</code>
+				<br>This value is <b>REQUIRED</b>
+			</td>
+		</tr>    
+        <tr>
+			<td><code>partitions</code></td>
+			<td>Alarm partition name<br>
+				<br><b>Example:</b> <code>Alarm</code>
+				<br><b>Default value:</b> <code>Alarm</code>
+				<br>This value is <b>OPTIONAL</b>
+			</td>
+		</tr>
+        <tr>
+			<td><code>zones</code></td>
+			<td>Zones to display in HomeKit<br>
+				<br><b>Description:</b> <code> 
+        "name": "<Name>",
+        "sensorType": "<door|leak|motion|smoke|window>",
+        "partition": "<Partition Number associated with sensor>",
+        "zoneNumber": "<Define zone number>"
+    </code>
+				<br>This value is <b>OPTIONAL</b>
+			</td>
+		</tr>      
+    </tbody>
+</table>
+
+
 Example configuration is below. 
 
 
