@@ -36,12 +36,14 @@ Please note: As of version 1.0.8 the attribute for zones "type" attribute has be
 
 **partitions**
 
-> name : partition name
+> - name : partition name
 
 **zones**
-> name : zone name
-> name : zone name
-> name : zone name
+
+> - name: zone name
+> - sensorType :  door | leak | motion | smoke | window
+> - partition : Sensor Partition Number
+> - zoneNumber : Zone Number
 
 
   
@@ -159,4 +161,3 @@ Examaple:
 ]
 
 ...
-
