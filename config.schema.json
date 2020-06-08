@@ -41,7 +41,7 @@
             "title": "Alarm partition list",
             "type": "array",
             "name": {
-                "title": "Partion number",
+                "title": "Partition name",
                 "type": "string"
               }
         },

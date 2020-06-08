@@ -21,7 +21,7 @@ function EnvisaLink (config) {
     port: config.port,
     password: config.password,
     zones: config.panelzones ? config.panelzones : 64,
-    partitions: config.panelpartition ? config.panelzones : 1,
+    partitions: config.panelpartition ? config.panelpartition : 1,
   }
   this.pollId = undefined;
 }

@@ -23,20 +23,22 @@ Please note: As of version 1.0.8 the attribute for zones "type" attribute has be
 ## Configuration options
 
   
-| Attributes| Description |
-|--|--|
-|host | Envisalink Host IP Address  
-|port| Envisalink IP Port address 
-|deviceType| Device Model
-|password| Envisalink webserver password. Default is "user"
-|pin| Your local alarm PIN
-|**partitions**| partition to monitor in homekit |
-| **zones**| zones to appear and monitor in homekit|
+| Attributes     | Description                                                         |
+| -------------- | ------------------------------------------------------------------- |
+| host           | Envisalink server host IP Address                                   |
+| port           | Envisalink server Port address. Default is 4025.                    |
+| deviceType     | Device Model                                                        |
+| password       | Envisalink server password. Default is "user".                      |
+| pin            | Your local alarm PIN                                                |
+| panelzones     | (optional) Max number of zone supported by panel. Default is 64.    |
+| panelpartition | (optional) Max number of paratition defined by panel. Default is 1. |
+| **partitions** | partition to monitor in homekit                                     |
+| **zones**      | zones to appear and monitor in homekit                              |
 
 
 **partitions**
 
-> - name : partition name
+> - name : partition name (default "house")
 
 **zones**
 
@@ -65,7 +67,7 @@ Example configuration is below.
     "pin": "---panel pin for disarming---",
     "partitions": [
     {
-        "name": "Alarm"
+        "name": "House"
     }
 
     ],
