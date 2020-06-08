@@ -42,8 +42,8 @@ Please note: As of version 1.0.8 the attribute for zones "type" attribute has be
 
 > - name: zone name
 > - sensorType :  door | leak | motion | smoke | window
-> - partition : Sensor Partition Number
-> - zoneNumber : Zone Number
+> - partition : sensor partition number
+> - zoneNumber : panel zone number for sensor
 
 
   
@@ -58,51 +58,31 @@ Example configuration is below.
 
 {
 
-"platform": "Envisalink-Ademco",
+    "platform": "Envisalink-Ademco",
+    "host": "192.168.YYY.XXX",
+    "deviceType": "Honeywell Vista",
+    "password": "---envisalink password (default is user)---",
+    "pin": "---panel pin for disarming---",
+    "partitions": [
+    {
+        "name": "Alarm"
+    }
 
-"host": "192.168.0.XXX",
+    ],
 
-"deviceType": "Honeywell Vista",
-
-"password": "---envisalink password (default is user)---",
-
-"pin": "---panel pin for disarming---",
-
-"partitions": [
-
-{
-
-"name": "Alarm"
-
+    "zones": [
+        {
+        "name": "Front Door",
+        "sensorType": "door",   
+        "partition": 1
+        },
+        {
+        "name": "Master Bedroom Window",
+        "sensorType": "window",
+        "partition": 1
+        }
+    ]
 }
-
-],
-
-"zones": [
-
-{
-
-"name": "Front Door",
-
-"sensorType": "door",
-
-"partition": 1
-
-},
-
-{
-
-"name": "Master Bedroom Window",
-
-"sensorType": "window",
-
-"partition": 1
-
-}
-
-}
-
-]
 
 ```
 
@@ -121,43 +101,25 @@ Examaple:
 ...
 
 "zones": [
+    {
 
-{
-
-"name": "Front Entry",
-
-"sensorType": "door",
-
-"partition": 1,
-
-"zoneNumber": 1
-
-},
-
-{
-
-"name": "Patio Door",
-
-"sensorType": "door",
-
-"partition": 1,
-
-"zoneNumber": 2
-
-},
-
-{
-
-"name": "Garage Door",
-
-"sensorType": "door",
-
-"partition": 1,
-
-"zoneNumber": 5
-
-}
-
+    "name": "Front Entry",
+    "sensorType": "door",
+    "partition": 1,
+    "zoneNumber": 9
+    },
+    {
+    "name": "Patio Door",
+    "sensorType": "door",
+    "partition": 1,
+    "zoneNumber": 12
+    },
+    {
+    "name": "Garage Door",
+    "sensorType": "door",
+    "partition": 1,
+    "zoneNumber": 5
+    }
 ]
 
 ...
