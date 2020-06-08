@@ -40,6 +40,9 @@ Please note: As of version 1.0.8 the attribute for zones "type" attribute has be
 
 **zones**
 > name : zone name
+> name : zone name
+> name : zone name
+
 
   
 Example configuration is below.
