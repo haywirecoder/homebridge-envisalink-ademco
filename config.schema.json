@@ -35,13 +35,27 @@
         "pin": {
           "title": "Alarm PIN",
           "type": "string",
+          "required": true,
           "description": "Your local alarm PIN"
+        },
+        "openZoneTimeout": {
+          "title": "Zone timeout value",
+          "type": "string",
+          "default": "30000",
+          "description": "Lenght of time to wait before a zone is considered close"
+        },
+        "commandTimeOut": {
+          "title": "Command timeout",
+          "type": "string",
+          "default": "10000",
+          "description": "Lenght of time to wait for alarm command to return"
         },
         "partitions": {
             "title": "Alarm partition list",
             "type": "array",
             "name": {
                 "title": "Partition name",
+                "required": true,
                 "type": "string"
               }
         },

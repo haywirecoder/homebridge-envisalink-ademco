@@ -1,5 +1,4 @@
 // 'use strict'
-const openZoneTimeout = 30000;
 
 var net = require('net')
 var events = require('events')
@@ -9,9 +8,7 @@ var tpidefs = require('./tpi.js')
 var ciddefs = require('./cid.js')
 var actual;
 var activezones =  [];
-var timeoutObj = undefined;
-
-
+var activeZoneTimeOut = undefined;
 
 
 function EnvisaLink (config) {
@@ -20,6 +17,7 @@ function EnvisaLink (config) {
     host: config.host,
     port: config.port,
     password: config.password,
+    openZoneTimeout: config.openZoneTimeout ? config.openZoneTimeout : 30000,
     zones: config.panelzones ? config.panelzones : 64,
     partitions: config.panelpartition ? config.panelpartition : 1,
   }
@@ -247,10 +245,10 @@ EnvisaLink.prototype.connect = function () {
     }
 
     if (activezones.length > 0) { 
-      if (timeoutObj == undefined) 
+      if (activeZoneTimeOut == undefined) 
       {  
         // console.log('log-trace: Activating zone timer');
-        timeoutObj = setInterval(zoneTimeOut,openZoneTimeout);
+        activeZoneTimeOut = setInterval(zoneTimeOut,_this.options.openZoneTimeout);
       }
     }
 
@@ -268,7 +266,7 @@ EnvisaLink.prototype.connect = function () {
     var mode = "CLOSE" ;
     var z_close = [];
     var z = activezones.length;
-    var l_timeout = openZoneTimeout/500;
+    var l_timeout = _this.options.partitions/500;
     while (z--)
     {
           // determine if zone hasn't been report on for allocated time in sec, if so mark as close
@@ -292,8 +290,8 @@ EnvisaLink.prototype.connect = function () {
     {
        //Clean up and disable timer
        //console.log('log-trace: Disabling timer');
-       clearInterval(timeoutObj);
-       timeoutObj = undefined;
+       clearInterval(activeZoneTimeOut);
+       activeZoneTimeOut = undefined;
     }
   }
 

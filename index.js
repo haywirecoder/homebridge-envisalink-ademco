@@ -1,7 +1,11 @@
+const packageJson = require('./package.json');
+
 var elink = require('./envisalink.js');
 var Service, Characteristic, Accessory;
 var inherits = require('util').inherits;
 var processingAlarm = false;
+var armingTimeOut = undefined;
+var commandTimeOut;
 var alarm;
 
 /* Register the plugin with homebridge */
@@ -24,10 +28,12 @@ function EnvisalinkPlatform(log, config) {
     this.log = log;
     this.deviceType = config.deviceType;
     this.pin = config.pin;
-    this.port = config.port ? config.port : 4025,
+    this.port = config.port ? config.port : 4025;
     this.password = config.password;
     this.partitions = config.partitions ? config.partitions : ['House'];
     this.zones = config.zones ? config.zones : [];
+    // set global timeout 
+    commandTimeOut = config.commandTimeOut ? config.commandTimeOut : 10000;
 
     this.log("Configuring Envisalink Ademco platform,  Host: " + config.host + ", port: " + this.port + ", type: " + this.deviceType);
 
@@ -86,6 +92,8 @@ EnvisalinkPlatform.prototype.systemUpdate = function (data) {
 
 EnvisalinkPlatform.prototype.partitionUpdate = function (data) {
       //this.log('Partition status changed to: ', data.mode);
+    var partition = this.platformPartitionAccessories[data.partition - 1];
+
     if (data.partition){
         for (var i = 0; i < this.platformPartitionAccessories.length; i++) {
             var partitionAccessory = this.platformPartitionAccessories[i];
@@ -95,8 +103,14 @@ EnvisalinkPlatform.prototype.partitionUpdate = function (data) {
             }
         }
         // partition update occured, if was due to alarm state change clear state.
-        processingAlarm = false;
-        this.lastTargetState = null;
+        if((processingAlarm) && (partition))
+        {
+             // clear timer and don't wait, return state immediately
+            processingAlarm = false;
+            clearTimeout(armingTimeOut);
+            armingTimeOut = undefined;
+            partition.proccessAlarmTimer();
+        }
     }
 }
 
@@ -211,6 +225,16 @@ function EnvisalinkAccessory(log, accessoryType, config, partition, zone) {
             .on('get', this.getSmokeStatus.bind(this));
         this.services.push(service);
     }
+
+    var serviceAccessoryInformation = new Service.AccessoryInformation();
+    serviceAccessoryInformation.setCharacteristic(Characteristic.Identify, true);
+    serviceAccessoryInformation.setCharacteristic(Characteristic.Manufacturer, 'Envisacor Technologies Inc.');
+    serviceAccessoryInformation.setCharacteristic(Characteristic.Model, 'Envisalink Honeywell Vista Panel');
+    serviceAccessoryInformation.setCharacteristic(Characteristic.Name, 'homebridge-envisalink-ademco');
+    serviceAccessoryInformation.setCharacteristic(Characteristic.SerialNumber, 'Envisalink3/4');
+    serviceAccessoryInformation.setCharacteristic(Characteristic.FirmwareRevision, packageJson.version);
+    // Add accessory information
+    this.services.push(serviceAccessoryInformation);
 }
 
 EnvisalinkAccessory.prototype.getServices = function () {
@@ -297,7 +321,7 @@ EnvisalinkAccessory.prototype.setAlarmState = function (state, callback) {
             processingAlarm = true;
             this.lastTargetState = state;
             alarm.sendCommand(command);
-            setTimeout(this.proccessAlarmTimer.bind(this), 10000)
+            armingTimeOut = setTimeout(this.proccessAlarmTimer.bind(this), commandTimeOut)
             callback(null, state);
 
         } else {
@@ -305,7 +329,7 @@ EnvisalinkAccessory.prototype.setAlarmState = function (state, callback) {
             callback(null, state);
         }
     } else {
-        this.log("Warning: Already handling Alarm state change, igorning request");
+        this.log("Warning: Already handling Alarm state change, igorning request.");
         callback(null, this.lastTargetState);
     }
 
@@ -315,19 +339,16 @@ EnvisalinkAccessory.prototype.proccessAlarmTimer = function () {
     var accservice = this.getServices()[0];
     if (processingAlarm)
     {
-        this.log("Error: Alarm request did not return successful in allocated time setting state to ", this.status);
+        this.log("Error: Alarm request did not return successful in allocated time setting state to", this.status);
         processingAlarm = false;
         this.lastTargetState = null;
-        this.getAlarmState(function (nothing,resultat) {
-            accservice.getCharacteristic(Characteristic.SecuritySystemTargetState).updateValue(resultat);
-
+        this.getAlarmState(function (nothing, resultat) {
+           accservice.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(resultat);
         });
     }
     else 
     {
-        this.log("Status: Alarm status returned successful.");
-        accservice.getCharacteristic(Characteristic.SecuritySystemTargetState).updateValue(this.lastTargetState);
-        processingAlarm = false;
+        accservice.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(this.lastTargetState);
         this.lastTargetState = null;
     }
 }
