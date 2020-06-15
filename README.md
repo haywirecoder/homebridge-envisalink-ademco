@@ -12,7 +12,7 @@ Limits:
 
 * Envisalink module only support one connection. Once this plug-in is connected, any other connections will result in an error.
   
-Please note: As of version 1.0.8 the attribute for zones "type" attribute has been changed to "sensorType" this is to enabled the UX Hoobs configuration manager.
+Please note: As of version 1.0.8 the attribute for zones "type" attribute has been changed to "sensorType" this is to enabled the UX configuration manager.
 
 ## Configuration options
 
@@ -25,6 +25,7 @@ Please note: As of version 1.0.8 the attribute for zones "type" attribute has be
 | pin             | Your local alarm PIN                                                                                         |
 | openZoneTimeout | *(optional)* Time out value for zone provided in milliseconds. Default is 30000 (30 sec).                    |
 | commandTimeOut  | *(optional)* Time out value for alarm command to return provided in milliseconds. Default is 10000 (10 sec). |
+| autoreconnect   | *(optional)* Automatic reconnect to server if session is broken. Default is true.                            |
 | **partitions**  | List of partition to monitor in homekit                                                                      |
 | **zones**       | *(Optional)* List of zones to appear and monitor in homekit                                                  |
 
@@ -42,6 +43,7 @@ Please note: As of version 1.0.8 the attribute for zones "type" attribute has be
 Example configuration is below.
 
 ```javascript
+...
 
 "platforms": [
 
@@ -72,6 +74,7 @@ Example configuration is below.
         }
     ]
 }
+...
 
 ```
 
