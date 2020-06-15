@@ -7,14 +7,14 @@
     "type": "object",
     "properties": {
         "host": {
-          "title": "Envisalink Host IP Address",
+          "title": "Envisalink Host IP address",
           "type": "string",
           "default": "192.168.1.XXX",
           "required": true,
           "format": "ipv4"
         },
         "port": {
-            "title": "Envisalink Host IP Port Address",
+            "title": "Envisalink Host IP Port address",
             "type": "string",
             "default": "4025",
             "required": true
@@ -42,7 +42,7 @@
           "title": "Zone timeout value",
           "type": "string",
           "default": "30000",
-          "description": "Lenght of time to wait before a zone is considered close"
+          "description": "Lenght of time to wait before a zone is considered closed"
         },
         "commandTimeOut": {
           "title": "Command timeout",
@@ -50,17 +50,24 @@
           "default": "10000",
           "description": "Lenght of time to wait for alarm command to return"
         },
+        "autoreconnect": {
+          "title": "Automatic re-connect to Envisakit server",
+          "type": "boolean",
+          "default": true,
+          "description": "Automatic reconnect to Envisakit server, if session is terminated. "
+        },
         "partitions": {
             "title": "Alarm partition list",
             "type": "array",
             "name": {
                 "title": "Partition name",
                 "required": true,
-                "type": "string"
+                "type": "string",
+                "default": "House"
               }
         },
         "zones": {
-            "title": "Alarm zones to Monitor and display in Homekit",
+            "title": "Alarm zones to monitor and display in Homekit",
             "type": "array",
             "name": {
                 "title": "Zone Name",

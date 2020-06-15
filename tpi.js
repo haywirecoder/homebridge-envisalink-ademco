@@ -208,7 +208,7 @@ exports.tpicommands = {
     'bytes': 256,
     'post': '',
     'send': '',
-    'action': 'zoneTimerDump'
+    'action': 'zonetimerdump'
   }
 }
 

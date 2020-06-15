@@ -1,9 +1,7 @@
 const packageJson = require('./package.json');
-
 var elink = require('./envisalink.js');
 var Service, Characteristic, Accessory;
 var inherits = require('util').inherits;
-var processingAlarm = false;
 var armingTimeOut = undefined;
 var commandTimeOut;
 var alarm;
@@ -30,47 +28,52 @@ function EnvisalinkPlatform(log, config) {
     this.pin = config.pin;
     this.port = config.port ? config.port : 4025;
     this.password = config.password;
-    this.partitions = config.partitions ? config.partitions : ['House'];
+    this.partitions = config.partitions ? config.partitions : [{name: 'House'}];
     this.zones = config.zones ? config.zones : [];
-    // set global timeout 
+  
+
+    // set global timeout for commands
     commandTimeOut = config.commandTimeOut ? config.commandTimeOut : 10000;
 
-    this.log("Configuring Envisalink Ademco platform,  Host: " + config.host + ", port: " + this.port + ", type: " + this.deviceType);
-
+    this.log("Configuring Envisalink Ademco platform.")
+    // Process partition data
     this.platformPartitionAccessories = [];
     for (var i = 0; i < this.partitions.length; i++) {
         var partition = this.partitions[i];
         partition.pin = config.pin;
+        partition.model = config.deviceType;
         var accessory = new EnvisalinkAccessory(this.log, "partition", partition, i + 1);
         this.platformPartitionAccessories.push(accessory);
     }
     this.platformZoneAccessories = [];
     this.platformZoneAccessoryMap = {};
 
-    
+    //process zone data
     var maxZone = this.zones.length;
-   
-   for (var i = 0; i < this.zones.length; i++) {
-            var zone = this.zones[i];
-            if (zone.sensorType == "motion" || zone.sensorType == "window" || zone.sensorType == "door" || zone.sensorType == "leak" || zone.sensorType == "smoke") {
-                var zoneNum = zone.zoneNumber ? zone.zoneNumber : (i + 1);
-                if (zoneNum > maxZone) {
-                    maxZone = zoneNum;
-                }
-                var accessory = new EnvisalinkAccessory(this.log, zone.sensorType, zone, zone.partition, zoneNum);
-                var accessoryIndex = this.platformZoneAccessories.push(accessory) - 1;
-                this.platformZoneAccessoryMap['z.' + zoneNum] = accessoryIndex;
-            } else {
-                this.log("Unhandled accessory type: " + zone.sensorType);
+    for (var i = 0; i < this.zones.length; i++) {
+        var zone = this.zones[i];
+        if (zone.sensorType == "motion" || zone.sensorType == "window" || zone.sensorType == "door" || zone.sensorType == "leak" || zone.sensorType == "smoke") {
+            var zoneNum = zone.zoneNumber ? zone.zoneNumber : (i + 1);
+            if (zoneNum > maxZone) {
+                maxZone = zoneNum;
             }
+            zone.model = config.deviceType + " " + zone.sensorType + " sensor";
+            var accessory = new EnvisalinkAccessory(this.log, zone.sensorType, zone, zone.partition, zoneNum);
+            var accessoryIndex = this.platformZoneAccessories.push(accessory) - 1;
+            this.platformZoneAccessoryMap['z.' + zoneNum] = accessoryIndex;
+        } else {
+            this.log("Unhandled accessory type: " + zone.sensorType);
         }
+    }
 
-    this.log("Zone Accessory Configured: ", this.zones.length);
-    this.log("Starting connetion to alarm...", config.host);
-    
+
+    this.log("Zone accessories configured: ", this.zones.length);
+    // Begin connection process and bind alarm events to local function.
+    this.log("Starting connection to alarm..." + config.host + ", port: " + this.port);
+
     alarm = new elink(config)
     alarm.connect();
-    
+
     alarm.on('keypadupdate', this.systemUpdate.bind(this));
     alarm.on('zoneevent', this.zoneUpdate.bind(this));
     alarm.on('updatepartition', this.partitionUpdate.bind(this));
@@ -78,8 +81,10 @@ function EnvisalinkPlatform(log, config) {
 
 
 EnvisalinkPlatform.prototype.systemUpdate = function (data) {
-   // this.log('System status changed to: ', data.mode);
-    if ((data.partition) && (processingAlarm == false)){
+    // this.log('System status changed to: ', data.mode);
+    var partition = this.platformPartitionAccessories[data.partition - 1];
+
+    if ((data.partition) && (partition.processingAlarm == false)) {
         for (var i = 0; i < this.platformPartitionAccessories.length; i++) {
             var partitionAccessory = this.platformPartitionAccessories[i];
             if (partitionAccessory.partition == data.partition) {
@@ -91,10 +96,10 @@ EnvisalinkPlatform.prototype.systemUpdate = function (data) {
 }
 
 EnvisalinkPlatform.prototype.partitionUpdate = function (data) {
-      //this.log('Partition status changed to: ', data.mode);
+    //this.log('Partition status changed to: ', data.mode);
     var partition = this.platformPartitionAccessories[data.partition - 1];
 
-    if (data.partition){
+    if (data.partition) {
         for (var i = 0; i < this.platformPartitionAccessories.length; i++) {
             var partitionAccessory = this.platformPartitionAccessories[i];
             if (partitionAccessory.partition == data.partition) {
@@ -103,13 +108,14 @@ EnvisalinkPlatform.prototype.partitionUpdate = function (data) {
             }
         }
         // partition update occured, if was due to alarm state change clear state.
-        if((processingAlarm) && (partition))
-        {
-             // clear timer and don't wait, return state immediately
-            processingAlarm = false;
-            clearTimeout(armingTimeOut);
-            armingTimeOut = undefined;
-            partition.proccessAlarmTimer();
+        if (partition) {
+            if ((partition.processingAlarm)) {
+                // clear timer and return state immediately
+                partition.processingAlarm = false;
+                clearTimeout(armingTimeOut);
+                armingTimeOut = undefined;
+                partition.proccessAlarmTimer();
+            }
         }
     }
 }
@@ -130,27 +136,27 @@ EnvisalinkPlatform.prototype.zoneUpdate = function (data) {
                 if (accservice) {
                     if (accessory.accessoryType == "motion") {
 
-                    accessory.getMotionStatus(function (nothing, resultat) {
-                        accservice.getCharacteristic(Characteristic.MotionDetected).setValue(resultat);
-                    });
+                        accessory.getMotionStatus(function (nothing, resultat) {
+                            accservice.getCharacteristic(Characteristic.MotionDetected).setValue(resultat);
+                        });
 
                     } else if (accessory.accessoryType == "door" || accessory.accessoryType == "window") {
 
-                    accessory.getContactSensorState(function (nothing, resultat) {
-                        accservice.getCharacteristic(Characteristic.ContactSensorState).setValue(resultat);
-                    });
+                        accessory.getContactSensorState(function (nothing, resultat) {
+                            accservice.getCharacteristic(Characteristic.ContactSensorState).setValue(resultat);
+                        });
 
                     } else if (accessory.accessoryType == "leak") {
 
-                    accessory.getLeakStatus(function (nothing, resultat) {
-                        accservice.getCharacteristic(Characteristic.LeakDetected).setValue(resultat);
-                    });
+                        accessory.getLeakStatus(function (nothing, resultat) {
+                            accservice.getCharacteristic(Characteristic.LeakDetected).setValue(resultat);
+                        });
 
                     } else if (accessory.accessoryType == "smoke") {
 
-                    accessory.getSmokeStatus(function (nothing, resultat) {
-                        accservice.getCharacteristic(Characteristic.SmokeDetected).setValue(resultat);
-                    });
+                        accessory.getSmokeStatus(function (nothing, resultat) {
+                            accservice.getCharacteristic(Characteristic.SmokeDetected).setValue(resultat);
+                        });
 
                     }
                 }
@@ -166,7 +172,7 @@ EnvisalinkPlatform.prototype.accessories = function (callback) {
 function EnvisalinkAccessory(log, accessoryType, config, partition, zone) {
     this.log = log;
     this.name = config.name;
-   
+
     var id = 'envisalink.' + partition;
     if (zone) {
         id += "." + zone;
@@ -179,6 +185,7 @@ function EnvisalinkAccessory(log, accessoryType, config, partition, zone) {
     this.pin = config.pin;
     this.zone = zone;
     this.status = null;
+    this.processingAlarm = false;
 
     this.services = [];
     if (this.accessoryType == "partition") {
@@ -229,7 +236,7 @@ function EnvisalinkAccessory(log, accessoryType, config, partition, zone) {
     var serviceAccessoryInformation = new Service.AccessoryInformation();
     serviceAccessoryInformation.setCharacteristic(Characteristic.Identify, true);
     serviceAccessoryInformation.setCharacteristic(Characteristic.Manufacturer, 'Envisacor Technologies Inc.');
-    serviceAccessoryInformation.setCharacteristic(Characteristic.Model, 'Envisalink Honeywell Vista Panel');
+    serviceAccessoryInformation.setCharacteristic(Characteristic.Model, config.model);
     serviceAccessoryInformation.setCharacteristic(Characteristic.Name, 'homebridge-envisalink-ademco');
     serviceAccessoryInformation.setCharacteristic(Characteristic.SerialNumber, 'Envisalink3/4');
     serviceAccessoryInformation.setCharacteristic(Characteristic.FirmwareRevision, packageJson.version);
@@ -238,16 +245,16 @@ function EnvisalinkAccessory(log, accessoryType, config, partition, zone) {
 }
 
 EnvisalinkAccessory.prototype.getServices = function () {
-  
+
     return this.services;
 }
 
 EnvisalinkAccessory.prototype.getReadyState = function (callback) {
-    
+
     var currentState = this.status;
     var status = true;
     if (currentState && currentState.partition === this.partition) {
-        if (currentState.status == "READY" ) {
+        if (currentState.status == "READY") {
             status = false;
         }
     }
@@ -255,8 +262,8 @@ EnvisalinkAccessory.prototype.getReadyState = function (callback) {
 }
 
 EnvisalinkAccessory.prototype.getMotionStatus = function (callback) {
-    
-    if (this.status  == "OPEN") {
+
+    if (this.status == "OPEN") {
         callback(null, true);
     } else {
         callback(null, false);
@@ -264,61 +271,57 @@ EnvisalinkAccessory.prototype.getMotionStatus = function (callback) {
 }
 
 EnvisalinkAccessory.prototype.getAlarmState = function (callback) {
-  
+
     var currentState = this.status;
-    
-    if (processingAlarm == false) {
+
+    if (this.processingAlarm == false) {
         // this.log("Getting status.", this.status );
         // Default to disarmed
         var status = Characteristic.SecuritySystemCurrentState.DISARMED;
-        if (currentState) 
-        {
-        if (currentState == "ALARM") {
-            status = Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED;
-        } else if (currentState.substring(0,5) == "ARMED") {
+        if (currentState) {
+            if (currentState == "ALARM") {
+                status = Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED;
+            } else if (currentState.substring(0, 5) == "ARMED") {
 
-            if ((currentState == "ARMED_STAY") || (currentState == "ARMED_STAY_BYPASS")) {
-                status = Characteristic.SecuritySystemCurrentState.STAY_ARM;
-            }
-            else if ((currentState == "ARMED_NIGHT") || (currentState == "ARMED_NIGHT_BYPASS")) {
-                status = Characteristic.SecuritySystemCurrentState.NIGHT_ARM;
-            }
-            else status = Characteristic.SecuritySystemCurrentState.AWAY_ARM;
+                if ((currentState == "ARMED_STAY") || (currentState == "ARMED_STAY_BYPASS")) {
+                    status = Characteristic.SecuritySystemCurrentState.STAY_ARM;
+                } else if ((currentState == "ARMED_NIGHT") || (currentState == "ARMED_NIGHT_BYPASS")) {
+                    status = Characteristic.SecuritySystemCurrentState.NIGHT_ARM;
+                } else status = Characteristic.SecuritySystemCurrentState.AWAY_ARM;
 
-        } else if (currentState == "EXIT_DELAY") {
-            //Use the target alarm state during the exit and entrance delays.
-            if (this.lastTargetState) {
-                status =  this.lastTargetState;
+            } else if (currentState == "EXIT_DELAY") {
+                //Use the target alarm state during the exit and entrance delays.
+                if (this.lastTargetState) {
+                    status = this.lastTargetState;
+                }
             }
-        } 
-        }   
-    callback(null, status);
+        }
+        callback(null, status);
     } else {
         callback(null, this.status);
     }
 }
 
 EnvisalinkAccessory.prototype.setAlarmState = function (state, callback) {
-  
+
     var command = null;
-    if (processingAlarm == false) { 
+    if (this.processingAlarm == false) {
         if (state == Characteristic.SecuritySystemCurrentState.DISARMED) {
             this.log("Disarming alarm with PIN.");
             command = this.pin + "1" + this.partition
         } else if (state == Characteristic.SecuritySystemCurrentState.STAY_ARM) {
             this.log("Arming alarm to Stay.");
-            command = this.pin + "3" + this.partition 
-        }
-        else if (state == Characteristic.SecuritySystemCurrentState.NIGHT_ARM) {
+            command = this.pin + "3" + this.partition
+        } else if (state == Characteristic.SecuritySystemCurrentState.NIGHT_ARM) {
             this.log("Arming alarm to Night.");
             command = this.pin + "33" + this.partition
 
         } else if (state == Characteristic.SecuritySystemCurrentState.AWAY_ARM) {
             this.log("Arming alarm to Away.");
-            command = this.pin + "2" + this.partition 
+            command = this.pin + "2" + this.partition
         }
         if (command) {
-            processingAlarm = true;
+            this.processingAlarm = true;
             this.lastTargetState = state;
             alarm.sendCommand(command);
             armingTimeOut = setTimeout(this.proccessAlarmTimer.bind(this), commandTimeOut)
@@ -337,24 +340,21 @@ EnvisalinkAccessory.prototype.setAlarmState = function (state, callback) {
 
 EnvisalinkAccessory.prototype.proccessAlarmTimer = function () {
     var accservice = this.getServices()[0];
-    if (processingAlarm)
-    {
+    if (this.processingAlarm) {
         this.log("Error: Alarm request did not return successful in allocated time setting state to", this.status);
-        processingAlarm = false;
+        this.processingAlarm = false;
         this.lastTargetState = null;
         this.getAlarmState(function (nothing, resultat) {
-           accservice.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(resultat);
+            accservice.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(resultat);
         });
-    }
-    else 
-    {
+    } else {
         accservice.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(this.lastTargetState);
         this.lastTargetState = null;
     }
 }
 
 EnvisalinkAccessory.prototype.getContactSensorState = function (callback) {
-   
+
     if (this.status == "OPEN") {
         callback(null, Characteristic.ContactSensorState.CONTACT_NOT_DETECTED);
     } else {
@@ -372,14 +372,11 @@ EnvisalinkAccessory.prototype.getLeakStatus = function (callback) {
 }
 
 EnvisalinkAccessory.prototype.getSmokeStatus = function (callback) {
-    
+
     if (this.status == "OPEN") {
         callback(null, Characteristic.SmokeDetected.SMOKE_DETECTED);
     } else {
         callback(null, Characteristic.SmokeDetected.SMOKE_NOT_DETECTED);
     }
-    
+
 }
-
-
-

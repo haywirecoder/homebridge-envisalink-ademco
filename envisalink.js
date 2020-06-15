@@ -20,8 +20,9 @@ function EnvisaLink (config) {
     openZoneTimeout: config.openZoneTimeout ? config.openZoneTimeout : 30000,
     zones: config.panelzones ? config.panelzones : 64,
     partitions: config.panelpartition ? config.panelpartition : 1,
+    autoreconnect: config.autoreconnect ? config.autoreconnect : true,
+
   }
-  this.pollId = undefined;
 }
 
 util.inherits(EnvisaLink, EventEmitter)
@@ -33,12 +34,8 @@ EnvisaLink.prototype.connect = function () {
   this.zones = {};
   this.partitions = {};
   this.users = {};
-  this.shouldReconnect = true;
+  this.shouldReconnect = this.options.autoreconnect;
   this.cid = {};
-  //this.lastmessage = new Date();
-  //this.timeout = setTimeout( Handle_Timer(), 20000 ); // Check every 20 seconds...
-
-  // console.log('log-trace: ',"Making connection to host:"+ this.options.host +" port:"+ this.options.port);
 
   actual = net.createConnection({ port: this.options.port, host: this.options.host })
 
@@ -48,7 +45,6 @@ EnvisaLink.prototype.connect = function () {
   })
 
   actual.on('close', function (hadError) {
-    clearInterval(this.pollId)
     setTimeout(function () {
       if (_this.shouldReconnect && (actual === undefined || actual.destroyed)) {
         _this.connect()
@@ -62,7 +58,6 @@ EnvisaLink.prototype.connect = function () {
   })
 
   actual.on('data', function (data) {
-    // this.lastmessage = new Date(); // Everytime a message comes in, reset the lastmessage timer
     var dataslice = data.toString().replace(/[\n\r]/g, '|').split('|');
     for (var i = 0; i < dataslice.length; i++) {
       var datapacket = dataslice[i]
@@ -103,7 +98,7 @@ EnvisaLink.prototype.connect = function () {
                 case 'cidEvent':
                   cidEvent(tpi, command_array)
                   break;
-                case 'zoneTimerDump':
+                case 'zonetimerdump':
                   zoneTimerDump(tpi, command_array)
                   break;
 
@@ -115,7 +110,7 @@ EnvisaLink.prototype.connect = function () {
     }
   })
 
-  function updateZone (tpi, data) {
+function updateZone (tpi, data) {
 // now, what I need to do here is parse the data packet for parameters, in this case it's one parameter an
 // 8 byte HEX string little endian each bit represents a zone. If 1 the zone is active, 0 means not active.
   var zone_bits = data[1];
@@ -200,15 +195,6 @@ EnvisaLink.prototype.connect = function () {
       }
    } 
   }
-
-  // Idle timeout handler for connection
-  /*function Handle_Timer() {
-      if ( ( Date() - this.lastmessage ) / 1000 >  20 ) { // we didn't receive any messages for > 20 seconds. Assume dropped connect.
-	      this.emit('disconnect');
-      } else {
-	    this.timeout = setTimeout( Handle_Timer(), 20000 ); // Check every 20 seconds...
-    }
-  };*/
 
   function findZone(zonelist, zone) 
   {
@@ -467,7 +453,6 @@ EnvisaLink.prototype.connect = function () {
 }
 
 EnvisaLink.prototype.disconnect = function () {
-  clearInterval(this.pollId)
   this.shouldReconnect = false
   if (actual && !actual.destroyed) {
     actual.end()
