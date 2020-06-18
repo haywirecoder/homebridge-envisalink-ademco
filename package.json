@@ -1,6 +1,6 @@
 {
   "name": "homebridge-envisalink-ademco",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "Homebridge Plug-in Envisalink for Ademco/Honeywell",
   "main": "index.js",
   "directories": {
@@ -26,7 +26,7 @@
     "ademco",
     "alarm",
     "vista",
-    "hoobs"
+    "homebridge-ui-x"
   ],
   "author": "Haywirecoder",
   "license": "MIT",

@@ -40,9 +40,8 @@ EnvisaLink.prototype.connect = function () {
   actual = net.createConnection({ port: this.options.port, host: this.options.host })
 
   actual.on('error', function (ex) {
-    console.log('log-error:', ' Envisalink Error connection error:' + ex)
-    console.log('error', ex)
-  })
+    console.log('log-error: ', ' Envisalink Error connection error: ' + ex)
+   })
 
   actual.on('close', function (hadError) {
     setTimeout(function () {
@@ -74,11 +73,13 @@ EnvisaLink.prototype.connect = function () {
     // console.log('log-trace: ', 'Successfully logged in. Requesting current state.')
         } else { 
 	  var command_str = datapacket.match(/^%(.+)\$/); 	// pull out everything between the % and $
-	  if ( command_str == null ) console.log('log-error: ', "Command format invalid! command='"+ datapacket +"'");
+    if ( command_str == null ) 
+    {
+        console.log('log-error: ', "Command format invalid! command='"+ datapacket +"'");
+    } else {
 
-	  var command_array = command_str[1].split(','); 	// Element number 1 should be what was matched between the () in the above match. so everything between % and $
-	  var command = command_array[0]; 			// The first part is the command.
-    
+	        var command_array = command_str[1].split(','); 	// Element number 1 should be what was matched between the () in the above match. so everything between % and $
+	        var command = command_array[0]; 			// The first part is the command.
           var tpi = tpidefs.tpicommands[command]
           if (tpi) {
             if (tpi.bytes === '' || tpi.bytes === 0) {
@@ -107,6 +108,7 @@ EnvisaLink.prototype.connect = function () {
           }
 	      }
       }
+    }
     }
   })
 
@@ -429,7 +431,8 @@ function updateZone (tpi, data) {
 	} else if ( qualifier == 3 ) { // Restoral
 		qualifier = "Restoral";
 	} else { // Unknown Qualifier!!
-		console.log('log-error:', " Unrecognized qualifier '"+ qualifier +"' received from Panel!");
+    console.log('log-error: ', " Unrecognized qualifier '"+ qualifier +"' received from Panel!");
+    return undefined;
 	}
 	var code = cid.substr(1,3);
 	var partition = cid.substr(4,2);

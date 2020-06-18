@@ -6,6 +6,11 @@
   "schema": {
     "type": "object",
     "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "default": "Envisalink-Ademco"
+        },
         "host": {
           "title": "Envisalink Host IP address",
           "type": "string",
@@ -57,41 +62,54 @@
           "description": "Automatic reconnect to Envisakit server, if session is terminated. "
         },
         "partitions": {
-            "title": "Alarm partition list",
+          "description": "List of partitions",
             "type": "array",
-            "name": {
+            "items": {
+              "title": "Alarm partition",
+              "type": "object",
+              "properties": {
+                "name": {
                 "title": "Partition name",
                 "required": true,
                 "type": "string",
-                "default": "House"
+                "default": "House"  
               }
+            }
+          }
         },
         "zones": {
-            "title": "Alarm zones to monitor and display in Homekit",
+            "description": "Alarm zones to monitor and display in Homekit",
             "type": "array",
-            "name": {
-                "title": "Zone Name",
-                "type": "string"
-              },
-              "sensorType": {
-                "title": "Sensor Type",
-                "oneOf": [
-                  { "title": "Door", "enum": ["door"] },
-                  { "title": "Leak", "enum": ["leak"] },
-                  { "title": "Motion", "enum": ["motion"] },
-                  { "title": "Smoke", "enum": ["smoke"] },
-                  { "title": "Window", "enum": ["window"] }
-                ]
-              },
-              "partition": {
-                "title": "Sensor Partition Number",
-                "type": "string"
-              },
-              "zoneNumber": {
-                "title": "Zone Number",
-                "type": "string"
+            "items": {
+              "title": "Alarm zones",
+              "type": "object",
+              "properties": {
+                "name": {
+                  "title": "Zone Name",
+                  "type": "string"
+                },
+                "sensorType": {
+                  "title": "Sensor Type",
+                  "type": "string",
+                  "oneOf": [
+                    { "title": "Door", "enum": ["door"] },
+                    { "title": "Leak", "enum": ["leak"] },
+                    { "title": "Motion", "enum": ["motion"] },
+                    { "title": "Smoke", "enum": ["smoke"] },
+                    { "title": "Window", "enum": ["window"] }
+                  ]
+                },
+                "partition": {
+                  "title": "Sensor Partition Number",
+                  "type": "string"
+                },
+                "zoneNumber": {
+                  "title": "Zone Number",
+                  "type": "string"
+                }
               }
-            }  
-          }
+            }
+          }  
         }
-   }
+      }
+}
