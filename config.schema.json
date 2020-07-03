@@ -20,8 +20,8 @@
         },
         "port": {
             "title": "Envisalink Host IP Port address",
-            "type": "string",
-            "default": "4025",
+            "type": "integer",
+            "default": 4025,
             "required": true
         },
         "deviceType": {
@@ -39,21 +39,22 @@
         },
         "pin": {
           "title": "Alarm PIN",
-          "type": "string",
+          "type": "integer",
           "required": true,
+          "default": 1234,
           "description": "Your local alarm PIN"
         },
         "openZoneTimeout": {
-          "title": "Zone timeout value",
-          "type": "string",
-          "default": "30000",
+          "title": "Zone timeout value in milliseconds",
+          "type": "integer",
+          "default": 30000,
           "description": "Lenght of time to wait before a zone is considered closed"
         },
         "commandTimeOut": {
-          "title": "Command timeout",
-          "type": "string",
-          "default": "10000",
-          "description": "Lenght of time to wait for alarm command to return"
+          "title": "Command timeout in milliseconds",
+          "type": "integer",
+          "default": 10000,
+          "description": "Lenght of time to wait for alarm command to return."
         },
         "autoreconnect": {
           "title": "Automatic re-connect to Envisakit server",
@@ -65,7 +66,7 @@
           "description": "List of partitions",
             "type": "array",
             "items": {
-              "title": "Alarm partition",
+              "title": "Alarm partitions",
               "type": "object",
               "properties": {
                 "name": {
@@ -81,7 +82,7 @@
             "description": "Alarm zones to monitor and display in Homekit",
             "type": "array",
             "items": {
-              "title": "Alarm zones",
+              "title": "Zones",
               "type": "object",
               "properties": {
                 "name": {
