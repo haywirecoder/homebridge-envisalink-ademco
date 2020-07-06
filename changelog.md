@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file. This projec
 ## v1.0.15 (2020-07-02)
 
 ### Changes
-* Minor  re-factor of source code for easies of troubleshooting and future enhancements
+* Re-factor of source code for easies of troubleshooting and future enhancements
   
 ### Breaking fixes
 * Fix polling logic for sensors
