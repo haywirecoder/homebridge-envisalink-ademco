@@ -12,8 +12,6 @@ Limits:
 
 * Envisalink module only support one connection. Once this plug-in is connected, any other connections will result in an error.
 * Best pratice would be using master user or installer, and create seperate user
-  
-Please note: As of version 1.0.8 the attribute for zones "type" attribute has been changed to "sensorType" this is to enabled the UX configuration manager.
 
 ## Configuration options
 
