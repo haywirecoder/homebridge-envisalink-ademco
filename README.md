@@ -11,7 +11,8 @@ Limits:
 * When system is "Armed" the panel no longer report the state of each zone. All zone will age out and be considered close once armed. Note: A bypass zone will automaticly show as fault (open) once the alarm is disarmed.
 
 * Envisalink module only support one connection. Once this plug-in is connected, any other connections will result in an error.
-* Best pratice would be using master user or installer, and create seperate user
+
+Best pratice would be not using master user or installer code, and create a seperate user.
 
 ## Configuration options
 
