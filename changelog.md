@@ -5,13 +5,13 @@ All notable changes to this project will be documented in this file. This projec
 ### v1.0.15 (2020-07-02)
 
 ### Changes
-* Minor of refactor of source code for easies of troubleshooting and future enhancements
+* Minor  re-factor of source code for easies of troubleshooting and future enhancements
   
 ### Breaking fixes
 * Fix polling logic for sensors
   
 
-* ## v1.0.12 (2020-06-07)
+## v1.0.12 (2020-06-07)
 
 ### Changes
 * Added new configuration options for command timeout and sensor polling frequency
@@ -21,7 +21,7 @@ All notable changes to this project will be documented in this file. This projec
 
 ### Changes
 * Added easy config for Config UI X.
-* Change type in zone to sensortype in configuation
+* Change attribute for zones "type" attribute has been changed to "sensorType" this is to enabled the UX configuration manager.
 
 
 ## v1.0.0 (2020-06-03)
