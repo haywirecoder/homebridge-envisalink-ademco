@@ -92,7 +92,7 @@ Example configuration is below.
     "bypass": [
         {
         "name": "Home Bypass",
-        "forcebypass": false
+        "quickbypass": false
         }
     ],
     "keys" : [
