@@ -1,13 +1,26 @@
 # Change Log
 
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+## v1.1 (2020-07-26)
 
+### Enhancements
+* Added support for Bypassing fault zones
+* Added support for keypanel special function keys (e.g. Fire, Medical, Panic...etc)
+* Enhancements to update method for alarm status, allowing for more realtime updates to status
+* Ehhancements to UX configuration
+
+### Changes
+* Serial numbering schema  (* Note: This may require updating previous automation and room aassigment in Homekit)
+  
+### Break fixes
+* Error handling when connection was not present, cause module to terminate. 
+  
 ## v1.0.15 (2020-07-02)
 
 ### Changes
 * Re-factor of source code for easies of troubleshooting and future enhancements
   
-### Breaking fixes
+### Break fixes
 * Fix polling logic for sensors
   
 
