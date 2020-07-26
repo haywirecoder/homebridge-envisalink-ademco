@@ -317,7 +317,7 @@ class EnvisalinkAccessory {
                 .on('set', this.setByPass.bind(this));
             this.services.push(service);
             this.zoneaccessories = accessories;
-            this.forcebypass = config.forcebypass ? config.forcebypass : false
+            this.quickbypass  = config.quickbypass  ? config.quickbypass  : false
 
         } else if (this.accessoryType == "keys") {
             // These are push button key, upon processing request will return to off.
@@ -513,7 +513,7 @@ class EnvisalinkAccessory {
                 if (value) {
                     this.log("Reviewing fault zones for bypassing...");
                     var command;
-                    if (this.forcebypass) {
+                    if (this.quickbypass ) {
                         this.log("Force Bypass configured. Forcing byoass of fault zones.");
                         command = this.pin + tpidefs.alarmcommand.forcebypass;
                         alarm.sendCommand(command);
