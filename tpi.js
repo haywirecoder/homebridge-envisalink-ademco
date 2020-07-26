@@ -239,3 +239,15 @@ exports.led_status = {
   'low_battery' : 16384,
   'armed_stay' : 32768
   }
+
+  exports.alarmcommand = {
+    'away': '2',
+    'bypass': '6',
+    'bypassforce': '6#',
+    'disarm': '1',
+    'instant': '7',
+    'max': '4',
+    'night': '33',
+    'stay': '3',
+    'togglechime': '9'
+  }

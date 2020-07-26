@@ -6,111 +6,278 @@
   "schema": {
     "type": "object",
     "properties": {
-        "name": {
-          "title": "Name",
-          "type": "string",
-          "default": "Envisalink-Ademco"
-        },
-        "host": {
-          "title": "Envisalink Host IP address",
-          "type": "string",
-          "default": "192.168.1.XXX",
-          "required": true,
-          "format": "ipv4"
-        },
-        "port": {
-            "title": "Envisalink Host IP Port address",
-            "type": "integer",
-            "default": 4025,
-            "required": true
-        },
-        "deviceType": {
-          "title": "Device Model",
-          "type": "string",
-          "required": true,
-          "default": "Honeywell Vista"
-        },
-        "password": {
-          "title": "Password",
-          "type": "string",
-          "required": true,
-          "default": "user",
-          "description": "Password to Envisalink server"
-        },
-        "pin": {
-          "title": "Alarm PIN",
-          "type": "integer",
-          "required": true,
-          "default": 1234,
-          "description": "Your local alarm PIN"
-        },
-        "openZoneTimeout": {
-          "title": "Zone timeout value in milliseconds",
-          "type": "integer",
-          "default": 30000,
-          "description": "Lenght of time to wait before a zone is considered closed"
-        },
-        "commandTimeOut": {
-          "title": "Command timeout in milliseconds",
-          "type": "integer",
-          "default": 10000,
-          "description": "Lenght of time to wait for alarm command to return."
-        },
-        "autoreconnect": {
-          "title": "Automatic re-connect to Envisakit server",
-          "type": "boolean",
-          "default": true,
-          "description": "Automatic reconnect to Envisakit server, if session is terminated. "
-        },
-        "partitions": {
-          "description": "List of partitions",
-            "type": "array",
-            "items": {
-              "title": "Alarm partitions",
-              "type": "object",
-              "properties": {
-                "name": {
-                "title": "Partition name",
-                "required": true,
-                "type": "string",
-                "default": "House"  
-              }
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "default": "Envisalink-Ademco"
+      },
+      "host": {
+        "title": "Envisalink Host IP address",
+        "type": "string",
+        "default": "192.168.1.XXX",
+        "required": true,
+        "format": "ipv4"
+      },
+      "port": {
+        "title": "Envisalink Host IP Port address",
+        "type": "integer",
+        "default": 4025,
+        "required": true
+      },
+      "deviceType": {
+        "title": "Device Model",
+        "type": "string",
+        "required": true,
+        "default": "Honeywell Vista"
+      },
+      "password": {
+        "title": "Password",
+        "type": "string",
+        "required": true,
+        "default": "user",
+        "description": "Password to Envisalink server"
+      },
+      "pin": {
+        "title": "Alarm PIN",
+        "type": "integer",
+        "required": true,
+        "default": 1234,
+        "description": "Your local alarm PIN"
+      },
+      "openZoneTimeout": {
+        "title": "Zone timeout value in milliseconds",
+        "type": "integer",
+        "default": 30000,
+        "description": "Lenght of time to wait before a zone is considered closed"
+      },
+      "commandTimeOut": {
+        "title": "Command timeout in milliseconds",
+        "type": "integer",
+        "default": 10000,
+        "description": "Lenght of time to wait for alarm command to return."
+      },
+      "autoreconnect": {
+        "title": "Automatic re-connect to Envisakit server",
+        "type": "boolean",
+        "default": true,
+        "description": "Automatic reconnect to Envisakit server, if session is terminated. "
+      },
+      "partitions": {
+        "description": "List of partitions",
+        "type": "array",
+        "maxItems": 3,
+        "items": {
+          "title": "Alarm partitions",
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Partition name",
+              "required": true,
+              "type": "string",
+              "default": "House"
             }
           }
-        },
-        "zones": {
-            "description": "Alarm zones to monitor and display in Homekit",
-            "type": "array",
-            "items": {
-              "title": "Zones",
-              "type": "object",
-              "properties": {
-                "name": {
-                  "title": "Zone Name",
-                  "type": "string"
-                },
-                "sensorType": {
-                  "title": "Sensor Type",
-                  "type": "string",
-                  "oneOf": [
-                    { "title": "Door", "enum": ["door"] },
-                    { "title": "Leak", "enum": ["leak"] },
-                    { "title": "Motion", "enum": ["motion"] },
-                    { "title": "Smoke", "enum": ["smoke"] },
-                    { "title": "Window", "enum": ["window"] }
+        }
+      },
+      "zones": {
+        "description": "Alarm zones to monitor, manage and display in Homekit",
+        "type": "array",
+        "maxItems": 48,
+        "items": {
+          "title": "Zones",
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Zone Name",
+              "type": "string"
+            },
+            "partition": {
+              "title": "Sensor Partition Number",
+              "type": "string"
+            },
+            "zoneNumber": {
+              "title": "Zone Number",
+              "type": "string"
+            },
+            "sensorType": {
+              "title": "Sensor Type",
+              "type": "string",
+              "oneOf": [{
+                  "title": "Door",
+                  "enum": [
+                    "door"
                   ]
                 },
-                "partition": {
-                  "title": "Sensor Partition Number",
-                  "type": "string"
+                {
+                  "title": "Leak",
+                  "enum": [
+                    "leak"
+                  ]
                 },
-                "zoneNumber": {
-                  "title": "Zone Number",
-                  "type": "string"
+                {
+                  "title": "Motion",
+                  "enum": [
+                    "motion"
+                  ]
+                },
+                {
+                  "title": "Smoke",
+                  "enum": [
+                    "smoke"
+                  ]
+                },
+                {
+                  "title": "Window",
+                  "enum": [
+                    "window"
+                  ]
                 }
-              }
+              ]
             }
-          }  
+          }
+        }
+      },
+      "bypass": {
+        "description": "Create option for a bypass zone controller.",
+        "type": "array",
+        "maxItems": 1,
+        "items": {
+          "title": "Bypass Options",
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Bypass control name",
+              "type": "string"
+            },
+            "quickbypass": {
+              "title": "Panel support quick (aka: force) bypass",
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "keys": {
+        "description": "Speed Keypad keys",
+        "type": "array",
+        "maxItems": 4,
+        "items": {
+          "title": "Speed keys options",
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Function key label",
+              "type": "string",
+              "maxLength": 12
+            },
+            "panelfunction": {
+              "title": "Functional Key code",
+              "type": "string",
+              "oneOf": [{
+                  "title": "A Key",
+                  "enum": [
+                    "A"
+                  ]
+                },
+                {
+                  "title": "B Key",
+                  "enum": [
+                    "B"
+                  ]
+                },
+                {
+                  "title": "C Key",
+                  "enum": [
+                    "C"
+                  ]
+                },
+                {
+                  "title": "D key",
+                  "enum": [
+                    "D"
+                  ]
+                }
+              ]
+            }
+          }
         }
       }
+    }
+  },
+  "layout": [{
+      "type": "section",
+      "title": "General Setting",
+      "expandable": true,
+      "expanded": true,
+      "items": [
+        "name",
+        "host",
+        "port",
+        "deviceType",
+        "password",
+        "pin"
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Partition Information",
+      "expandable": true,
+      "expanded": true,
+      "items": [{
+        "key": "partitions",
+        "type": "array",
+        "orderable": false,
+        "items": [
+          "partitions[].name"
+        ]
+      }]
+    },
+    {
+      "type": "section",
+      "title": "Zone Information",
+      "expandable": true,
+      "expanded": false,
+      "items": [{
+        "key": "zones",
+        "type": "array",
+        "orderable": false,
+        "items": [
+          "zones[].name",
+          "zones[].partition",
+          "zones[].zoneNumber",
+          "zones[].sensorType",
+          "zones[].bypassEnabled"
+        ]
+      }]
+    },
+    {
+      "type": "section",
+      "title": "Optional Settings",
+      "expandable": true,
+      "expanded": false,
+      "items": [
+        "openZoneTimeout",
+        "commandTimeOut",
+        "autoreconnect",
+        {
+          "key": "bypass",
+          "type": "array",
+          "orderable": false,
+          "items": [
+            "bypass[].name",
+            "bypass[].forcebypass"
+          ]
+        },
+        {
+          "key": "keys",
+          "type": "array",
+          "orderable": false,
+          "buttonText": "Add Speed key",
+          "items": [
+            "keys[].name",
+            "keys[].keycode"
+          ]
+        }
+      ]
+    }
+  ]
 }

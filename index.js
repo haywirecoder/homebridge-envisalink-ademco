@@ -1,5 +1,6 @@
 const packageJson = require('./package.json');
 var elink = require('./envisalink.js');
+var tpidefs = require('./tpi.js');
 var Service, Characteristic, Accessory;
 var inherits = require('util').inherits;
 var armingTimeOut = undefined;
@@ -27,7 +28,11 @@ class EnvisalinkPlatform {
     constructor(log, config) {
         this.log = log;
         this.deviceType = config.deviceType ? config.deviceType : "Honeywell Vista";
-        this.partitions = config.partitions ? config.partitions : [{ name: 'House' }];
+        this.partitions = config.partitions ? config.partitions : [{
+            name: 'House'
+        }];
+        this.bypass = config.bypass ? config.bypass : [];
+        this.keys = config.keys ? config.keys : [];
         this.zones = config.zones ? config.zones : [];
 
         // set global timeout for commands
@@ -38,22 +43,22 @@ class EnvisalinkPlatform {
         // Must define IP address for Envisakit server
         if (config.host == undefined) {
             this.log.error("No host address defined for plug-in. Please configure the Envisakit server address.");
-            this.log.error("Requesting shutdown and exiting.");
-            // terminate plug-in and homebridge
-            process.kill(process.pid, 'SIGINT');
+            // terminate plug-in initization
+            return;
 
-        }
-        else {
+        } else {
             this.log("Configuring Envisalink Ademco platform.");
             // Process partition data
             for (var i = 0; i < this.partitions.length; i++) {
                 var partition = this.partitions[i];
-                partition.pin = config.pin;
-                partition.model = config.deviceType;
-                var accessory = new EnvisalinkAccessory(this.log, "partition", partition, i + 1);
+                partition.pin = config.pin ? config.pin : 1234
+                partition.Model = config.deviceType + " Keypad";
+                partition.SerialNumber = "Envisalink." + (i + 1);
+                var accessory = new EnvisalinkAccessory(this.log, "partition", partition, i + 1, []);
                 this.platformPartitionAccessories.push(accessory);
             }
             this.platformZoneAccessoryMap = {};
+            this.platformPartitionAccessoryMap = {};
 
             //process zone data
             var maxZone = this.zones.length;
@@ -64,17 +69,43 @@ class EnvisalinkPlatform {
                     if (zoneNum > maxZone) {
                         maxZone = zoneNum;
                     }
-                    zone.model = config.deviceType + " " + zone.sensorType.charAt(0).toUpperCase() + zone.sensorType.slice(1) + " sensor";
-                    var accessory = new EnvisalinkAccessory(this.log, zone.sensorType, zone, zone.partition, zoneNum);
+                    zone.Model = config.deviceType + " " + zone.sensorType.charAt(0).toUpperCase() + zone.sensorType.slice(1) + " sensor";
+                    zone.SerialNumber = "Envisalink." + zone.partition + "." + zoneNum;
+                    var accessory = new EnvisalinkAccessory(this.log, zone.sensorType, zone, zone.partition, zoneNum, []);
                     var accessoryIndex = this.platformZoneAccessories.push(accessory) - 1;
                     this.platformZoneAccessoryMap['z.' + zoneNum] = accessoryIndex;
-                }
-                else {
+                } else {
                     this.log.error("Unhandled accessory type: " + zone.sensorType);
                 }
             }
 
-            this.log("Zone accessories configured: ", this.zones.length);
+            // Process bypass features (only one bypass button is created)
+            if (this.bypass.length > 0) {
+                var bypassswitch = this.bypass[0];
+                bypassswitch.pin = config.pin ? config.pin : 1234;
+                bypassswitch.Model = config.deviceType + " Keypad";
+                bypassswitch.SerialNumber = "Envisalink." + 1;
+                // Pass the list of zone to bypass control and speed to the first partition
+                var accessory = new EnvisalinkAccessory(this.log, "bypass", bypassswitch, 1, 200, this.platformZoneAccessories);
+                var accessoryIndex = this.platformPartitionAccessories.push(accessory);
+                this.platformPartitionAccessoryMap['b.' + bypassswitch.partition] = accessoryIndex;
+
+            }
+            // Creating special function key (pre-program)
+            for (var i = 0; i < this.keys.length; i++) {
+                var funckey = this.keys[i];
+                funckey.Model = config.deviceType + " Keypad";
+                funckey.SerialNumber = "Envisalink." + 1;
+                var keycode = funckey.panelfunction ? funckey.panelfunction : String.fromCharCode(i + 65);
+                var accessory = new EnvisalinkAccessory(this.log, "keys", funckey, 1, keycode, []);
+                this.platformPartitionAccessories.push(accessory);
+
+            }
+
+            // Provide status on configurations completed
+            if (this.zones.length > 0) this.log("Zone accessories configured: ", this.zones.length);
+            if (this.bypass.length > 0) this.log("Bypass accessories configured.");
+            if (this.keys.length > 0) this.log("Speed keys accessories configured.");
             // Begin connection process and bind alarm events to local function.
             this.log("Starting connection to alarm..." + config.host + ", port: " + config.port);
             alarm = new elink(log, config);
@@ -87,22 +118,46 @@ class EnvisalinkPlatform {
 
     systemUpdate(data) {
         this.log.debug('System status changed to: ', data.mode);
-        var partition = this.platformPartitionAccessories[data.partition - 1];
-
+        var partition = this.platformPartitionAccessories[Number(data.partition) - 1];
+        var accessorybypassIndex = this.platformPartitionAccessoryMap['b.' + Number(data.partition)];
+        // partition update information
         if ((data.partition) && (partition.processingAlarm == false)) {
             for (var i = 0; i < this.platformPartitionAccessories.length; i++) {
                 var partitionAccessory = this.platformPartitionAccessories[i];
                 if (partitionAccessory.partition == data.partition) {
-                    partitionAccessory.status = data.mode;
-                    this.log.debug("Set system status on accessory " + partitionAccessory.name + ' to ' + JSON.stringify(partitionAccessory.status));
+                    if (partitionAccessory.status != data.mode) {
+                        partitionAccessory.status = data.mode;
+                        this.log.debug("Set system status on accessory " + partitionAccessory.name + ' to ' + JSON.stringify(partitionAccessory.status));
+                        var partitionService = (partitionAccessory.getServices())[0];
+                        if (partitionService) {
+                            partitionAccessory.getAlarmState(function (nothing, resultat) {
+                                partitionService.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(resultat)
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        // if bypass enable update status
+        if (accessorybypassIndex !== undefined) {
+            var accessory = this.platformPartitionAccessories[accessorybypassIndex - 1];
+            if (accessory) {
+                accessory.status = data.mode;
+                this.log.debug("Set status on accessory " + accessory.name + ' to ' + JSON.stringify(accessory.status));
+                if (accessory.accessoryType == "bypass") {
+                    var accservice = (accessory.getServices())[0];
+                    accessory.getByPass(function (nothing, resultat) {
+                        accservice.getCharacteristic(Characteristic.On).updateValue(resultat)
+                    });
                 }
             }
         }
     }
 
+
     partitionUpdate(data) {
         this.log.debug('Partition status changed to: ', data.mode);
-        var partition = this.platformPartitionAccessories[data.partition - 1];
+        var partition = this.platformPartitionAccessories[Number(data.partition) - 1];
 
         if (data.partition) {
             for (var i = 0; i < this.platformPartitionAccessories.length; i++) {
@@ -110,11 +165,17 @@ class EnvisalinkPlatform {
                 if (partitionAccessory.partition == data.partition) {
                     partitionAccessory.status = data.mode;
                     this.log.debug("Set system status on accessory " + partitionAccessory.name + ' to ' + JSON.stringify(partitionAccessory.status));
+                    var partitionService = (partitionAccessory.getServices())[0];
+                    if (partitionService) {
+                        partitionAccessory.getAlarmState(function (nothing, resultat) {
+                            partitionService.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(resultat)
+                        });
+                    }
                 }
             }
             // partition update occured, if was due to alarm state change clear state.
             if (partition) {
-                if ((partition.processingAlarm)) {
+                if (partition.processingAlarm) {
                     // clear timer and return state immediately
                     partition.processingAlarm = false;
                     clearTimeout(armingTimeOut);
@@ -144,27 +205,23 @@ class EnvisalinkPlatform {
                                 accservice.getCharacteristic(Characteristic.MotionDetected).setValue(resultat);
                             });
 
-                        }
-                        else if (accessory.accessoryType == "door" || accessory.accessoryType == "window") {
+                        } else if (accessory.accessoryType == "door" || accessory.accessoryType == "window") {
 
                             accessory.getContactSensorState(function (nothing, resultat) {
                                 accservice.getCharacteristic(Characteristic.ContactSensorState).setValue(resultat);
                             });
 
-                        }
-                        else if (accessory.accessoryType == "leak") {
+                        } else if (accessory.accessoryType == "leak") {
 
                             accessory.getLeakStatus(function (nothing, resultat) {
                                 accservice.getCharacteristic(Characteristic.LeakDetected).setValue(resultat);
                             });
 
-                        }
-                        else if (accessory.accessoryType == "smoke") {
+                        } else if (accessory.accessoryType == "smoke") {
 
                             accessory.getSmokeStatus(function (nothing, resultat) {
                                 accservice.getCharacteristic(Characteristic.SmokeDetected).setValue(resultat);
                             });
-
                         }
                     }
                 }
@@ -178,23 +235,24 @@ class EnvisalinkPlatform {
 }
 
 class EnvisalinkAccessory {
-    constructor(log, accessoryType, config, partition, zone) {
+    constructor(log, accessoryType, config, partition, code, accessories) {
         this.log = log;
         this.name = config.name;
 
         var id = 'envisalink.' + partition;
-        if (zone) {
-            id += "." + zone;
+        if (code) {
+            id += "." + code;
         }
         this.uuid_base = uuid.generate(id);
         Accessory.call(this, this.name, this.uuid_base);
 
         this.accessoryType = accessoryType;
         this.partition = partition;
-        this.pin = config.pin;
-        this.zone = zone;
+        this.pin = config.pin ? config.pin : 1234;
+        this.zone = code;
         this.status = null;
         this.processingAlarm = false;
+
 
         this.services = [];
         if (this.accessoryType == "partition") {
@@ -210,49 +268,74 @@ class EnvisalinkAccessory {
                 .addCharacteristic(Characteristic.StatusFault)
                 .on('get', this.getReadyState.bind(this));
             this.services.push(service);
-        }
-        else if (this.accessoryType == "motion") {
+
+        } else if (this.accessoryType == "motion") {
             var service = new Service.MotionSensor(this.name);
             service
                 .getCharacteristic(Characteristic.MotionDetected)
                 .on('get', this.getMotionStatus.bind(this));
             this.services.push(service);
-        }
-        else if (this.accessoryType == "door") {
+            this.bypassEnabled = config.bypassEnabled ? config.bypassEnabled : false;
+
+        } else if (this.accessoryType == "door") {
             var service = new Service.ContactSensor(this.name);
             service
                 .getCharacteristic(Characteristic.ContactSensorState)
                 .on('get', this.getContactSensorState.bind(this));
             this.services.push(service);
-        }
-        else if (this.accessoryType == "window") {
+            this.bypassEnabled = config.bypassEnabled ? config.bypassEnabled : false;
+
+        } else if (this.accessoryType == "window") {
             var service = new Service.ContactSensor(this.name);
             service
                 .getCharacteristic(Characteristic.ContactSensorState)
                 .on('get', this.getContactSensorState.bind(this));
             this.services.push(service);
-        }
-        else if (this.accessoryType == "leak") {
+            this.bypassEnabled = config.bypassEnabled ? config.bypassEnabled : false;
+
+        } else if (this.accessoryType == "leak") {
             var service = new Service.LeakSensor(this.name);
             service
                 .getCharacteristic(Characteristic.LeakDetected)
                 .on('get', this.getLeakStatus.bind(this));
             this.services.push(service);
-        }
-        else if (this.accessoryType == "smoke") {
+            this.bypassEnabled = config.bypassEnabled ? config.bypassEnabled : false;
+
+        } else if (this.accessoryType == "smoke") {
             var service = new Service.SmokeSensor(this.name);
             service
                 .getCharacteristic(Characteristic.SmokeDetected)
                 .on('get', this.getSmokeStatus.bind(this));
             this.services.push(service);
+            this.bypassEnabled = config.bypassEnabled ? config.bypassEnabled : false;
+
+        } else if (this.accessoryType == "bypass") {
+            var service = new Service.Switch(this.name);
+            service
+                .getCharacteristic(Characteristic.On)
+                .on('get', this.getByPass.bind(this))
+                .on('set', this.setByPass.bind(this));
+            this.services.push(service);
+            this.zoneaccessories = accessories;
+            this.forcebypass = config.forcebypass ? config.forcebypass : false
+
+        } else if (this.accessoryType == "keys") {
+            // These are push button key, upon processing request will return to off.
+            var service = new Service.Switch(this.name);
+            service
+                .getCharacteristic(Characteristic.On)
+                .on('get', this.getFuntionKey.bind(this))
+                .on('set', this.setFuntionKey.bind(this));
+            this.services.push(service);
+            // function just require sending charater code of key. Such as "A", "B" ...etc.
+            this.functionkeycode = code;
         }
 
         var serviceAccessoryInformation = new Service.AccessoryInformation();
-        serviceAccessoryInformation.setCharacteristic(Characteristic.Identify, true);
         serviceAccessoryInformation.setCharacteristic(Characteristic.Manufacturer, 'Envisacor Technologies Inc.');
-        serviceAccessoryInformation.setCharacteristic(Characteristic.Model, config.model);
+        serviceAccessoryInformation.setCharacteristic(Characteristic.Model, config.Model);
         serviceAccessoryInformation.setCharacteristic(Characteristic.Name, 'homebridge-envisalink-ademco');
-        serviceAccessoryInformation.setCharacteristic(Characteristic.SerialNumber, 'Envisalink3/4');
+        serviceAccessoryInformation.setCharacteristic(Characteristic.SerialNumber, config.SerialNumber);
         serviceAccessoryInformation.setCharacteristic(Characteristic.FirmwareRevision, packageJson.version);
         // Add accessory information
         this.services.push(serviceAccessoryInformation);
@@ -270,6 +353,8 @@ class EnvisalinkAccessory {
             if (currentState == "NOT_READY")
                 status = Characteristic.StatusFault.GENERAL_FAULT;
         }
+
+        this.log.debug("Readystate Return ", status);
         callback(null, status);
     }
 
@@ -277,8 +362,7 @@ class EnvisalinkAccessory {
 
         if (this.status == "OPEN") {
             callback(null, true);
-        }
-        else {
+        } else {
             callback(null, false);
         }
     }
@@ -287,27 +371,24 @@ class EnvisalinkAccessory {
 
         var currentState = this.status;
 
+        // Default to disarmed
+        var status = Characteristic.SecuritySystemCurrentState.DISARMED;
         if (this.processingAlarm == false) {
             this.log.debug("Getting status.", currentState);
-            // Default to disarmed
-            var status = Characteristic.SecuritySystemCurrentState.DISARMED;
+
             if (currentState) {
                 if (currentState == "ALARM") {
                     status = Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED;
-                }
-                else if (currentState.substring(0, 5) == "ARMED") {
+                } else if (currentState.substring(0, 5) == "ARMED") {
 
                     if ((currentState == "ARMED_STAY") || (currentState == "ARMED_STAY_BYPASS")) {
                         status = Characteristic.SecuritySystemCurrentState.STAY_ARM;
-                    }
-                    else if ((currentState == "ARMED_NIGHT") || (currentState == "ARMED_NIGHT_BYPASS")) {
+                    } else if ((currentState == "ARMED_NIGHT") || (currentState == "ARMED_NIGHT_BYPASS")) {
                         status = Characteristic.SecuritySystemCurrentState.NIGHT_ARM;
-                    }
-                    else
+                    } else
                         status = Characteristic.SecuritySystemCurrentState.AWAY_ARM;
 
-                }
-                else if (currentState == "EXIT_DELAY") {
+                } else if (currentState == "EXIT_DELAY") {
                     //Use the target alarm state during the exit and entrance delays.
                     if (this.lastTargetState) {
                         status = this.lastTargetState;
@@ -315,72 +396,65 @@ class EnvisalinkAccessory {
                 }
             }
             callback(null, status);
-        }
-        else {
-            callback(null, this.status);
+        } else {
+            callback(null, this.lastTargetState);
         }
     }
 
     setAlarmState(state, callback) {
         var currentState = this.status;
         var command = null;
-
         if (currentState != "NOT_READY") {
             if (this.processingAlarm == false) {
                 if (state == Characteristic.SecuritySystemCurrentState.DISARMED) {
                     this.log("Disarming alarm with PIN.");
-                    command = this.pin + "1" + this.partition;
-                }
-                else if (state == Characteristic.SecuritySystemCurrentState.STAY_ARM) {
-                    this.log("Arming alarm to Stay (Home).");
-                    command = this.pin + "3" + this.partition;
-                }
-                else if (state == Characteristic.SecuritySystemCurrentState.NIGHT_ARM) {
-                    this.log("Arming alarm to Night.");
-                    command = this.pin + "33" + this.partition;
+                    command = this.pin + tpidefs.alarmcommand.disarm + this.partition;
 
-                }
-                else if (state == Characteristic.SecuritySystemCurrentState.AWAY_ARM) {
+                } else if (state == Characteristic.SecuritySystemCurrentState.STAY_ARM) {
+                    this.log("Arming alarm to Stay (Home).");
+                    command = this.pin + tpidefs.alarmcommand.stay + this.partition;
+                } else if (state == Characteristic.SecuritySystemCurrentState.NIGHT_ARM) {
+                    this.log("Arming alarm to Night.");
+                    command = this.pin + tpidefs.alarmcommand.night + this.partition;
+
+                } else if (state == Characteristic.SecuritySystemCurrentState.AWAY_ARM) {
                     this.log("Arming alarm to Away.");
-                    command = this.pin + "2" + this.partition;
+                    command = this.pin + tpidefs.alarmcommand.away + this.partition;
                 }
+
                 if (command) {
                     this.processingAlarm = true;
                     this.lastTargetState = state;
                     alarm.sendCommand(command);
                     armingTimeOut = setTimeout(this.proccessAlarmTimer.bind(this), commandTimeOut);
                     callback(null, state);
-
-                }
-                else {
+                } else {
                     this.log.error("Unhandled alarm state: " + state);
                     callback(null, state);
                 }
-            }
-            else {
+            } else {
                 this.log.warn("Already handling Alarm state change, igorning request.");
                 callback(null, this.lastTargetState);
             }
-        }
-        else {
+        } else {
             this.log.warn("Alarm not ready, igorning request.");
-            callback(null, this.lastTargetState);
+            var partitionService = this.getServices()[0];
+            partitionService.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(Characteristic.SecuritySystemCurrentState.DISARMED);
+            callback(null, Characteristic.SecuritySystemCurrentState.DISARMED);
         }
     }
 
     proccessAlarmTimer() {
-        var accservice = this.getServices()[0];
+        var partitionService = this.getServices()[0];
         if (this.processingAlarm) {
             this.log.error("Alarm request did not return successful in allocated time, setting status to", this.status);
             this.processingAlarm = false;
-            this.lastTargetState = null;
             this.getAlarmState(function (nothing, resultat) {
-                accservice.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(resultat);
+                partitionService.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(resultat);
+                this.lastTargetState = resultat;
             });
-        }
-        else {
-            accservice.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(this.lastTargetState);
-            this.lastTargetState = null;
+        } else {
+            partitionService.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(this.lastTargetState);
         }
     }
 
@@ -388,8 +462,7 @@ class EnvisalinkAccessory {
 
         if (this.status == "OPEN") {
             callback(null, Characteristic.ContactSensorState.CONTACT_NOT_DETECTED);
-        }
-        else {
+        } else {
             callback(null, Characteristic.ContactSensorState.CONTACT_DETECTED);
         }
     }
@@ -398,8 +471,7 @@ class EnvisalinkAccessory {
 
         if (this.status == "OPEN") {
             callback(null, Characteristic.LeakDetected.LEAK_DETECTED);
-        }
-        else {
+        } else {
             callback(null, Characteristic.LeakDetected.LEAK_NOT_DETECTED);
         }
     }
@@ -408,19 +480,103 @@ class EnvisalinkAccessory {
 
         if (this.status == "OPEN") {
             callback(null, Characteristic.SmokeDetected.SMOKE_DETECTED);
-        }
-        else {
+        } else {
             callback(null, Characteristic.SmokeDetected.SMOKE_NOT_DETECTED);
         }
 
     }
+
+    getByPass(callback) {
+        var status = false;
+
+        this.log.debug('Triggered Bypass Get', this.status);
+
+        switch (this.status) {
+            // if zone are bypass set button to on position.
+            case "READY_BYPASS":
+            case "ARMED_STAY_BYPASS":
+            case "ARMED_NIGHT_BYPASS":
+                status = true;
+                break;
+            default:
+                status = false;
+        }
+        callback(null, status);
+    }
+
+    setByPass(value, callback) {
+        this.log.debug('Triggered Bypass: ', value);
+        // If alarm is on igore request
+        switch (this.status) {
+            case "NOT_READY":
+                // System not ready, candidate  for zone bypass 
+                if (value) {
+                    this.log("Reviewing fault zones for bypassing...");
+                    var command;
+                    if (this.forcebypass) {
+                        this.log("Force Bypass configured. Forcing byoass of fault zones.");
+                        command = this.pin + tpidefs.alarmcommand.forcebypass;
+                        alarm.sendCommand(command);
+                        callback(null);
+                        break;
+                    }
+                    // Reviewing zone that are being monitored and are bypass enabled (allowed to be bypass)
+                    if (this.zoneaccessories.length == 0) {
+                        this.log.warn("No zones defined for Bypassing.");
+                        callback(null);
+                        break;
+                    }
+                    var bypasscount = 0;
+                    for (var i = 0; i < this.zoneaccessories.length; i++) {
+                        var zoneinfo = this.zoneaccessories[i];
+                        if (zoneinfo) {
+                            // Only bypass zone that are open and has been enabled for bypass, default is false for all zone define in configuration file.
+                            this.log.debug("Reviewing Zone", zoneinfo.name + ", " + zoneinfo.status + ", " + zoneinfo.bypassEnabled);
+                            if ((zoneinfo.status == "OPEN") && (zoneinfo.bypassEnabled)) {
+                                this.log("Bypassing", zoneinfo.name);
+                                command = this.pin + tpidefs.alarmcommand.bypass + zoneinfo.zone;
+                                // don't over load the command buffer, waiting 1 sec before requesting another bypass request
+                                setTimeout(function () {
+                                    alarm.sendCommand(command);
+                                }, 1000);
+                                bypasscount = bypasscount + 1;
+                            }
+                        }
+                    }
+                    if (bypasscount == 0) this.log("No zones were enabled for Bypassing")
+                    else this.log("Bypass ", bypasscount, " zones");
+                }
+                callback(null);
+                break;
+            case "READY_BYPASS":
+                // Clear bypass zones
+                if (!value) {
+                    this.log("Clearing bypass zones...")
+                    var command = this.pin + tpidefs.alarmcommand.disarm + this.partition;
+                    alarm.sendCommand(command);
+                }
+                callback(null);
+                break;
+            default:
+                callback(null);
+                break;
+        }
+    }
+    getFuntionKey(callback) {
+
+        callback(null, false);
+    }
+
+    setFuntionKey(value, callback) {
+
+        this.log('Triggered special Key function');
+
+        if (value) {
+            this.log("Sending code ", this.functionkeycode);
+            var command = this.functionkeycode;
+            alarm.sendCommand(command);
+        }
+
+        callback(null, false);
+    }
 }
-
-
-
-
-
-
-
-
-

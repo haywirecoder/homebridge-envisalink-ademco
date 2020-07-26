@@ -34,6 +34,7 @@ class EnvisaLink {
     this.users = {};
     this.shouldReconnect = this.options.autoreconnect;
     this.cid = {};
+    this.IsConnected = false;
 
     actual = net.createConnection({ port: this.options.port, host: this.options.host });
 
@@ -42,6 +43,7 @@ class EnvisaLink {
     });
 
     actual.on('close', function (hadError) {
+      _this.IsConnected = false;
       setTimeout(function () {
         if (_this.shouldReconnect && (actual === undefined || actual.destroyed)) {
           _this.log.warn("Session closed unexpectedly. Establishing Session...");
@@ -51,8 +53,9 @@ class EnvisaLink {
     });
 
     actual.on('end', function () {
-      // _this.log.debug("Envisalink received end request, disconnecting");
-      _this.log.log('Disconnect TPI session');
+       _this.log.debug("Envisalink received end request, disconnecting");
+      _this.log('Disconnect TPI session');
+      _this.IsConnected = false;
     });
 
     actual.on('data', function (data) {
@@ -61,17 +64,19 @@ class EnvisaLink {
         var datapacket = dataslice[i];
         if (datapacket !== '') {
           if (datapacket.substring(0, 5) === 'Login') {
-            // _this.log.debug("Login requested. Sending response " + _this.options.password)
+            _this.log.debug("Login requested. Sending response " + _this.options.password)
+            _this.IsConnected = true;
             _this.sendCommand(_this.options.password);
           }
           else if ((datapacket.substring(0, 6) === 'FAILED') || (datapacket.substring(0, 9) === 'Timed Out')) {
             _this.log.error("Login failed.");
             // The session will be closed.
+            _this.IsConnected = false;
           }
           else if (datapacket.substring(0, 2) === 'OK') {
             // ignore, OK is good. or report successful connection.    
             _this.log('Successful TPI session established');
-            // _this.log.debug("Successfully logged in. Requesting current state."")
+            
           }
           else {
             var command_str = datapacket.match(/^%(.+)\$/); // pull out everything between the % and $
@@ -88,7 +93,7 @@ class EnvisaLink {
                   _this.log.warn(tpi.pre + ' - ' + tpi.post);
                 }
                 else {
-                  //_this.log.debug(tpi.pre + ' | ' + command_str + ' | ' + tpi.post)
+                  _this.log.debug(tpi.pre + ' | ' + command_str + ' | ' + tpi.post)
                   switch (tpi.action) {
                     case 'updatezone':
                       updateZone(tpi, command_array);
@@ -153,7 +158,7 @@ class EnvisaLink {
           position++;
         }
       }
-      // _this.log.debug("Zone updated");
+      _this.log.debug("Zone updated");
       var z_list = [];
       var initialUpdate; // this isn't good. After the for each, initialUpdate will be the value of the last one... 
 
@@ -202,16 +207,14 @@ class EnvisaLink {
 
     function findZone(zonelist, zone) {
 
-      // _this.log.debug("Finding zone - ", zone)
-      // _this.log.debug("Finding list - ", zonelist)
       for (var i = 0; i < zonelist.length; i++) {
         if (zone == zonelist[i].zone) {
-          // _this.log.debug("Found zone - ", zone);
+          _this.log.debug("Found zone - ", zone);
           return i;
         }
       }
       // return undefined if not found
-      // _this.log.debug("Not Found zone - ", zone);
+      _this.log.debug("Not Found zone - ", zone);
       return undefined;
     }
 
@@ -220,11 +223,11 @@ class EnvisaLink {
       var triggerZoneEvent = false;
       var zoneid = findZone(activezones, zone);
       if (Number.isInteger(zoneid)) {
-        // _this.log.debug("Zone found in active zone list index - ", zoneid);
+        _this.log.debug("Zone found in active zone list index - ", zoneid);
         activezones[zoneid].eventepoch = Math.floor(Date.now() / 1000);
       }
       else {
-        // _this.log.debug("Adding new zone - "", zone);
+        _this.log.debug("Adding new zone - ", zone);
         activezones.push({
           zone: zone,
           eventepoch: Math.floor(Date.now() / 1000)
@@ -234,7 +237,7 @@ class EnvisaLink {
 
       if (activezones.length > 0) {
         if (activeZoneTimeOut == undefined) {
-          // _this.log.debug("Activating zone timer");
+           _this.log.debug("Activating zone timer");
           activeZoneTimeOut = setTimeout(zoneTimeOut, _this.options.openZoneTimeout);
         }
       }
@@ -329,11 +332,11 @@ class EnvisaLink {
       var readableCode = 'NOT_READY';
       if (mode.alarm || mode.alarm_fire_zone || mode.fire) { readableCode = 'ALARM'; }
       else if (mode.system_trouble) { readableCode = 'NOT_READY_TROUBLE'; }
-      else if (mode.ready) { readableCode = 'READY'; }
       else if (mode.bypass && mode.armed_stay) { readableCode = 'ARMED_STAY_BYPASS'; }
       else if (mode.bypass && mode.armed_away) { readableCode = 'ARMED_AWAY_BYPASS'; }
       else if (mode.bypass && mode.armed_zero_entry_delay) { readableCode = 'ARMED_NIGHT_BYPASS'; }
       else if (mode.bypass) { readableCode = 'READY_BYPASS'; }
+      else if (mode.ready) { readableCode = 'READY'; }
       else if (mode.armed_stay) { readableCode = 'ARMED_STAY'; }
       else if (mode.armed_away) { readableCode = 'ARMED_AWAY'; }
       else if (mode.armed_zero_entry_delay) { readableCode = 'ARMED_NIGHT'; }
@@ -482,9 +485,10 @@ class EnvisaLink {
       _this.emit('cidupdate', an_object);
     }
   }
+
   disconnect() {
     this.shouldReconnect = false;
-    if (actual && !actual.destroyed) {
+    if (actual && !actual.destroyed && this.IsConnected) {
       actual.end();
       return false;
     }
@@ -492,8 +496,14 @@ class EnvisaLink {
       return true;
     }
   }
+ 
   sendCommand(command) {
-    actual.write(command + '\r\n');
+      if (actual && !actual.destroyed && this.IsConnected) {
+        actual.write(command + '\r\n');
+    } 
+    else {
+      this.log.error('Command not successful, no TPI session established.');
+    }
   }
 }
 
