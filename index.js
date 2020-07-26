@@ -26,27 +26,30 @@ module.exports = function (homebridge) {
 class EnvisalinkPlatform {
 
     constructor(log, config) {
+
         this.log = log;
-        this.deviceType = config.deviceType ? config.deviceType : "Honeywell Vista";
-        this.partitions = config.partitions ? config.partitions : [{
-            name: 'House'
-        }];
-        this.bypass = config.bypass ? config.bypass : [];
-        this.keys = config.keys ? config.keys : [];
-        this.zones = config.zones ? config.zones : [];
-
-        // set global timeout for commands
-        commandTimeOut = config.commandTimeOut ? config.commandTimeOut : 10000;
-        this.platformPartitionAccessories = [];
-        this.platformZoneAccessories = [];
-
-        // Must define IP address for Envisakit server
-        if (config.host == undefined) {
-            this.log.error("No host address defined for plug-in. Please configure the Envisakit server address.");
+        // Must define configuation file and IP address for Envisakit server
+        if (!config || !config.host) {
+            this.log.error("No configuration or host address defined for plug-in. Please configure the Envisakit Ademco plug-in.");
             // terminate plug-in initization
             return;
 
         } else {
+
+            // Read configuration file and set default if needed.
+            this.deviceType = config.deviceType ? config.deviceType : "Honeywell Vista";
+            this.partitions = config.partitions ? config.partitions : [{
+                name: 'House'
+            }];
+            this.bypass = config.bypass ? config.bypass : [];
+            this.keys = config.keys ? config.keys : [];
+            this.zones = config.zones ? config.zones : [];
+
+            // set global timeout for commands
+            commandTimeOut = config.commandTimeOut ? config.commandTimeOut : 10000;
+            this.platformPartitionAccessories = [];
+            this.platformZoneAccessories = [];
+
             this.log("Configuring Envisalink Ademco platform.");
             // Process partition data
             for (var i = 0; i < this.partitions.length; i++) {
@@ -317,7 +320,7 @@ class EnvisalinkAccessory {
                 .on('set', this.setByPass.bind(this));
             this.services.push(service);
             this.zoneaccessories = accessories;
-            this.quickbypass  = config.quickbypass  ? config.quickbypass  : false
+            this.quickbypass = config.quickbypass ? config.quickbypass : false
 
         } else if (this.accessoryType == "keys") {
             // These are push button key, upon processing request will return to off.
@@ -513,7 +516,7 @@ class EnvisalinkAccessory {
                 if (value) {
                     this.log("Reviewing fault zones for bypassing...");
                     var command;
-                    if (this.quickbypass ) {
+                    if (this.quickbypass) {
                         this.log("Force Bypass configured. Forcing byoass of fault zones.");
                         command = this.pin + tpidefs.alarmcommand.forcebypass;
                         alarm.sendCommand(command);
@@ -569,7 +572,7 @@ class EnvisalinkAccessory {
 
     setFuntionKey(value, callback) {
 
-        this.log('Triggered special Key function');
+        this.log('Triggered special function key');
 
         if (value) {
             this.log("Sending code ", this.functionkeycode);
