@@ -130,7 +130,7 @@ Examaple:
     "name": "Patio Door",
     "sensorType": "door",
     "partition": 1,
-    "zoneNumber": 12
+    "zoneNumber": 12,
     "bypassEnabled": true
     },
     {
