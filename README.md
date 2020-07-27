@@ -12,7 +12,7 @@ Limits:
 
 * Envisalink module only support one connection. Once this plug-in is connected, any other connections will result in an error.
 
-Please Note: I recommend not using the master user or installer code in the configure file. Create a seperate alarm user with the proper access permissions (please refer to your panel guide).
+Please Note: I recommended not using the master user or installer code in the configure file. Create a seperate alarm user with the proper access permissions (please refer to your panel guide).
   
 
 ## Configuration options

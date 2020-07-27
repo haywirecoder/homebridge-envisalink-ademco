@@ -517,8 +517,8 @@ class EnvisalinkAccessory {
                     this.log("Reviewing fault zones for bypassing...");
                     var command;
                     if (this.quickbypass) {
-                        this.log("Force Bypass configured. Forcing byoass of fault zones.");
-                        command = this.pin + tpidefs.alarmcommand.forcebypass;
+                        this.log("Quick Bypass configured. Quick bypass of fault zones.");
+                        command = this.pin + tpidefs.alarmcommand.quickbypass;
                         alarm.sendCommand(command);
                         callback(null);
                         break;

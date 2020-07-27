@@ -243,7 +243,7 @@ exports.led_status = {
   exports.alarmcommand = {
     'away': '2',
     'bypass': '6',
-    'bypassforce': '6#',
+    'quickbypass': '6#',
     'disarm': '1',
     'instant': '7',
     'max': '4',
