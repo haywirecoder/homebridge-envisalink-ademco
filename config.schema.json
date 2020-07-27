@@ -150,7 +150,7 @@
               "type": "string"
             },
             "quickbypass": {
-              "title": "Panel support quick (aka: force) bypass",
+              "title": "Panel support quick (i.e: force) bypass",
               "type": "boolean"
             }
           }
@@ -251,7 +251,7 @@
     },
     {
       "type": "section",
-      "title": "Optional Settings",
+      "title": "Other Optional Settings",
       "expandable": true,
       "expanded": false,
       "items": [
