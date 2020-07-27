@@ -1,7 +1,13 @@
 # Change Log
 
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
-## v1.1 (2020-07-26)
+
+## v1.1.4 (2020-07-27)
+
+### Break fixes
+* Configuration file fix for bypass feature 
+
+## v1.1.3 (2020-07-26)
 
 ### Enhancements
 * Added support for Bypassing fault zones
