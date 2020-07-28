@@ -39,9 +39,9 @@
       },
       "pin": {
         "title": "Alarm PIN",
-        "type": "integer",
+        "type": "string",
         "required": true,
-        "default": 1234,
+        "default": "1234",
         "description": "Your local alarm PIN"
       },
       "openZoneTimeout": {
