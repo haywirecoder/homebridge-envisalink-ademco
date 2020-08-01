@@ -2,11 +2,14 @@
 
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
 
-## v1.1.5 (2020-08-01)
+## v1.1.6 (2020-08-01)
 
 ### Break fixes
 * Correct configuration removing leading zero for alarm PIN. 
 * Addition to assure alarm PIN is all digit and proper lenght.
+
+### Changes
+* Package engine requirement updated to v12 or higher
   
 ## v1.1.4 (2020-07-27)
 
