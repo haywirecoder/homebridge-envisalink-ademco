@@ -54,7 +54,7 @@ class EnvisalinkPlatform {
             // Process partition data
             for (var i = 0; i < this.partitions.length; i++) {
                 var partition = this.partitions[i];
-                partition.pin = config.pin ? config.pin : 1234
+                partition.pin = config.pin ? config.pin : "1234"
                 if(isNaN(partition.pin)) {
                     this.log.error("Ademco Pin must be a number. Please update configuration for the Envisakit Ademco plug-in.");
                     // terminate plug-in initization
