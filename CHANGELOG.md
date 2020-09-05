@@ -1,6 +1,13 @@
 # Change Log
 
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+## v1.1.7 (2020-08-12)
+
+### Changes
+* Added support to detect silent drop connections to Envisakit module and re-connect if autoconnect is enabled.
+
+### Break fixes
+* Correct TypeError which cause module to terminate and shutdown homebridge.
 
 ## v1.1.6 (2020-08-01)
 
@@ -9,7 +16,7 @@ All notable changes to this project will be documented in this file. This projec
 * Addition to assure alarm PIN is all digit and proper lenght.
 
 ### Changes
-* Package engine requirement updated to v12 or higher
+* Package engine requirement updated to Nodejs version 12+
   
 ## v1.1.4 (2020-07-27)
 

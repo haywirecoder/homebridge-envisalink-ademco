@@ -6,12 +6,13 @@ var util = require('util')
 var tpidefs = require('./tpi.js')
 var ciddefs = require('./cid.js')
 var actual;
-var activezones =  [];
+var activezones = [];
 var activeZoneTimeOut = undefined;
+const connectionIdleTime = 30;
 
 
 class EnvisaLink {
-  
+
   constructor(log, config) {
     EventEmitter.call(this);
     this.log = log;
@@ -24,19 +25,23 @@ class EnvisaLink {
       partitions: config.panelpartition ? config.panelpartition : 1,
       autoreconnect: config.autoreconnect ? config.autoreconnect : true,
     };
-
+    this.zones = {};
   }
 
   connect() {
     var _this = this;
-    this.zones = {};
     this.partitions = {};
     this.users = {};
     this.shouldReconnect = this.options.autoreconnect;
     this.cid = {};
     this.IsConnected = false;
+    this.lastmessage = new Date();
+    this.isConnectionIdleHandle = undefined;
 
-    actual = net.createConnection({ port: this.options.port, host: this.options.host });
+    actual = net.createConnection({
+      port: this.options.port,
+      host: this.options.host
+    });
 
     actual.on('error', function (ex) {
       _this.log.error(ex);
@@ -44,22 +49,31 @@ class EnvisaLink {
 
     actual.on('close', function (hadError) {
       _this.IsConnected = false;
+      if (_this.isConnectionIdleHandle !== undefined) 
+      {
+         clearTimeout(_this.isConnectionIdleHandle);
+      }
       setTimeout(function () {
         if (_this.shouldReconnect && (actual === undefined || actual.destroyed)) {
-          _this.log.warn("Session closed unexpectedly. Establishing Session...");
+          _this.log.warn("Session closed unexpectedly. Re-establishing Session...");
           _this.connect();
         }
       }, 5000);
     });
 
     actual.on('end', function () {
-       _this.log.debug("Envisalink received end request, disconnecting");
+      _this.log.debug("Envisalink received end request, disconnecting");
       _this.log('Disconnect TPI session');
+      clearTimeout(_this.isConnectionIdleHandle);
       _this.IsConnected = false;
     });
 
+
+
     actual.on('data', function (data) {
       var dataslice = data.toString().replace(/[\n\r]/g, '|').split('|');
+      _this.lastmessage = new Date(); // Everytime a message comes in, reset the lastmessage timer
+
       for (var i = 0; i < dataslice.length; i++) {
         var datapacket = dataslice[i];
         if (datapacket !== '') {
@@ -67,23 +81,20 @@ class EnvisaLink {
             _this.log.debug("Login requested. Sending response " + _this.options.password)
             _this.IsConnected = true;
             _this.sendCommand(_this.options.password);
-          }
-          else if ((datapacket.substring(0, 6) === 'FAILED') || (datapacket.substring(0, 9) === 'Timed Out')) {
+          } else if ((datapacket.substring(0, 6) === 'FAILED') || (datapacket.substring(0, 9) === 'Timed Out')) {
             _this.log.error("Login failed.");
             // The session will be closed.
             _this.IsConnected = false;
-          }
-          else if (datapacket.substring(0, 2) === 'OK') {
+          } else if (datapacket.substring(0, 2) === 'OK') {
             // ignore, OK is good. or report successful connection.    
             _this.log('Successful TPI session established');
-            
-          }
-          else {
+            _this.isConnectionIdleHandle = setTimeout( isConnectionIdle, (connectionIdleTime * 1000) ); // Check every idle seconds...
+
+          } else {
             var command_str = datapacket.match(/^%(.+)\$/); // pull out everything between the % and $
             if (command_str == null) {
               _this.log.error("Command format invalid! command='" + datapacket + "'");
-            }
-            else {
+            } else {
 
               var command_array = command_str[1].split(','); // Element number 1 should be what was matched between the () in the above match. so everything between % and $
               var command = command_array[0]; // The first part is the command.
@@ -91,8 +102,7 @@ class EnvisaLink {
               if (tpi) {
                 if (tpi.bytes === '' || tpi.bytes === 0) {
                   _this.log.warn(tpi.pre + ' - ' + tpi.post);
-                }
-                else {
+                } else {
                   _this.log.debug(tpi.pre + ' | ' + command_str + ' | ' + tpi.post)
                   switch (tpi.action) {
                     case 'updatezone':
@@ -119,6 +129,20 @@ class EnvisaLink {
         }
       }
     });
+
+
+    function isConnectionIdle() {
+      // we didn't receive any messages for > connectionIdleTime seconds. Assume dropped connect.
+      clearTimeout(_this.isConnectionIdleHandle);
+      if ((Date() - _this.lastmessage) / 1000 > connectionIdleTime) {
+        _this.log("Dropped connection detected. Re-connecting session.");
+        _this.disconnect();
+        setTimeout(function () {_this.connect()}, 5000);
+      } else {
+        // Connection not idle. Check again connection idle time seconds...
+        _this.isConnectionIdleHandle = setTimeout(isConnectionIdle, (connectionIdleTime * 1000)); 
+      }
+    }; 
 
     function updateZone(tpi, data) {
       // now, what I need to do here is parse the data packet for parameters, in this case it's one parameter an
@@ -165,16 +189,19 @@ class EnvisaLink {
       zone_array.forEach(function (z, i, a) {
         z_list.push(z);
         initialUpdate = _this.zones[z] === undefined;
-        _this.zones[z] = { send: tpi.send, name: tpi.name, code: z };
+        _this.zones[z] = {
+          send: tpi.send,
+          name: tpi.name,
+          code: z
+        };
         zoneTimerOpen(tpi, z);
       });
-      _this.emit('zoneupdate',
-        {
-          zone: z_list,
-          code: data[0],
-          status: tpi.name,
-          initialUpdate: initialUpdate
-        });
+      _this.emit('zoneupdate', {
+        zone: z_list,
+        code: data[0],
+        status: tpi.name,
+        initialUpdate: initialUpdate
+      });
 
     }
 
@@ -193,7 +220,14 @@ class EnvisaLink {
         if (partition <= _this.options.partitions) {
           var mode = modeToHumanReadable(byte);
           var initialUpdate = _this.partitions[partition] === undefined;
-          _this.partitions[partition] = { send: tpi.send, name: tpi.name, code: { "partition": partition, "value": mode } };
+          _this.partitions[partition] = {
+            send: tpi.send,
+            name: tpi.name,
+            code: {
+              "partition": partition,
+              "value": mode
+            }
+          };
           _this.emit('updatepartition', {
             partition: partition,
             mode: mode,
@@ -225,8 +259,7 @@ class EnvisaLink {
       if (Number.isInteger(zoneid)) {
         _this.log.debug("Zone found in active zone list index - ", zoneid);
         activezones[zoneid].eventepoch = Math.floor(Date.now() / 1000);
-      }
-      else {
+      } else {
         _this.log.debug("Adding new zone - ", zone);
         activezones.push({
           zone: zone,
@@ -237,18 +270,17 @@ class EnvisaLink {
 
       if (activezones.length > 0) {
         if (activeZoneTimeOut == undefined) {
-           _this.log.debug("Activating zone timer");
+          _this.log.debug("Activating zone timer");
           activeZoneTimeOut = setTimeout(zoneTimeOut, _this.options.openZoneTimeout);
         }
       }
 
       if (triggerZoneEvent == true) {
-        _this.emit('zoneevent',
-          {
-            zone: [parseInt(zone, 10)],
-            mode: mode,
-            source: tpi.name
-          });
+        _this.emit('zoneevent', {
+          zone: [parseInt(zone, 10)],
+          mode: mode,
+          source: tpi.name
+        });
       }
     }
 
@@ -259,7 +291,7 @@ class EnvisaLink {
       var l_zonetimeout = _this.options.openZoneTimeout / 1000;
       var minZoneTime = l_zonetimeout;
       var currZoneTime = l_zonetimeout;
-      
+
       if (activeZoneTimeOut) clearTimeout(activeZoneTimeOut);
       while (z--) {
         // determine if zone hasn't been reported for the allocated time in sec, if so mark as close
@@ -268,29 +300,27 @@ class EnvisaLink {
           z_close.push(parseInt(activezones[z].zone));
           // remove from active list
           activezones.splice(z, 1);
-        } else { 
+        } else {
           // Is this entry the smallest time interval in the list?
-          currZoneTime =  l_zonetimeout - currZoneTime;
+          currZoneTime = l_zonetimeout - currZoneTime;
           if (minZoneTime > currZoneTime) minZoneTime = currZoneTime;
         }
       }
       if (z_close.length > 0) {
         // zones that are now closed
-        _this.emit('zoneevent',
-          {
-            zone: z_close,
-            mode: mode,
-            source: "Zone Time Out"
-          });
+        _this.emit('zoneevent', {
+          zone: z_close,
+          mode: mode,
+          source: "Zone Time Out"
+        });
 
       }
       if (activezones.length == 0) {
         // Clean up 
         activeZoneTimeOut = undefined;
-      }
-      else {
+      } else {
         // Zones are still being track, set timer to review when next zone is scheduled to expire.
-        activeZoneTimeOut = setTimeout(zoneTimeOut, minZoneTime*1000); 
+        activeZoneTimeOut = setTimeout(zoneTimeOut, minZoneTime * 1000);
       }
     }
 
@@ -330,17 +360,29 @@ class EnvisaLink {
 
     function keyPadToHumanReadable(mode) {
       var readableCode = 'NOT_READY';
-      if (mode.alarm || mode.alarm_fire_zone || mode.fire) { readableCode = 'ALARM'; }
-      else if (mode.system_trouble) { readableCode = 'NOT_READY_TROUBLE'; }
-      else if (mode.bypass && mode.armed_stay) { readableCode = 'ARMED_STAY_BYPASS'; }
-      else if (mode.bypass && mode.armed_away) { readableCode = 'ARMED_AWAY_BYPASS'; }
-      else if (mode.bypass && mode.armed_zero_entry_delay) { readableCode = 'ARMED_NIGHT_BYPASS'; }
-      else if (mode.bypass) { readableCode = 'READY_BYPASS'; }
-      else if (mode.ready) { readableCode = 'READY'; }
-      else if (mode.armed_stay) { readableCode = 'ARMED_STAY'; }
-      else if (mode.armed_away) { readableCode = 'ARMED_AWAY'; }
-      else if (mode.armed_zero_entry_delay) { readableCode = 'ARMED_NIGHT'; }
-      else if (mode.not_used2 && mode.not_used3) { readableCode = 'NOT_READY'; } // added to handle 'Hit * for faults'
+      if (mode.alarm || mode.alarm_fire_zone || mode.fire) {
+        readableCode = 'ALARM';
+      } else if (mode.system_trouble) {
+        readableCode = 'NOT_READY_TROUBLE';
+      } else if (mode.bypass && mode.armed_stay) {
+        readableCode = 'ARMED_STAY_BYPASS';
+      } else if (mode.bypass && mode.armed_away) {
+        readableCode = 'ARMED_AWAY_BYPASS';
+      } else if (mode.bypass && mode.armed_zero_entry_delay) {
+        readableCode = 'ARMED_NIGHT_BYPASS';
+      } else if (mode.bypass) {
+        readableCode = 'READY_BYPASS';
+      } else if (mode.ready) {
+        readableCode = 'READY';
+      } else if (mode.armed_stay) {
+        readableCode = 'ARMED_STAY';
+      } else if (mode.armed_away) {
+        readableCode = 'ARMED_AWAY';
+      } else if (mode.armed_zero_entry_delay) {
+        readableCode = 'ARMED_NIGHT';
+      } else if (mode.not_used2 && mode.not_used3) {
+        readableCode = 'NOT_READY';
+      } // added to handle 'Hit * for faults'
       return readableCode;
     }
 
@@ -387,25 +429,30 @@ class EnvisaLink {
 
       if (partition <= _this.options.partitions) {
         var initialUpdate = _this.partitions[partition] === undefined;
-        _this.partitions[partition] = { send: tpi.send, name: tpi.name, code: data };
+        _this.partitions[partition] = {
+          send: tpi.send,
+          name: tpi.name,
+          code: data
+        };
 
         // update zone information
-        if (mode != 'READY') { zoneTimerOpen(tpi, zone); }
+        if (mode != 'READY') {
+          zoneTimerOpen(tpi, zone);
+        }
 
-        _this.emit('keypadupdate',
-          {
-            partition: partition,
-            code: {
-              icon: icon_array,
-              zone: zone,
-              beep: beep,
-              txt: keypad_txt
-            },
-            status: tpi.name,
-            keypadledstatus: keypadledstatus,
-            mode: mode,
-            initialUpdate: initialUpdate
-          });
+        _this.emit('keypadupdate', {
+          partition: partition,
+          code: {
+            icon: icon_array,
+            zone: zone,
+            beep: beep,
+            txt: keypad_txt
+          },
+          status: tpi.name,
+          keypadledstatus: keypadledstatus,
+          mode: mode,
+          initialUpdate: initialUpdate
+        });
       }
     }
 
@@ -439,17 +486,15 @@ class EnvisaLink {
         if (swappedBit != "0000") {
           timer = (parseInt('FFFF', 16) - parseInt(swappedBit, 16));
           zone_time.push(Math.floor((timer * 5) / 60));
-        }
-        else
+        } else
           zone_time.push(0);
       }
 
-      _this.emit('zoneTimerDump',
-        {
-          zonedump: zone_time,
-          status: tpi.name,
-          initialUpdate: initialUpdate
-        });
+      _this.emit('zoneTimerDump', {
+        zonedump: zone_time,
+        status: tpi.name,
+        initialUpdate: initialUpdate
+      });
     }
 
     function cidEvent(tpi, data) {
@@ -457,11 +502,9 @@ class EnvisaLink {
       var qualifier = cid.substr(0, 1);
       if (qualifier == 1) { // Event
         qualifier = "Event";
-      }
-      else if (qualifier == 3) { // Restoral
+      } else if (qualifier == 3) { // Restoral
         qualifier = "Restoral";
-      }
-      else { // Unknown Qualifier!!
+      } else { // Unknown Qualifier!!
         this.log.error('log-error: ', " Unrecognized qualifier '" + qualifier + "' received from Panel!");
         return undefined;
       }
@@ -470,7 +513,16 @@ class EnvisaLink {
       var zone_or_user = cid.substr(6, 3);
       var cid_obj = ciddefs.cid_event_def[code];
       var initialUpdate = _this.cid === undefined;
-      _this.cid = { send: tpi.send, name: tpi.name, code: cid, qualifier: qualifier, code: code, type: cid_obj.type, subject: cid_obj.msg_subject, partition: partition };
+      _this.cid = {
+        send: tpi.send,
+        name: tpi.name,
+        code: cid,
+        qualifier: qualifier,
+        code: code,
+        type: cid_obj.type,
+        subject: cid_obj.msg_subject,
+        partition: partition
+      };
       var an_object = {
         qualifier: qualifier,
         code: cid,
@@ -491,17 +543,15 @@ class EnvisaLink {
     if (actual && !actual.destroyed && this.IsConnected) {
       actual.end();
       return false;
-    }
-    else {
+    } else {
       return true;
     }
   }
- 
+
   sendCommand(command) {
-      if (actual && !actual.destroyed && this.IsConnected) {
-        actual.write(command + '\r\n');
-    } 
-    else {
+    if (actual && !actual.destroyed && this.IsConnected) {
+      actual.write(command + '\r\n');
+    } else {
       this.log.error('Command not successful, no TPI session established.');
     }
   }
@@ -509,7 +559,3 @@ class EnvisaLink {
 
 util.inherits(EnvisaLink, EventEmitter)
 module.exports = EnvisaLink
-
-
-
-

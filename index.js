@@ -408,7 +408,10 @@ class EnvisalinkAccessory {
             }
             callback(null, status);
         } else {
-            callback(null, this.lastTargetState);
+            if (this.lastTargetState) {
+                status = this.lastTargetState;
+            }
+            callback(null, status);
         }
     }
 
@@ -458,11 +461,10 @@ class EnvisalinkAccessory {
     proccessAlarmTimer() {
         var partitionService = this.getServices()[0];
         if (this.processingAlarm) {
-            this.log.error("Alarm request did not return successful in allocated time, setting status to", this.status);
+            this.log.warn("Alarm request did not return successful in allocated time. Current alarm status is ", this.status);
             this.processingAlarm = false;
             this.getAlarmState(function (nothing, resultat) {
                 partitionService.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(resultat);
-                this.lastTargetState = resultat;
             });
         } else {
             partitionService.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(this.lastTargetState);
