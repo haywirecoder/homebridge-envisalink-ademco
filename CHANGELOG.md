@@ -1,6 +1,16 @@
 # Change Log
 
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v1.1.8 (2020-09-20)
+
+### Changes
+* Important: Timeout values (openZoneTimeout, heartbeatInterval, commandTimeOut) are now set to seconds rather than milliseconds. This will NOT be automaticly updated in the configuation file. If value is in milliseconds module will use default values.
+* Expose heatbeat session check values in configation file and UX. 
+  
+### Break fixes
+* Configuration file zone attribute for bypass was not correctly expose in UX. 
+  
+  
 ## v1.1.7 (2020-08-12)
 
 ### Changes

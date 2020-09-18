@@ -3,9 +3,11 @@ var elink = require('./envisalink.js');
 var tpidefs = require('./tpi.js');
 var Service, Characteristic, Accessory;
 var inherits = require('util').inherits;
+var utilfunc = require('./helper.js');
 var armingTimeOut = undefined;
 var commandTimeOut;
 var alarm;
+
 
 // Register the plugin with homebridge 
 module.exports = function (homebridge) {
@@ -44,11 +46,12 @@ class EnvisalinkPlatform {
             this.bypass = config.bypass ? config.bypass : [];
             this.keys = config.keys ? config.keys : [];
             this.zones = config.zones ? config.zones : [];
-
-            // set global timeout for commands
-            commandTimeOut = config.commandTimeOut ? config.commandTimeOut : 10000;
             this.platformPartitionAccessories = [];
             this.platformZoneAccessories = [];
+
+            // set global timeout for commands
+            commandTimeOut = utilfunc.toIntBetween(config.commandTimeOut, 1, 30, 10);
+            
 
             this.log("Configuring Envisalink Ademco platform.");
             // Process partition data
@@ -440,7 +443,7 @@ class EnvisalinkAccessory {
                     this.processingAlarm = true;
                     this.lastTargetState = state;
                     alarm.sendCommand(command);
-                    armingTimeOut = setTimeout(this.proccessAlarmTimer.bind(this), commandTimeOut);
+                    armingTimeOut = setTimeout(this.proccessAlarmTimer.bind(this), commandTimeOut * 1000);
                     callback(null, state);
                 } else {
                     this.log.error("Unhandled alarm state: " + state);
@@ -557,7 +560,7 @@ class EnvisalinkAccessory {
                         }
                     }
                     if (bypasscount == 0) this.log("No zones were enabled for Bypassing")
-                    else this.log("Bypass ", bypasscount, " zones");
+                    else this.log("Bypass ", bypasscount.toString(), " zone(s)");
                 }
                 callback(null);
                 break;

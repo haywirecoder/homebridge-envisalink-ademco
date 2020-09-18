@@ -1,14 +1,13 @@
 // 'use strict'
-
 var net = require('net')
 var EventEmitter = require('events').EventEmitter;
 var util = require('util')
 var tpidefs = require('./tpi.js')
 var ciddefs = require('./cid.js')
+var utilfunc = require('./helper.js')
 var actual;
 var activezones = [];
 var activeZoneTimeOut = undefined;
-const connectionIdleTime = 30;
 
 
 class EnvisaLink {
@@ -20,14 +19,20 @@ class EnvisaLink {
       host: config.host,
       port: config.port ? config.port : 4025,
       password: config.password ? config.password : "user",
-      openZoneTimeout: config.openZoneTimeout ? config.openZoneTimeout : 30000,
       zones: config.panelzones ? config.panelzones : 64,
       partitions: config.panelpartition ? config.panelpartition : 1,
       autoreconnect: config.autoreconnect ? config.autoreconnect : true,
     };
     this.zones = {};
+    this.options.heartbeatInterval = utilfunc.toIntBetween(config.heartbeatInterval, 10, 120, 30);
+    this.options.openZoneTimeout = utilfunc.toIntBetween(config.openZoneTimeout, 5, 120, 30);
+    this.lastmessage = new Date();
+
+    this.log(this.options.heartbeatInterval);
+    this.log(this.options.openZoneTimeout);
   }
 
+  
   connect() {
     var _this = this;
     this.partitions = {};
@@ -68,8 +73,6 @@ class EnvisaLink {
       _this.IsConnected = false;
     });
 
-
-
     actual.on('data', function (data) {
       var dataslice = data.toString().replace(/[\n\r]/g, '|').split('|');
       _this.lastmessage = new Date(); // Everytime a message comes in, reset the lastmessage timer
@@ -88,7 +91,7 @@ class EnvisaLink {
           } else if (datapacket.substring(0, 2) === 'OK') {
             // ignore, OK is good. or report successful connection.    
             _this.log('Successful TPI session established');
-            _this.isConnectionIdleHandle = setTimeout( isConnectionIdle, (connectionIdleTime * 1000) ); // Check every idle seconds...
+            _this.isConnectionIdleHandle = setTimeout( isConnectionIdle, (_this.options.heartbeatInterval * 1000) ); // Check every idle seconds...
 
           } else {
             var command_str = datapacket.match(/^%(.+)\$/); // pull out everything between the % and $
@@ -132,15 +135,21 @@ class EnvisaLink {
 
 
     function isConnectionIdle() {
-      // we didn't receive any messages for > connectionIdleTime seconds. Assume dropped connect.
+      // we didn't receive any messages for greater than heartbeatInterval seconds. Assume dropped  and re-connect.
       clearTimeout(_this.isConnectionIdleHandle);
-      if ((Date() - _this.lastmessage) / 1000 > connectionIdleTime) {
-        _this.log("Dropped connection detected. Re-connecting session.");
+      var nowDate = new Date()
+      var deltaTime = (nowDate.getTime() -_this.lastmessage.getTime());
+
+      _this.log.debug("Checking for Heartbeat...")
+
+     if (deltaTime > (_this.options.heartbeatInterval * 1000)) {
+        _this.log.warn("Missing Heartbeat: Trying to re-connect session...");
         _this.disconnect();
         setTimeout(function () {_this.connect()}, 5000);
       } else {
         // Connection not idle. Check again connection idle time seconds...
-        _this.isConnectionIdleHandle = setTimeout(isConnectionIdle, (connectionIdleTime * 1000)); 
+        _this.log.debug("Heartbeat successful. Last message time: " + _this.lastmessage)
+        _this.isConnectionIdleHandle = setTimeout(isConnectionIdle, (_this.options.heartbeatInterval * 1000)); 
       }
     }; 
 
@@ -271,7 +280,7 @@ class EnvisaLink {
       if (activezones.length > 0) {
         if (activeZoneTimeOut == undefined) {
           _this.log.debug("Activating zone timer");
-          activeZoneTimeOut = setTimeout(zoneTimeOut, _this.options.openZoneTimeout);
+          activeZoneTimeOut = setTimeout(zoneTimeOut, _this.options.openZoneTimeout * 1000);
         }
       }
 
@@ -288,7 +297,7 @@ class EnvisaLink {
       var mode = "CLOSE";
       var z_close = [];
       var z = activezones.length;
-      var l_zonetimeout = _this.options.openZoneTimeout / 1000;
+      var l_zonetimeout = _this.options.openZoneTimeout;
       var minZoneTime = l_zonetimeout;
       var currZoneTime = l_zonetimeout;
 

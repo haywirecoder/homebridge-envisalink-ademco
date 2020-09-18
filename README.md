@@ -17,22 +17,23 @@ Please Note: I recommended not using the master user or installer code in the co
 
 ## Configuration options
 
-| Attributes      | Description                                                                                                           |
-| --------------- | --------------------------------------------------------------------------------------------------------------------- |
-| host            | Envisalink server host IP Address.  *Note:* Plug-in and homebridge will shutdown if not configured.                   |
-| port            | Envisalink server Port address. Default is 4025.                                                                      |
-| deviceType      | Device Model. Default is "Honeywell Vista"                                                                            |
-| password        | Envisalink server password. Default is "user".                                                                        |
-| pin             | Your local alarm PIN. Recommend creating a seperate alarm user for this plug-in. Default pin is 1234                  |
-| **partitions**  | List of partition to monitor in homekit                                                                               |
-| openZoneTimeout | *(optional)* Time out value for zone provided in milliseconds. Default is 30000 ms (30 sec).                          |
-| commandTimeOut  | *(optional)* Time out value for alarm command to return provided in milliseconds. Default is 10000 ms (10 sec).       |
-| autoreconnect   | *(optional)* Automatic reconnect to server if session is broken. Default is true.                                     |
-| **zones**       | *(Optional)* List of zones to appear and monitor in homekit                                                           |
-| **bypass**      | *(Optional)* Creates a bypass control (a switche) to bypass zone which are open (faulted)                             |
-|                 | By default the bypass switch can only bypass zone that are being monitored in homekit and "bypassenable" set to true. |
-|                 | "quickbypass" require panel configuration and can used to override this default behavior.                             |
-| **keys**        | *(Optional)* Create buttons (switches) to replicate the special function keys on Ademco keypad                        |
+| Attributes        | Description                                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| host              | Envisalink server host IP Address.  *Note:* Plug-in and homebridge will shutdown if not configured.                      |
+| port              | Envisalink server Port address. Default is 4025.                                                                         |
+| deviceType        | Device Model. Default is "Honeywell Vista"                                                                               |
+| password          | Envisalink server password. Default is "user".                                                                           |
+| pin               | Your local alarm PIN. Recommend creating a seperate alarm user for this plug-in. Default pin is 1234                     |
+| **partitions**    | List of partition to monitor in homekit                                                                                  |
+| openZoneTimeout   | *(optional)* Time out value for zone provided in second. Default is 30 second.                             |
+| heartbeatInterval | *(optional)* Heartbeat interval to determine if envisalink sessions has been disconnected. Default is 30 second. |
+| commandTimeOut    | *(optional)* Time out value for alarm command to return provided in second. Default is 10 second.          |
+| autoreconnect     | *(optional)* Automatic reconnect to server if session is broken. Default is true.                                        |
+| **zones**         | *(Optional)* List of zones to appear and monitor in homekit                                                              |
+| **bypass**        | *(Optional)* Creates a bypass control (a switche) to bypass zone which are open (faulted)                                |
+|                   | By default the bypass switch can only bypass zone that are being monitored in homekit and "bypassenable" set to true.    |
+|                   | "quickbypass" require panel configuration and can used to override this default behavior.                                |
+| **keys**          | *(Optional)* Create buttons (switches) to replicate the special function keys on Ademco keypad                           |
 
 **partitions**
 
@@ -119,7 +120,6 @@ Examaple:
 
 "zones": [
     {
-
     "name": "Front Entry",
     "sensorType": "door",
     "partition": 1,
