@@ -34,7 +34,7 @@ Please Note: I recommended not using the master user or installer code in the co
 | **zones**         | *(Optional)* List of zones to appear and monitor in homekit                                                              |
 | **bypass**        | *(Optional)* Creates a bypass control (a switch) to bypass zone which are open (faulted)                                |
 |                   | By default the bypass switch can only bypass zone that are being monitored in homekit and "bypassenable" set to true.    |
-|                   | "quickbypass" required to be enabled in ademco panel configuration and can be used to bypass all fault zones.                                |
+|                   | "quickbypass" Can be used to bypass all fault zones. This feature must to be enabled in ademco panel *(refer to panel guide)*                               |
 | **keys**          | *(Optional)* Create buttons (switches) to replicate the special function keys on Ademco keypad                           |
 
 **partitions**
