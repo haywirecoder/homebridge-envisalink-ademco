@@ -6,7 +6,7 @@ This module is leveraging a modified version of a node-red implementation ( http
 
 Limits:
 
-* Ademco panels provide limited zone information to their peripherals. The panel only provide real-time information when a zone is faulted (opened) but not when it is restored (closed). However, the virtual key panel is continuously updated with zones information. This module auto set the faulted zone (opened) to restored (close) based the value set by *openZoneTimeout* attributes. Default configuration would result in zone 30 seconds once the virtual keypanel no longer reports a fault for the specific zone.
+* Ademco panels provide limited zone information to their peripherals. The panel only provide real-time information when a zone is faulted (opened) but not when it is restored (closed). However, the virtual key panel is continuously updated with zones information. This module auto set the faulted zone (opened) to restored (close) based the value set by *openZoneTimeout* attributes. Default configuration would result in zone closing 30 seconds after the virtual keypanel no longer reports a fault for the specific zone.
 
 * When system is "Armed" the panel no longer report the state of each zone. All zone will age out and be considered close once armed. Note: A bypass zone will automaticly show as fault (open) once the alarm is disarmed.
 
@@ -30,9 +30,9 @@ Please Note: I recommended not using the master user or installer code in the co
 | commandTimeOut    | *(optional)* Time out value for alarm command to return provided in second. Default is 10 second.          |
 | autoreconnect     | *(optional)* Automatic reconnect to server if session is broken. Default is true.                                        |
 | **zones**         | *(Optional)* List of zones to appear and monitor in homekit                                                              |
-| **bypass**        | *(Optional)* Creates a bypass control (a switche) to bypass zone which are open (faulted)                                |
+| **bypass**        | *(Optional)* Creates a bypass control (a switch) to bypass zone which are open (faulted)                                |
 |                   | By default the bypass switch can only bypass zone that are being monitored in homekit and "bypassenable" set to true.    |
-|                   | "quickbypass" require panel configuration and can used to override this default behavior.                                |
+|                   | "quickbypass" required to be enabled in ademco panel configuration and can be used to bypass all fault zones.                                |
 | **keys**          | *(Optional)* Create buttons (switches) to replicate the special function keys on Ademco keypad                           |
 
 **partitions**
