@@ -102,7 +102,6 @@ class EnvisaLink {
           } else if (datapacket.substring(0, 2) === 'OK') {
             // ignore, OK is good. or report successful connection.    
             _this.log('Successful TPI session established');
-            _this.log("options ", _this.shouldReconnect, _this.options.sessionwatcher);
             if(_this.shouldReconnect && _this.options.sessionwatcher)
             {
               _this.log("Checking for disconnected session every: ",_this.options.heartbeatInterval, " seconds.")
