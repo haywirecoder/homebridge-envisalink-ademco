@@ -28,10 +28,10 @@ Please Note: I recommended not using the master user or installer code in the co
 | pin               | Your local alarm PIN. Recommend creating a seperate alarm user for this plug-in. Default pin is 1234                     |
 | **partitions**    | List of partition to monitor in homekit                                                                                  |
 | openZoneTimeout   | *(optional)* Time out value for zone provided in second. Default is 30 second.                             |
-| heartbeatInterval | *(optional)* Heartbeat interval to determine if envisalink sessions has been disconnected. autoreconnect and sessionwatcher must be true. Default is 30 second. |
-| heartbeatInterval | *(optional)* Heartbeat interval to determine if envisalink sessions has been disconnected. Default is 30 second. |
+| sessionsWatcher | *(optional)*  Automatic disconnect and recreate a new session if module detect a hang session. This is done by periodically (i.e. heartbeatInterval) checking the last updates from the virtual keypad. Autreconnect value must also be set to true for this option to be valid. Default is true. |
+| heartbeatInterval | *(optional)* Heartbeat interval to determine if envisalink sessions has hang. Default is 30 second. |
 | commandTimeOut    | *(optional)* Time out value for alarm command to return provided in second. Default is 10 second.          |
-| autoreconnect     | *(optional)* Automatic reconnect to server if session is broken. Default is true.                                        |
+| autoreconnect     | *(optional)* Automatic reconnect to server if network channel is broken. Default is true.                                        |
 | **zones**         | *(Optional)* List of zones to appear and monitor in homekit                                                              |
 | **bypass**        | *(Optional)* Creates a bypass control (a switch) to bypass zone which are open (faulted)                                |
 |                   | By default the bypass switch can only bypass zone that are being monitored in homekit and "bypassenable" set to true.    |
