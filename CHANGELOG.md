@@ -1,6 +1,14 @@
 # Change Log
 
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v1.1.9 (2020-10-15)
+
+### Break fixes
+* Correct issue which auto-restart option was ignored.
+
+### Changes
+* Add new configuration option disable session watcher.
+
 # v1.1.8 (2020-09-20)
 
 ### Changes

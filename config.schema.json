@@ -48,24 +48,40 @@
         "maxLength": 4
       },
       "openZoneTimeout": {
-        "title": "Zone timeout value in milliseconds",
+        "title": "Zone timeout value in second",
         "type": "integer",
-        "default": 30000,
-        "description": "Lenght of time to wait before a zone is considered closed.",
-        "minimum": 5000
+        "default": 30,
+        "description": "Lenght of time to wait before a zone is considered closed. Default: 30",
+        "minimum": 5,
+        "maximum": 120
+      },
+      "heartbeatInterval": {
+        "title": "Heartbeat value in second",
+        "type": "integer",
+        "default": 30,
+        "description": "Heartbeat interval to check for disconnected Envisalink session. Default: 30",
+        "minimum": 10,
+        "maximum": 6000
       },
       "commandTimeOut": {
-        "title": "Command timeout in milliseconds",
+        "title": "Command timeout in second",
         "type": "integer",
-        "default": 10000,
-        "description": "Lenght of time to wait for alarm command to return.",
-        "minimum": 5000
+        "default": 10,
+        "description": "Lenght of time to wait for alarm command to return. Default: 10",
+        "minimum": 5,
+        "maximum": 30
       },
       "autoreconnect": {
         "title": "Automatic re-connect to Envisakit server",
         "type": "boolean",
         "default": true,
         "description": "Automatic reconnect to Envisakit server, if session is terminated."
+      },
+      "sessionwatcher": {
+        "title": "Enable session watcher for Envisakit server",
+        "type": "boolean",
+        "default": true,
+        "description": "Enable session watcher for drop connections. The heartbeat value will determine the internal to checking for connection."
       },
       "partitions": {
         "description": "List of partitions",
@@ -138,6 +154,12 @@
                   ]
                 }
               ]
+            },
+            "bypassEnabled": {
+              "title": "Zone Bypass Enabled",
+              "type": "boolean",
+              "default": false,
+              "description": "Allow this zone to be Bypass by Homekit."
             }
           }
         }
@@ -156,7 +178,8 @@
             },
             "quickbypass": {
               "title": "Panel support quick (i.e: force) bypass",
-              "type": "boolean"
+              "type": "boolean",
+              "default": false
             }
           }
         }
@@ -261,6 +284,8 @@
       "expanded": false,
       "items": [
         "openZoneTimeout",
+        "sessionwatcher",
+        "heartbeatInterval",
         "commandTimeOut",
         "autoreconnect",
         {

@@ -4,10 +4,12 @@ var EventEmitter = require('events').EventEmitter;
 var util = require('util')
 var tpidefs = require('./tpi.js')
 var ciddefs = require('./cid.js')
-var utilfunc = require('./helper.js')
+var utilfunc = require('./helper.js');
+const { ENGINE_METHOD_DIGESTS } = require('constants');
 var actual;
 var activezones = [];
 var activeZoneTimeOut = undefined;
+
 
 
 class EnvisaLink {
@@ -21,15 +23,26 @@ class EnvisaLink {
       password: config.password ? config.password : "user",
       zones: config.panelzones ? config.panelzones : 64,
       partitions: config.panelpartition ? config.panelpartition : 1,
-      autoreconnect: config.autoreconnect ? config.autoreconnect : true,
     };
-    this.zones = {};
-    this.options.heartbeatInterval = utilfunc.toIntBetween(config.heartbeatInterval, 10, 120, 30);
+
+    if (config.autoreconnect == undefined)
+      this.options.autoreconnect = true;
+    else
+      this.options.autoreconnect = config.autoreconnect;
+
+    if (config.sessionwatcher == undefined)
+      this.options.sessionwatcher = true;
+    else
+      this.options.sessionwatcher = config.sessionwatcher;
+
+    this.options.heartbeatInterval = utilfunc.toIntBetween(config.heartbeatInterval, 10, 6000, 30);
     this.options.openZoneTimeout = utilfunc.toIntBetween(config.openZoneTimeout, 5, 120, 30);
+
+    this.zones = {};
+ 
+
     this.lastmessage = new Date();
 
-    this.log(this.options.heartbeatInterval);
-    this.log(this.options.openZoneTimeout);
   }
 
   
@@ -76,10 +89,10 @@ class EnvisaLink {
     actual.on('data', function (data) {
       var dataslice = data.toString().replace(/[\n\r]/g, '|').split('|');
       _this.lastmessage = new Date(); // Everytime a message comes in, reset the lastmessage timer
-
       for (var i = 0; i < dataslice.length; i++) {
         var datapacket = dataslice[i];
         if (datapacket !== '') {
+          
           if (datapacket.substring(0, 5) === 'Login') {
             _this.log.debug("Login requested. Sending response " + _this.options.password)
             _this.IsConnected = true;
@@ -91,14 +104,21 @@ class EnvisaLink {
           } else if (datapacket.substring(0, 2) === 'OK') {
             // ignore, OK is good. or report successful connection.    
             _this.log('Successful TPI session established');
-            _this.isConnectionIdleHandle = setTimeout( isConnectionIdle, (_this.options.heartbeatInterval * 1000) ); // Check every idle seconds...
-
+            _this.log("options ", _this.shouldReconnect, _this.options.sessionwatcher);
+            if(_this.shouldReconnect && _this.options.sessionwatcher)
+            {
+              _this.log("Checking for disconnected session every: ",_this.options.heartbeatInterval, " seconds.")
+              _this.isConnectionIdleHandle = setTimeout( isConnectionIdle, (_this.options.heartbeatInterval * 1000) ); // Check every idle seconds...
+            }
+            else  
+            {
+             _this.log.warn("Warning: Auto-reconnect option is disabled. Envisalink-Ademco will not watch for drop sessions.") 
+            }
           } else {
             var command_str = datapacket.match(/^%(.+)\$/); // pull out everything between the % and $
             if (command_str == null) {
               _this.log.error("Command format invalid! command='" + datapacket + "'");
             } else {
-
               var command_array = command_str[1].split(','); // Element number 1 should be what was matched between the () in the above match. so everything between % and $
               var command = command_array[0]; // The first part is the command.
               var tpi = tpidefs.tpicommands[command];
@@ -137,13 +157,13 @@ class EnvisaLink {
     function isConnectionIdle() {
       // we didn't receive any messages for greater than heartbeatInterval seconds. Assume dropped  and re-connect.
       clearTimeout(_this.isConnectionIdleHandle);
-      var nowDate = new Date()
-      var deltaTime = (nowDate.getTime() -_this.lastmessage.getTime());
+      var nowDate = new Date();
+      var deltaTime = Math.abs(nowDate.getTime() -_this.lastmessage.getTime()) / 1000;
 
-      _this.log.debug("Checking for Heartbeat...")
+      _this.log.debug("Checking for Heartbeat...");
 
-     if (deltaTime > (_this.options.heartbeatInterval * 1000)) {
-        _this.log.warn("Missing Heartbeat: Trying to re-connect session...");
+     if (deltaTime > (_this.options.heartbeatInterval)) {
+        _this.log.warn("Missing Heartbeat - Time drift: ", deltaTime ,". Trying to re-connect session...");
         _this.disconnect();
         setTimeout(function () {_this.connect()}, 5000);
       } else {
