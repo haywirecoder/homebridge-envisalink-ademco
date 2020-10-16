@@ -61,7 +61,7 @@
         "default": 30,
         "description": "Heartbeat interval to check for disconnected Envisalink session. Default: 30",
         "minimum": 10,
-        "maximum": 6000
+        "maximum": 600
       },
       "commandTimeOut": {
         "title": "Command timeout in second",
