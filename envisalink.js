@@ -110,7 +110,7 @@ class EnvisaLink {
             }
             else  
             {
-             _this.log.warn("Warning: Auto-reconnect option is disabled. Envisalink-Ademco will not watch for drop sessions.") 
+             _this.log.warn("Warning: Session monitoring is disabled. Envisalink-Ademco will not watch for hung sessions.") 
             }
           } else {
             var command_str = datapacket.match(/^%(.+)\$/); // pull out everything between the % and $
