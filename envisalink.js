@@ -35,12 +35,10 @@ class EnvisaLink {
     else
       this.options.sessionwatcher = config.sessionwatcher;
 
-    this.options.heartbeatInterval = utilfunc.toIntBetween(config.heartbeatInterval, 10, 6000, 30);
+    this.options.heartbeatInterval = utilfunc.toIntBetween(config.heartbeatInterval, 10, 600, 30);
     this.options.openZoneTimeout = utilfunc.toIntBetween(config.openZoneTimeout, 5, 120, 30);
 
     this.zones = {};
- 
-
     this.lastmessage = new Date();
 
   }
@@ -161,7 +159,6 @@ class EnvisaLink {
       var deltaTime = Math.abs(nowDate.getTime() -_this.lastmessage.getTime()) / 1000;
 
       _this.log.debug("Checking for Heartbeat...");
-
      if (deltaTime > (_this.options.heartbeatInterval)) {
         _this.log.warn("Missing Heartbeat - Time drift: ", deltaTime ,". Trying to re-connect session...");
         _this.disconnect();
