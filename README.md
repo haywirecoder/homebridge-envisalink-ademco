@@ -28,6 +28,7 @@ Please Note: I recommended not using the master user or installer code in the co
 | pin               | Your local alarm PIN. Recommend creating a seperate alarm user for this plug-in. Default pin is 1234                     |
 | **partitions**    | List of partition to monitor in homekit                                                                                  |
 | openZoneTimeout   | *(optional)* Time out value for zone provided in second. Default is 30 second.                             |
+| heartbeatInterval | *(optional)* Heartbeat interval to determine if envisalink sessions has been disconnected. autoreconnect and sessionwatcher must be true. Default is 30 second. |
 | heartbeatInterval | *(optional)* Heartbeat interval to determine if envisalink sessions has been disconnected. Default is 30 second. |
 | commandTimeOut    | *(optional)* Time out value for alarm command to return provided in second. Default is 10 second.          |
 | autoreconnect     | *(optional)* Automatic reconnect to server if session is broken. Default is true.                                        |
