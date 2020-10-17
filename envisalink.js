@@ -79,7 +79,7 @@ class EnvisaLink {
 
     actual.on('end', function () {
       _this.log.debug("Envisalink received end request, disconnecting");
-      _this.log('Disconnect TPI session');
+      _this.log.info('Disconnect TPI session');
       clearTimeout(_this.isConnectionIdleHandle);
       _this.IsConnected = false;
     });
@@ -101,10 +101,10 @@ class EnvisaLink {
             _this.IsConnected = false;
           } else if (datapacket.substring(0, 2) === 'OK') {
             // ignore, OK is good. or report successful connection.    
-            _this.log('Successful TPI session established');
+            _this.log.info('Successful TPI session established');
             if(_this.shouldReconnect && _this.options.sessionwatcher)
             {
-              _this.log("Checking for disconnected session every: ",_this.options.heartbeatInterval, " seconds.")
+              _this.log.info("Checking for disconnected session every: ",_this.options.heartbeatInterval, " seconds.")
               _this.isConnectionIdleHandle = setTimeout( isConnectionIdle, (_this.options.heartbeatInterval * 1000) ); // Check every idle seconds...
             }
             else  
