@@ -7,7 +7,8 @@ All notable changes to this project will be documented in this file. This projec
 * Correct issue which auto-restart option was ignored.
 
 ### Changes
-* Add new configuration option disable session watcher.
+* Add new configuration option to disable Envisalink module session watcher.
+* Improve functionality and reponse speed of Bypass switch.
 
 # v1.1.8 (2020-09-20)
 
