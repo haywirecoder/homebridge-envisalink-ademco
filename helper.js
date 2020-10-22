@@ -4,9 +4,14 @@
 // If value is not between min and max return default value provided.
 
 exports.toIntBetween = function (value, minValue, maxValue, defaultValue) {
-  const n = Number(value)
+  const n = Number(value);
   if (isNaN(n) || n !== Math.floor(n) || n < minValue || n > maxValue) {
-    return defaultValue
+    return defaultValue;
   }
-  return n
+  return n;
 }
+
+exports.sleep = function (ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+

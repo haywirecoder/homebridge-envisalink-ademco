@@ -331,7 +331,8 @@ class EnvisalinkAccessory {
                 .on('set', this.setByPass.bind(this));
             this.services.push(service);
             this.zoneaccessories = accessories;
-            this.quickbypass = config.quickbypass ? config.quickbypass : false
+            this.quickbypass = config.quickbypass ? config.quickbypass : false;
+            this.processingBypass = false;
 
         } else if (this.accessoryType == "keys") {
             // These are push button key, upon processing request will return to off.
@@ -522,27 +523,45 @@ class EnvisalinkAccessory {
 
     setByPass(value, callback) {
         this.log.debug('Triggered Bypass: ', value);
-        // If alarm is on igore request
+        // Determine if processing another bypass command.
+        if (this.processingBypass) {
+            this.log("Already processing bypass request. Command ignored.");
+            callback(null,this.lastTargetState);
+        }
+        else
+        {
+            this.lastTargetState = value;
+        }
+
+         // Get the button service and updated switch soon after set function is complete 
+        var switchService = this.getServices()[0];
+        // If alarm is on ignore request
         switch (this.status) {
             case "NOT_READY":
-                // System not ready, candidate  for zone bypass 
+                // System not ready, candidate for zone bypass 
                 if (value) {
+                    this.processingBypass = true;
                     this.log("Reviewing fault zones for bypassing...");
                     var command;
                     if (this.quickbypass) {
                         this.log("Quick Bypass configured. Quick bypass of fault zones.");
                         command = this.pin + tpidefs.alarmcommand.quickbypass;
                         alarm.sendCommand(command);
-                        callback(null);
+                        this.processingBypass = false;
+                        callback(null,value);
                         break;
                     }
                     // Reviewing zone that are being monitored and are bypass enabled (allowed to be bypass)
                     if (this.zoneaccessories.length == 0) {
                         this.log.warn("No zones defined for Bypassing.");
-                        callback(null);
+                        this.processingBypass = false;
+                        this.lastTargetState = false;
+                        setTimeout(function () {switchService.getCharacteristic(Characteristic.On).updateValue(false)},500);
+                        callback(null, false);
                         break;
                     }
                     var bypasscount = 0;
+                    var bValue = false;
                     for (var i = 0; i < this.zoneaccessories.length; i++) {
                         var zoneinfo = this.zoneaccessories[i];
                         if (zoneinfo) {
@@ -551,31 +570,47 @@ class EnvisalinkAccessory {
                             if ((zoneinfo.status == "OPEN") && (zoneinfo.bypassEnabled)) {
                                 this.log("Bypassing", zoneinfo.name);
                                 command = this.pin + tpidefs.alarmcommand.bypass + zoneinfo.zone;
-                                // don't over load the command buffer, waiting 1 sec before requesting another bypass request
-                                setTimeout(function () {
-                                    alarm.sendCommand(command);
-                                }, 1000);
+                                // don't over load the command buffer, waiting 500 ms before requesting another bypass request
+                                alarm.sendCommand(command);
+                                utilfunc.sleep(500);
                                 bypasscount = bypasscount + 1;
+                                bValue = true;
                             }
                         }
                     }
                     if (bypasscount == 0) this.log("No zones were enabled for Bypassing")
                     else this.log("Bypass ", bypasscount.toString(), " zone(s)");
+                   
                 }
-                callback(null);
+                this.processingBypass = false;
+                this.lastTargetState = bValue;
+                setTimeout(function () {switchService.getCharacteristic(Characteristic.On).updateValue(bValue)},500);
+                callback(null, bValue);
                 break;
             case "READY_BYPASS":
                 // Clear bypass zones
-                if (!value) {
+                if (value == false) {
                     this.log("Clearing bypass zones...")
                     var command = this.pin + tpidefs.alarmcommand.disarm + this.partition;
                     alarm.sendCommand(command);
                 }
-                callback(null);
+                this.lastTargetState = false;
+                callback(null, false);
+                break;
+            case 'READY':
+                this.log("Alarm is ", this.status, " no action required. Ignoring Bypass request.");
+                this.lastTargetState = false;
+                // Turn off switch, since no action was completed.
+                setTimeout(function () {switchService.getCharacteristic(Characteristic.On).updateValue(false)},500);
+                callback(null, false);
                 break;
             default:
-                callback(null);
+                // Nothing to process, return to previous state, 
+                this.lastTargetState = !value;
+                setTimeout(function () {switchService.getCharacteristic(Characteristic.On).updateValue(!value)},500);
+                callback(null, !value);
                 break;
+
         }
     }
     getFuntionKey(callback) {
@@ -586,13 +621,14 @@ class EnvisalinkAccessory {
     setFuntionKey(value, callback) {
 
         this.log('Triggered special function key');
-
+         // Get the button service and updated switch soon after set function is complete 
         if (value) {
+            var switchService = this.getServices()[0];
             this.log("Sending code ", this.functionkeycode);
             var command = this.functionkeycode;
             alarm.sendCommand(command);
+            setTimeout(function () {switchService.getCharacteristic(Characteristic.On).updateValue(false)},500);
         }
-
         callback(null, false);
     }
 }

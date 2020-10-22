@@ -1,11 +1,11 @@
 // 'use strict'
+const { ENGINE_METHOD_DIGESTS } = require('constants');
 var net = require('net')
 var EventEmitter = require('events').EventEmitter;
 var util = require('util')
 var tpidefs = require('./tpi.js')
 var ciddefs = require('./cid.js')
 var utilfunc = require('./helper.js');
-const { ENGINE_METHOD_DIGESTS } = require('constants');
 var actual;
 var activezones = [];
 var activeZoneTimeOut = undefined;
