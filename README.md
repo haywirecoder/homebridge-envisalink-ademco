@@ -44,9 +44,9 @@ Please Note: I recommended not using the master user or installer code in the co
 
 **zones** *(Optional section -- Atleast one zone must be define if used)*
 
-> - name: zone name  *(This is a required value for this each entry)*
-> - sensorType :  door | leak | motion | smoke | window  *(This is a required value for this each entry)*
-> - partition : sensor partition number. *(This is a required value for this each entry)*
+> - name: zone name  *(This is a required value for each entry)*
+> - sensorType :  door | leak | motion | smoke | window  *(This is a required value for  each entry)*
+> - partition : sensor partition number. *(This is a required value for each entry)*
 > - zoneNumber : panel zone number for sensor. If not defined for an entry, consecutive zone numbering is assumed and this value shouldn't be present for any entry within the zone configuration block. 
 > - bypassEnabled : a true value allows zones to be bypass when open (faulted). This setting works in concert with the bypass control option (below). *(This is optional element and default to false)*
 
