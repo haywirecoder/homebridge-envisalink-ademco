@@ -34,7 +34,7 @@ Please Note: I recommended not using the master user or installer code in the co
 | autoreconnect     | *(optional)* Automatic reconnect to server if network channel is broken. Default is true.                                        |
 | **zones**         | *(Optional)* List of zones to appear and monitor in homekit                                                              |
 | **bypass**        | *(Optional)* Creates a bypass control (a switch) to bypass zones which are open (faulted)                                |
-|                   | By default the bypass switch can only bypass zone that are being monitored in homekit and "bypassenable" set to true.    |
+|                   | By design the bypass switch can only bypass zone that are being monitored in homekit and zone entry "bypassenable" set to true.    |
 |                   | "quickbypass" Can be used to bypass all fault zones. This feature must to be enabled in ademco panel *(refer to panel guide)*.                               |
 | **keys**          | *(Optional)* Create controls (switches) to replicate the special function keys on Ademco keypad                           |
 
