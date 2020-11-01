@@ -137,6 +137,13 @@ Examaple:
     "bypassEnabled": true
     },
     {
+    "name": "Bedroom Window",
+    "sensorType": "window",
+    "partition": 1,
+    "zoneNumber": 16,
+    "bypassEnabled": false
+    },
+    {
     "name": "Garage Door",
     "sensorType": "door",
     "partition": 1,
