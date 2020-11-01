@@ -40,7 +40,7 @@ Please Note: I recommended not using the master user or installer code in the co
 
 **partitions**
 
-> - name : partition name (default "house")
+> - name : partition name *(default "house")*
 
 **zones** *(Optional section -- Atleast one zone must be define if used)*
 
