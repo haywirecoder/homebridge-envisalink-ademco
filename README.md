@@ -42,22 +42,22 @@ Please Note: I recommended not using the master user or installer code in the co
 
 > - name : partition name (default "house")
 
-**zones** *(Optional section)*
+**zones** *(Optional section -- Atleast one zone must be define if used)*
 
-> - name: zone name *[required]*
-> - sensorType :  door | leak | motion | smoke | window *[required]*
-> - partition : sensor partition number
-> - zoneNumber : panel zone number for sensor
-> - bypassEnabled : a true value allows zones to be bypass when open (faulted). This setting works in concert with the bypass control option (below). This is optional element and default to false.
+> - name: zone name  *(This is a required value for this each entry)*
+> - sensorType :  door | leak | motion | smoke | window  *(This is a required value for this each entry)*
+> - partition : sensor partition number. *(This is a required value for this each entry)*
+> - zoneNumber : panel zone number for sensor. If not defined for an entry, consecutive zone numbering is assumed and this value shouldn't be present for any entry within the zone configuration block. 
+> - bypassEnabled : a true value allows zones to be bypass when open (faulted). This setting works in concert with the bypass control option (below). *(This is optional element and default to false)*
 
 **bypass** *(Optional section)*
 
-> - name: Bypass switch name to display in Homekit *[required]*
-> - quickbypass :  Must be pre-configure on alarm panel (please refer to your alarm panel programning guide). If programmed, "Quick Bypass" allows you to easily bypass all open (faulted) zones without having to configure zone individually and perform operation quicker. *[required]*
+> - name: Bypass switch name to display in Homekit *(This is a required value)*
+> - quickbypass :  Must be pre-configure on alarm panel (please refer to your alarm panel programning guide). If programmed, "Quick Bypass" allows you to easily bypass all open (faulted) zones without having to configure zone individually and perform operation quicker. *(This is a required value)*
 
 **keys** *(Optional section)*
-> - name: Name of special function key to display in Homekit *[required]*
-> - panelcode:  Indicates which special function key (e.g. A, B, C and D keys) will be associated with this switch. The special keys are located to the left of the numeric keys can be programmed with special function at the alarm panel. *[required]*
+> - name: Name of special function key to display in Homekit *(This is a required value)*
+> - panelcode:  Indicates which special function key (e.g. A, B, C and D keys) will be associated with this switch. The special keys are located to the left of the numeric keys can be programmed with special function at the alarm panel. *(This is a required value)*
 
 
 Example configuration is below.
