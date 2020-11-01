@@ -42,22 +42,22 @@ Please Note: I recommended not using the master user or installer code in the co
 
 > - name : partition name (default "house")
 
-**zones** *(Optional)*
+**zones** *(Optional section)*
 
-> - name: zone name
-> - sensorType :  door | leak | motion | smoke | window
+> - name: zone name *[required]*
+> - sensorType :  door | leak | motion | smoke | window *[required]*
 > - partition : sensor partition number
 > - zoneNumber : panel zone number for sensor
 > - bypassEnabled : a true value allows zones to be bypass when open (faulted). This setting works in concert with the bypass control option (below). This is optional element and default to false.
 
-**bypass** *(Optional)*
+**bypass** *(Optional section)*
 
-> - name: Bypass switch name to display in Homekit
-> - quickbypass :  Must be pre-configure on alarm panel (please refer to your alarm panel programning guide). If programmed, "Quick Bypass" allows you to easily bypass all open (faulted) zones without having to configure zone individually and perform operation quicker.
+> - name: Bypass switch name to display in Homekit *[required]*
+> - quickbypass :  Must be pre-configure on alarm panel (please refer to your alarm panel programning guide). If programmed, "Quick Bypass" allows you to easily bypass all open (faulted) zones without having to configure zone individually and perform operation quicker. *[required]*
 
-**keys** *(Optional)*
-> - name: Name of special function key to display in Homekit
-> - panelcode:  Indicates which special function key (e.g. A, B, C and D keys) will be associated with this switch. The special keys are located to the left of the numeric keys can be programmed with special function at the alarm panel.
+**keys** *(Optional section)*
+> - name: Name of special function key to display in Homekit *[required]*
+> - panelcode:  Indicates which special function key (e.g. A, B, C and D keys) will be associated with this switch. The special keys are located to the left of the numeric keys can be programmed with special function at the alarm panel. *[required]*
 
 
 Example configuration is below.
