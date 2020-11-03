@@ -21,7 +21,7 @@
       "port": {
         "title": "Envisalink Host IP Port address",
         "type": "integer",
-        "default": 4025,
+        "default": 4112,
         "required": true
       },
       "deviceType": {
