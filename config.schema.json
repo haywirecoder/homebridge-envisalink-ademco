@@ -110,19 +110,23 @@
           "properties": {
             "name": {
               "title": "Zone Name",
-              "type": "string"
+              "type": "string",
+              "required": true
             },
             "partition": {
               "title": "Sensor Partition Number",
-              "type": "string"
+              "type": "string",
+              "required": true
             },
             "zoneNumber": {
               "title": "Zone Number",
-              "type": "string"
+              "type": "string",
+              "required": false
             },
             "sensorType": {
               "title": "Sensor Type",
               "type": "string",
+              "required": true,
               "oneOf": [{
                   "title": "Door",
                   "enum": [
@@ -158,7 +162,7 @@
             "bypassEnabled": {
               "title": "Zone Bypass Enabled",
               "type": "boolean",
-              "default": false,
+              "required": false,
               "description": "Allow this zone to be Bypass by Homekit."
             }
           }
@@ -174,12 +178,13 @@
           "properties": {
             "name": {
               "title": "Bypass control name",
-              "type": "string"
+              "type": "string",
+              "required": true
             },
             "quickbypass": {
               "title": "Panel support quick (i.e: force) bypass",
               "type": "boolean",
-              "default": false
+              "required": true
             }
           }
         }
@@ -195,11 +200,13 @@
             "name": {
               "title": "Function key label",
               "type": "string",
+              "required": true,
               "maxLength": 12
             },
             "panelfunction": {
               "title": "Functional Key code",
               "type": "string",
+              "required": true,
               "oneOf": [{
                   "title": "A Key",
                   "enum": [
