@@ -299,6 +299,7 @@
           "key": "bypass",
           "type": "array",
           "orderable": false,
+          "buttonText": "Add Bypass button",
           "items": [
             "bypass[].name",
             "bypass[].quickbypass"
@@ -311,7 +312,7 @@
           "buttonText": "Add Speed key",
           "items": [
             "keys[].name",
-            "keys[].keycode"
+            "keys[].panelfunction"
           ]
         }
       ]
