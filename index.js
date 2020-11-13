@@ -78,7 +78,7 @@ class EnvisalinkPlatform {
             var maxZone = this.zones.length;
             for (var i = 0; i < this.zones.length; i++) {
                 var zone = this.zones[i];
-                if (zone.sensorType == "motion" || zone.sensorType == "window" || zone.sensorType == "door" || zone.sensorType == "leak" || zone.sensorType == "smoke") {
+                if ((zone.sensorType == "motion" || zone.sensorType == "window" || zone.sensorType == "door" || zone.sensorType == "leak" || zone.sensorType == "smoke") && (zone.name != undefined)){
                     var zoneNum = zone.zoneNumber ? zone.zoneNumber : (i + 1);
                     if (zoneNum > maxZone) {
                         maxZone = zoneNum;
@@ -89,7 +89,7 @@ class EnvisalinkPlatform {
                     var accessoryIndex = this.platformZoneAccessories.push(accessory) - 1;
                     this.platformZoneAccessoryMap['z.' + zoneNum] = accessoryIndex;
                 } else {
-                    this.log.error("Unhandled accessory type: " + zone.sensorType);
+                    this.log.error("Misconfigured Zone defination " + zone.name + " entry " + i + " igoring.");
                 }
             }
 
@@ -99,10 +99,16 @@ class EnvisalinkPlatform {
                 bypassswitch.pin = config.pin ? config.pin : 1234;
                 bypassswitch.Model = config.deviceType + " Keypad";
                 bypassswitch.SerialNumber = "Envisalink." + 1;
-                // Pass the list of zone to bypass control and speed to the first partition
-                var accessory = new EnvisalinkAccessory(this.log, "bypass", bypassswitch, 1, 200, this.platformZoneAccessories);
-                var accessoryIndex = this.platformPartitionAccessories.push(accessory);
-                this.platformPartitionAccessoryMap['b.' + bypassswitch.partition] = accessoryIndex;
+                if (bypassswitch.name != undefined) {
+                    // Pass the list of zone to bypass control and speed to the first partition
+                    var accessory = new EnvisalinkAccessory(this.log, "bypass", bypassswitch, 1, 200, this.platformZoneAccessories);
+                    var accessoryIndex = this.platformPartitionAccessories.push(accessory);
+                    this.platformPartitionAccessoryMap['b.' + bypassswitch.partition] = accessoryIndex;
+                }
+                else{
+                    this.log.error("Misconfigured Bypass switch defination " + bypassswitch.name + " igoring.");
+                }
+
 
             }
             // Creating special function key (pre-program)
@@ -110,9 +116,14 @@ class EnvisalinkPlatform {
                 var funckey = this.keys[i];
                 funckey.Model = config.deviceType + " Keypad";
                 funckey.SerialNumber = "Envisalink." + 1;
+                if (funckey.name != undefined) {
                 var keycode = funckey.panelfunction ? funckey.panelfunction : String.fromCharCode(i + 65);
                 var accessory = new EnvisalinkAccessory(this.log, "keys", funckey, 1, keycode, []);
                 this.platformPartitionAccessories.push(accessory);
+                }
+                else {
+                    this.log.error("Miscofigured Function key defination " + funckey.name + " igoring.");
+                }
 
             }
 
