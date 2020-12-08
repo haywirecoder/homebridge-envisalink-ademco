@@ -460,11 +460,6 @@ class EnvisaLink {
           code: data
         };
 
-        // update zone information
-        if (mode != 'READY') {
-          zoneTimerOpen(tpi, zone);
-        }
-
         _this.emit('keypadupdate', {
           partition: partition,
           code: {
