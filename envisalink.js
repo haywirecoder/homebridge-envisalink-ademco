@@ -296,7 +296,7 @@ class EnvisaLink {
       if (activezones.length > 0) {
         if (activeZoneTimeOut == undefined) {
           _this.log.debug("Activating zone timer");
-          activeZoneTimeOut = setTimeout(zoneTimeOut, _this.options.openZoneTimeout * 1000);
+          activeZoneTimeOut = setTimeout(zoneTimerClose, _this.options.openZoneTimeout * 1000);
         }
       }
 
@@ -309,7 +309,7 @@ class EnvisaLink {
       }
     }
 
-    function zoneTimeOut() {
+    function zoneTimerClose() {
       var mode = "CLOSE";
       var z_close = [];
       var z = activezones.length;
@@ -345,7 +345,7 @@ class EnvisaLink {
         activeZoneTimeOut = undefined;
       } else {
         // Zones are still being track, set timer to review when next zone is scheduled to expire.
-        activeZoneTimeOut = setTimeout(zoneTimeOut, minZoneTime * 1000);
+        activeZoneTimeOut = setTimeout(zoneTimerClose, minZoneTime * 1000);
       }
     }
 
@@ -460,11 +460,6 @@ class EnvisaLink {
           code: data
         };
 
-        // update zone information
-        if (mode != 'READY') {
-          zoneTimerOpen(tpi, zone);
-        }
-
         _this.emit('keypadupdate', {
           partition: partition,
           code: {
@@ -539,7 +534,7 @@ class EnvisaLink {
       var cid_obj = ciddefs.cid_event_def[code];
       var initialUpdate = _this.cid === undefined;
       _this.cid = {
-        send: tpi.send,
+        send: tpi.send,z
         name: tpi.name,
         code: cid,
         qualifier: qualifier,

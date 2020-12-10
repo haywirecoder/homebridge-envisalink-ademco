@@ -1,7 +1,20 @@
 # Change Log
 
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
-# v1.1.9 (2020-10-15)
+
+# v1.1.21 (2020-12-11)
+## Break fixes
+* Correct issue with false open from virtual panel event.
+
+# v1.1.20 (2020-10-31)
+
+### Break fixes
+* Correct issue which could result incorrect entry within config.json file.
+  
+### Changes
+* Minor error handling routine changes. Change will ignored mis-configured section of configuration files.
+
+# v1.1.19 (2020-10-15)
 
 ### Break fixes
 * Correct issue which auto-restart option was ignored.
