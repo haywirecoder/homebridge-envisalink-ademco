@@ -219,7 +219,7 @@ class EnvisaLink {
           name: tpi.name,
           code: z
         };
-        zoneTimerOpen(tpi, z);
+        zoneTimerOpen(tpi, z, 1);
       });
       _this.emit('zoneupdate', {
         zone: z_list,
@@ -277,7 +277,7 @@ class EnvisaLink {
       return undefined;
     }
 
-    function zoneTimerOpen(tpi, zone) {
+    function zoneTimerOpen(tpi, zone, mode) {
       var mode = "OPEN";
       var triggerZoneEvent = false;
       var zoneid = findZone(activezones, zone);
@@ -285,12 +285,15 @@ class EnvisaLink {
         _this.log.debug("Zone found in active zone list index - ", zoneid);
         activezones[zoneid].eventepoch = Math.floor(Date.now() / 1000);
       } else {
-        _this.log.debug("Adding new zone - ", zone);
-        activezones.push({
-          zone: zone,
-          eventepoch: Math.floor(Date.now() / 1000)
-        });
-        triggerZoneEvent = true;
+        if (mode == 1)
+        {
+          _this.log.debug("Adding new zone - ", zone);
+          activezones.push({
+            zone: zone,
+            eventepoch: Math.floor(Date.now() / 1000)
+          });
+          triggerZoneEvent = true;
+        }
       }
 
       if (activezones.length > 0) {
@@ -460,6 +463,13 @@ class EnvisaLink {
           code: data
         };
 
+        // Update zone information timer. 
+        // Depending on the state of the update it will either represent a zone, or a user.
+        // Will not add to active open zone, just update status 
+        if (mode == 'NOT_READY') {
+          zoneTimerOpen(tpi, zone, 0);
+        }
+
         _this.emit('keypadupdate', {
           partition: partition,
           code: {
@@ -534,7 +544,7 @@ class EnvisaLink {
       var cid_obj = ciddefs.cid_event_def[code];
       var initialUpdate = _this.cid === undefined;
       _this.cid = {
-        send: tpi.send,z
+        send: tpi.send,
         name: tpi.name,
         code: cid,
         qualifier: qualifier,
