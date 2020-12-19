@@ -131,8 +131,9 @@ class EnvisalinkPlatform {
             if (this.zones.length > 0) this.log("Zone accessories configured: ", this.zones.length);
             if (this.bypass.length > 0) this.log("Bypass accessories configured.");
             if (this.keys.length > 0) this.log("Speed keys accessories configured.");
+            
             // Begin connection process and bind alarm events to local function.
-            this.log("Starting connection to alarm..." + config.host + ", port: " + config.port);
+            // Create connection object and start the connection 
             alarm = new elink(log, config);
             alarm.connect();
             alarm.on('keypadupdate', this.systemUpdate.bind(this));

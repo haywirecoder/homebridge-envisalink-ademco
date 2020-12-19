@@ -54,10 +54,14 @@ class EnvisaLink {
     this.lastmessage = new Date();
     this.isConnectionIdleHandle = undefined;
 
+    // Display starting of connection.
+    this.log("Starting connection to envisalink module at: " + this.options.host + ", port: " + this.options.port);
+   
     actual = net.createConnection({
       port: this.options.port,
       host: this.options.host
     });
+
 
     actual.on('error', function (ex) {
       _this.log.error(ex);
