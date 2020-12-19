@@ -219,7 +219,7 @@ class EnvisaLink {
           name: tpi.name,
           code: z
         };
-        zoneTimerOpen(tpi, z, 1);
+        zoneTimerOpen(tpi, z, "OPEN");
       });
       _this.emit('zoneupdate', {
         zone: z_list,
@@ -278,14 +278,14 @@ class EnvisaLink {
     }
 
     function zoneTimerOpen(tpi, zone, mode) {
-      var mode = "OPEN";
+      
       var triggerZoneEvent = false;
       var zoneid = findZone(activezones, zone);
       if (Number.isInteger(zoneid)) {
         _this.log.debug("Zone found in active zone list index - ", zoneid);
         activezones[zoneid].eventepoch = Math.floor(Date.now() / 1000);
       } else {
-        if (mode == 1)
+        if (mode == "OPEN")
         {
           _this.log.debug("Adding new zone - ", zone);
           activezones.push({
@@ -465,10 +465,13 @@ class EnvisaLink {
 
         // Update zone information timer. 
         // Depending on the state of the update it will either represent a zone, or a user.
-        // Will not add to active open zone, just update status 
-        if (mode == 'NOT_READY') {
-          zoneTimerOpen(tpi, zone, 0);
+        // module makes assumption, if system is not-ready and panel text display "FAULT" assume zone is in fault.
+        
+        if ((mode == 'NOT_READY') && (keypad_txt.includes('FAULT')))
+        {    
+               zoneTimerOpen(tpi, zone, "OPEN")  
         }
+       
 
         _this.emit('keypadupdate', {
           partition: partition,
