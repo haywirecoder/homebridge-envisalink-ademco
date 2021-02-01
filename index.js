@@ -78,7 +78,7 @@ class EnvisalinkPlatform {
             var maxZone = this.zones.length;
             for (var i = 0; i < this.zones.length; i++) {
                 var zone = this.zones[i];
-                if ((zone.sensorType == "motion" || zone.sensorType == "window" || zone.sensorType == "door" || zone.sensorType == "leak" || zone.sensorType == "smoke") && (zone.name != undefined)){
+                if ((zone.sensorType == "motion" || zone.sensorType == "window" || zone.sensorType == "door" || zone.sensorType == "leak" || zone.sensorType == "smoke" || zone.sensorType == "co2") && (zone.name != undefined)){
                     var zoneNum = zone.zoneNumber ? zone.zoneNumber : (i + 1);
                     if (zoneNum > maxZone) {
                         maxZone = zoneNum;
@@ -249,6 +249,12 @@ class EnvisalinkPlatform {
                                 accservice.getCharacteristic(Characteristic.SmokeDetected).setValue(resultat);
                             });
                         }
+                        else if (accessory.accessoryType == "co2") {
+
+                            accessory.getCO2Status(function (nothing, resultat) {
+                                accservice.getCharacteristic(Characteristic.CarbonMonoxideDetected).setValue(resultat);
+                            });
+                        }
                     }
                 }
             }
@@ -332,6 +338,14 @@ class EnvisalinkAccessory {
             service
                 .getCharacteristic(Characteristic.SmokeDetected)
                 .on('get', this.getSmokeStatus.bind(this));
+            this.services.push(service);
+            this.bypassEnabled = config.bypassEnabled ? config.bypassEnabled : false;
+
+        } else if (this.accessoryType == "co2") {
+            var service = new Service.CarbonMonoxideSensor(this.name);
+            service
+                .getCharacteristic(Characteristic.CarbonMonoxideDetected)
+                .on('get', this.getCO2Status.bind(this));
             this.services.push(service);
             this.bypassEnabled = config.bypassEnabled ? config.bypassEnabled : false;
 
@@ -511,6 +525,16 @@ class EnvisalinkAccessory {
             callback(null, Characteristic.SmokeDetected.SMOKE_DETECTED);
         } else {
             callback(null, Characteristic.SmokeDetected.SMOKE_NOT_DETECTED);
+        }
+
+    }
+
+    getCO2Status(callback) {
+
+        if (this.status == "OPEN") {
+            callback(null, Characteristic.CarbonMonoxideDetected.CO_LEVELS_ABNORMAL);
+        } else {
+            callback(null, Characteristic.CarbonMonoxideDetected.CO_LEVELS_NORMAL);
         }
 
     }

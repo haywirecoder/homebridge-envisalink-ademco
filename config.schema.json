@@ -127,7 +127,14 @@
               "title": "Sensor Type",
               "type": "string",
               "required": true,
-              "oneOf": [{
+              "oneOf": [
+                {
+                  "title": "Carbon Monoxide",
+                  "enum": [
+                    "co2"
+                  ]
+                },
+                {
                   "title": "Door",
                   "enum": [
                     "door"

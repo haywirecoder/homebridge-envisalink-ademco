@@ -1,6 +1,10 @@
 # Change Log
 
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v1.1.23 (2021-02-05)
+## Enhancements
+* Add Support for Carbon Monoxide Detected.
+
 # v1.1.22 (2020-12-17)
 ## Break fixes
 * Fix issues introduce with 1.1.21. Correction to management of zone status.
