@@ -30,7 +30,7 @@ Please Note: I recommended not using the master user or installer code in the co
 | openZoneTimeout   | *(optional)* Time out value for zone provided in second. Default is 30 second.                             |
 | sessionsWatcher | *(optional)*  Automatic disconnect and recreate a new session if module detect a hang session. This is done by periodically (i.e. heartbeatInterval) checking the last updates from the virtual keypad. Autreconnect value must also be set to true for this option to be valid. Default is true. |
 | heartbeatInterval | *(optional)* Heartbeat interval to determine if envisalink sessions has hang. Default is 30 second. |
-| commandTimeOut    | *(optional)* Time out value for alarm command to return provided in second. Default is 10 second.          |
+| commandTimeOut    | *(optional)* Time-out value for alarm command to return provided in second. Default is 10 second.          |
 | autoreconnect     | *(optional)* Automatic reconnect to server if network channel is broken. Default is true.                                        |
 | **zones**         | *(Optional)* List of zones to appear and monitor in homekit                                                              |
 | **bypass**        | *(Optional)* Creates a bypass control (a switch) to bypass zones which are open (faulted)                                |
@@ -45,7 +45,7 @@ Please Note: I recommended not using the master user or installer code in the co
 **zones** *(Optional section -- Atleast one zone must be define if used)*
 
 > - name: zone name  - *This is a required value for each entry*
-> - sensorType : carbon monoxide | door | leak | motion | smoke | window - *This is a required value for each entry*
+> - sensorType : carbon monoxide | door | glass | leak | motion | smoke | window - *This is a required value for each entry*
 > - partition : sensor partition number. - *This is a required value for each entry*
 > - zoneNumber : panel zone number for sensor. - The presence of this attribute triggers consecutive zone numbering or non-consecutive zone numbering (see example). *This attribute is required if your system has unused zones, using non-consecutive zone numbering or wanting to selectively show zones within homekit*
 > - bypassEnabled :  true | false - A true value allows zones to be bypass when open (faulted). This setting works in concert with the bypass control option (below). *This is optional element and default to false*
@@ -57,7 +57,7 @@ Please Note: I recommended not using the master user or installer code in the co
 
 **keys** *(Optional section)*
 > - name: Name of special function key to display in Homekit - *This is a required value for this section*
-> - panelcode: A | B | C| D - Indicates which special function key (e.g. A, B, C and D keys) will be associated with this switch. The special keys are located to the left of the numeric keys can be programmed with special function at the alarm panel. *This is a required value for this section*
+> - panelcode: A | B | C | D - Indicates which special function key (e.g. A, B, C and D keys) will be associated with this switch. The special keys are located to the left of the numeric keys can be programmed with special function at the alarm panel. *This is a required value for this section*
 
 Example configuration is below.
 
@@ -79,7 +79,6 @@ Example configuration is below.
     }
 
     ],
-
     "zones": [
         {
         "name": "Front Door",
@@ -104,7 +103,6 @@ Example configuration is below.
         "panelfunction": "A"
         }
     ]
-  
 }
 ...
 

@@ -3,7 +3,8 @@
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
 # v1.1.23 (2021-02-05)
 ## Enhancements
-* Add Support for Carbon Monoxide Detected.
+* Add Support for Carbon Monoxide Detector (#11).
+* Add Support for Glassbreak Detector as a motion sensor.
 
 # v1.1.22 (2020-12-17)
 ## Break fixes

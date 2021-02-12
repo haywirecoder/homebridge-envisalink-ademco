@@ -141,6 +141,12 @@
                   ]
                 },
                 {
+                  "title": "Glassbreak",
+                  "enum": [
+                    "glass"
+                  ]
+                },
+                {
                   "title": "Leak",
                   "enum": [
                     "leak"

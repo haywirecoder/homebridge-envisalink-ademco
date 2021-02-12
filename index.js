@@ -78,7 +78,7 @@ class EnvisalinkPlatform {
             var maxZone = this.zones.length;
             for (var i = 0; i < this.zones.length; i++) {
                 var zone = this.zones[i];
-                if ((zone.sensorType == "motion" || zone.sensorType == "window" || zone.sensorType == "door" || zone.sensorType == "leak" || zone.sensorType == "smoke" || zone.sensorType == "co2") && (zone.name != undefined)){
+                if ((zone.sensorType == "motion" || zone.sensorType == "glass" || zone.sensorType == "window" || zone.sensorType == "door" || zone.sensorType == "leak" || zone.sensorType == "smoke" || zone.sensorType == "co2") && (zone.name != undefined)){
                     var zoneNum = zone.zoneNumber ? zone.zoneNumber : (i + 1);
                     if (zoneNum > maxZone) {
                         maxZone = zoneNum;
@@ -225,7 +225,7 @@ class EnvisalinkPlatform {
                     var accservice = (accessory.getServices())[0];
 
                     if (accservice) {
-                        if (accessory.accessoryType == "motion") {
+                        if (accessory.accessoryType == "motion" || accessory.accessoryType == "glass") {
 
                             accessory.getMotionStatus(function (nothing, resultat) {
                                 accservice.getCharacteristic(Characteristic.MotionDetected).setValue(resultat);
@@ -309,6 +309,14 @@ class EnvisalinkAccessory {
             this.services.push(service);
             this.bypassEnabled = config.bypassEnabled ? config.bypassEnabled : false;
 
+        } else if (this.accessoryType == "glass") {
+                var service = new Service.MotionSensor(this.name);
+                service
+                    .getCharacteristic(Characteristic.MotionDetected)
+                    .on('get', this.getMotionStatus.bind(this));
+                this.services.push(service);
+                this.bypassEnabled = config.bypassEnabled ? config.bypassEnabled : false;
+    
         } else if (this.accessoryType == "door") {
             var service = new Service.ContactSensor(this.name);
             service
