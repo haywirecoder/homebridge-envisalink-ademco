@@ -45,7 +45,7 @@ Please Note: I recommended not using the master user or installer code in the co
 **zones** *(Optional section -- Atleast one zone must be define if used)*
 
 > - name: zone name  - *This is a required value for each entry*
-> - sensorType : carbon monoxide | door | glass | leak | motion | smoke | window - *This is a required value for each entry*
+> - sensorType : co | door | glass | leak | motion | smoke | window - *This is a required value for each entry*
 > - partition : sensor partition number. - *This is a required value for each entry*
 > - zoneNumber : panel zone number for sensor. - The presence of this attribute triggers consecutive zone numbering or non-consecutive zone numbering (see example). *This attribute is required if your system has unused zones, using non-consecutive zone numbering or wanting to selectively show zones within homekit*
 > - bypassEnabled :  true | false - A true value allows zones to be bypass when open (faulted). This setting works in concert with the bypass control option (below). *This is optional element and default to false*

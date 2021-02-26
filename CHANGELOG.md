@@ -1,6 +1,10 @@
 # Change Log
 
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v1.1.24 (2020-02-25)
+## Changes
+* Documentions and tag mis-match. CO2 configuration tag replace with CO to algin with standard. Manual correction will be needed in the configuration file for those using Carbon Monoxide Detector type from v1.1.23 (e.g. Replace C02 with CO).
+
 # v1.1.23 (2021-02-05)
 ## Enhancements
 * Add Support for Carbon Monoxide Detector (#11).
