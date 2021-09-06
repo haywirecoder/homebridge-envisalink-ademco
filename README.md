@@ -60,6 +60,7 @@ Please Note: I recommended not using the master user or installer code in the co
 > - name: Name of special function key to display in Homekit - *This is a required value for this section*
 > - panelcode: A | B | C | D - Indicates which special function key (e.g. A, B, C and D keys) will be associated with this switch. The special keys are located to the left of the numeric keys can be programmed with special function at the alarm panel. *This is a required value for this section*
 
+
 Example configuration is below.
 
 ```javascript
