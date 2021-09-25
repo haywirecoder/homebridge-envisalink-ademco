@@ -1,7 +1,7 @@
 const packageJson = require('./package.json');
 var elink = require('./envisalink.js');
 var tpidefs = require('./tpi.js');
-var Service, Characteristic, Accessory;
+var Service, Characteristic, Accessory, uuid;
 var inherits = require('util').inherits;
 var utilfunc = require('./helper.js');
 var armingTimeOut = undefined;
@@ -15,6 +15,7 @@ module.exports = function (homebridge) {
     Characteristic = homebridge.hap.Characteristic;
     Accessory = homebridge.hap.Accessory;
     uuid = homebridge.hap.uuid;
+
 
     var acc = EnvisalinkAccessory.prototype;
     inherits(EnvisalinkAccessory, Accessory);
@@ -78,7 +79,7 @@ class EnvisalinkPlatform {
             var maxZone = this.zones.length;
             for (var i = 0; i < this.zones.length; i++) {
                 var zone = this.zones[i];
-                if ((zone.sensorType == "motion" || zone.sensorType == "glass" || zone.sensorType == "window" || zone.sensorType == "door" || zone.sensorType == "leak" || zone.sensorType == "smoke" || zone.sensorType == "co2") && (zone.name != undefined)){
+                if ((zone.sensorType == "motion" || zone.sensorType == "glass" || zone.sensorType == "window" || zone.sensorType == "door" || zone.sensorType == "leak" || zone.sensorType == "smoke" || zone.sensorType == "co") && (zone.name != undefined)){
                     var zoneNum = zone.zoneNumber ? zone.zoneNumber : (i + 1);
                     if (zoneNum > maxZone) {
                         maxZone = zoneNum;
@@ -89,7 +90,7 @@ class EnvisalinkPlatform {
                     var accessoryIndex = this.platformZoneAccessories.push(accessory) - 1;
                     this.platformZoneAccessoryMap['z.' + zoneNum] = accessoryIndex;
                 } else {
-                    this.log.error("Misconfigured Zone defination " + zone.name + " entry " + i + " igoring.");
+                    this.log.error("Misconfigured Zone defination " + zone.name + ". Entry - " + i + " igoring.");
                 }
             }
 
@@ -122,7 +123,7 @@ class EnvisalinkPlatform {
                 this.platformPartitionAccessories.push(accessory);
                 }
                 else {
-                    this.log.error("Miscofigured Function key defination " + funckey.name + " igoring.");
+                    this.log.error("Misconfigured Function key defination " + funckey.name + " igoring.");
                 }
 
             }
@@ -147,33 +148,29 @@ class EnvisalinkPlatform {
         var partition = this.platformPartitionAccessories[Number(data.partition) - 1];
         var accessorybypassIndex = this.platformPartitionAccessoryMap['b.' + Number(data.partition)];
         // partition update information
-        if ((data.partition) && (partition.processingAlarm == false)) {
-            for (var i = 0; i < this.platformPartitionAccessories.length; i++) {
-                var partitionAccessory = this.platformPartitionAccessories[i];
-                if (partitionAccessory.partition == data.partition) {
-                    if (partitionAccessory.status != data.mode) {
-                        partitionAccessory.status = data.mode;
-                        this.log.debug("Set system status on accessory " + partitionAccessory.name + ' to ' + JSON.stringify(partitionAccessory.status));
-                        var partitionService = (partitionAccessory.getServices())[0];
-                        if (partitionService) {
-                            partitionAccessory.getAlarmState(function (nothing, resultat) {
-                                partitionService.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(resultat)
-                            });
-                        }
-                    }
+        if ((data.partition) && (partition.processingAlarm == false) && (partition.accessoryType == "partition")) {
+            if (partition.status != data.mode) {
+                partition.status = data.mode;
+                this.log.debug("Set system status on accessory " + partition.name + ' to ' + partition.status);
+                var partitionService = (partition.getServices())[0];
+                if (partitionService) {
+                    partition.getAlarmState(function (nothing, resultat) {
+                                partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,resultat)
+                        });
                 }
             }
         }
+            
         // if bypass enable update status
         if (accessorybypassIndex !== undefined) {
             var accessory = this.platformPartitionAccessories[accessorybypassIndex - 1];
             if (accessory) {
                 accessory.status = data.mode;
-                this.log.debug("Set status on accessory " + accessory.name + ' to ' + JSON.stringify(accessory.status));
+                this.log.debug("Set status on accessory " + accessory.name + ' to ' + accessory.status);
                 if (accessory.accessoryType == "bypass") {
                     var accservice = (accessory.getServices())[0];
                     accessory.getByPass(function (nothing, resultat) {
-                        accservice.getCharacteristic(Characteristic.On).updateValue(resultat)
+                        accservice.updateCharacteristic(Characteristic.On,resultat)
                     });
                 }
             }
@@ -185,22 +182,15 @@ class EnvisalinkPlatform {
         this.log.debug('Partition status changed to: ', data.mode);
         var partition = this.platformPartitionAccessories[Number(data.partition) - 1];
 
-        if (data.partition) {
-            for (var i = 0; i < this.platformPartitionAccessories.length; i++) {
-                var partitionAccessory = this.platformPartitionAccessories[i];
-                if (partitionAccessory.partition == data.partition) {
-                    partitionAccessory.status = data.mode;
-                    this.log.debug("Set system status on accessory " + partitionAccessory.name + ' to ' + JSON.stringify(partitionAccessory.status));
-                    var partitionService = (partitionAccessory.getServices())[0];
-                    if (partitionService) {
-                        partitionAccessory.getAlarmState(function (nothing, resultat) {
-                            partitionService.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(resultat)
+        if ((data.partition) && (partition.partition == data.partition)) {
+               partition.status = data.mode;
+                this.log.debug("Set system status on accessory " + partition.name + ' to ' + partition.status);
+                var partitionService = (partition.getServices())[0];
+                if (partitionService) {
+                        partition.getAlarmState(function (nothing, resultat) {
+                            partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,resultat)
                         });
-                    }
                 }
-            }
-            // partition update occured, if was due to alarm state change clear state.
-            if (partition) {
                 if (partition.processingAlarm) {
                     // clear timer and return state immediately
                     partition.processingAlarm = false;
@@ -208,7 +198,6 @@ class EnvisalinkPlatform {
                     armingTimeOut = undefined;
                     partition.proccessAlarmTimer();
                 }
-            }
         }
     }
 
@@ -249,9 +238,9 @@ class EnvisalinkPlatform {
                                 accservice.getCharacteristic(Characteristic.SmokeDetected).setValue(resultat);
                             });
                         }
-                        else if (accessory.accessoryType == "co2") {
+                        else if (accessory.accessoryType == "co") {
 
-                            accessory.getCO2Status(function (nothing, resultat) {
+                            accessory.getCOStatus(function (nothing, resultat) {
                                 accservice.getCharacteristic(Characteristic.CarbonMonoxideDetected).setValue(resultat);
                             });
                         }
@@ -349,11 +338,11 @@ class EnvisalinkAccessory {
             this.services.push(service);
             this.bypassEnabled = config.bypassEnabled ? config.bypassEnabled : false;
 
-        } else if (this.accessoryType == "co2") {
+        } else if (this.accessoryType == "co") {
             var service = new Service.CarbonMonoxideSensor(this.name);
             service
                 .getCharacteristic(Characteristic.CarbonMonoxideDetected)
-                .on('get', this.getCO2Status.bind(this));
+                .on('get', this.getCOStatus.bind(this));
             this.services.push(service);
             this.bypassEnabled = config.bypassEnabled ? config.bypassEnabled : false;
 
@@ -366,7 +355,7 @@ class EnvisalinkAccessory {
             this.services.push(service);
             this.zoneaccessories = accessories;
             this.quickbypass = config.quickbypass ? config.quickbypass : false;
-            this.processingBypass = false;
+           
 
         } else if (this.accessoryType == "keys") {
             // These are push button key, upon processing request will return to off.
@@ -491,7 +480,7 @@ class EnvisalinkAccessory {
         } else {
             this.log.warn("Alarm not ready, igorning request.");
             var partitionService = this.getServices()[0];
-            partitionService.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(Characteristic.SecuritySystemCurrentState.DISARMED);
+            partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,Characteristic.SecuritySystemCurrentState.DISARMED);
             callback(null, Characteristic.SecuritySystemCurrentState.DISARMED);
         }
     }
@@ -502,10 +491,11 @@ class EnvisalinkAccessory {
             this.log.warn("Alarm request did not return successful in allocated time. Current alarm status is ", this.status);
             this.processingAlarm = false;
             this.getAlarmState(function (nothing, resultat) {
-                partitionService.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(resultat);
+                partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,resultat);
             });
         } else {
-            partitionService.getCharacteristic(Characteristic.SecuritySystemCurrentState).updateValue(this.lastTargetState);
+            partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,this.lastTargetState);
+            
         }
     }
 
@@ -537,7 +527,7 @@ class EnvisalinkAccessory {
 
     }
 
-    getCO2Status(callback) {
+    getCOStatus(callback) {
 
         if (this.status == "OPEN") {
             callback(null, Characteristic.CarbonMonoxideDetected.CO_LEVELS_ABNORMAL);
@@ -600,7 +590,7 @@ class EnvisalinkAccessory {
                         this.log.warn("No zones defined for Bypassing.");
                         this.processingBypass = false;
                         this.lastTargetState = false;
-                        setTimeout(function () {switchService.getCharacteristic(Characteristic.On).updateValue(false)},500);
+                        setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,false)},500);
                         callback(null, false);
                         break;
                     }
@@ -628,7 +618,7 @@ class EnvisalinkAccessory {
                 }
                 this.processingBypass = false;
                 this.lastTargetState = bValue;
-                setTimeout(function () {switchService.getCharacteristic(Characteristic.On).updateValue(bValue)},500);
+                setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,bValue)},500);
                 callback(null, bValue);
                 break;
             case "READY_BYPASS":
@@ -645,13 +635,13 @@ class EnvisalinkAccessory {
                 this.log("Alarm is ", this.status, " no action required. Ignoring Bypass request.");
                 this.lastTargetState = false;
                 // Turn off switch, since no action was completed.
-                setTimeout(function () {switchService.getCharacteristic(Characteristic.On).updateValue(false)},500);
+                setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,false)},500);
                 callback(null, false);
                 break;
             default:
                 // Nothing to process, return to previous state, 
                 this.lastTargetState = !value;
-                setTimeout(function () {switchService.getCharacteristic(Characteristic.On).updateValue(!value)},500);
+                setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,!value)},500);
                 callback(null, !value);
                 break;
 
@@ -671,7 +661,7 @@ class EnvisalinkAccessory {
             this.log("Sending code ", this.functionkeycode);
             var command = this.functionkeycode;
             alarm.sendCommand(command);
-            setTimeout(function () {switchService.getCharacteristic(Characteristic.On).updateValue(false)},500);
+            setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,false)},500);
         }
         callback(null, false);
     }

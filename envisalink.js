@@ -1,8 +1,6 @@
 // 'use strict'
-const { ENGINE_METHOD_DIGESTS } = require('constants');
 var net = require('net')
-var EventEmitter = require('events').EventEmitter;
-var util = require('util')
+var EventEmitter = require('events');
 var tpidefs = require('./tpi.js')
 var ciddefs = require('./cid.js')
 var utilfunc = require('./helper.js');
@@ -12,10 +10,10 @@ var activeZoneTimeOut = undefined;
 
 
 
-class EnvisaLink {
+class EnvisaLink extends EventEmitter {
 
   constructor(log, config) {
-    EventEmitter.call(this);
+    super();
     this.log = log;
     this.options = {
       host: config.host,
@@ -118,7 +116,7 @@ class EnvisaLink {
           } else {
             var command_str = datapacket.match(/^%(.+)\$/); // pull out everything between the % and $
             if (command_str == null) {
-              _this.log.error("Command format invalid! command='" + datapacket + "'");
+              _this.log.warn("Envisalink data steam format invalid! : '" + datapacket + "'");
             } else {
               var command_array = command_str[1].split(','); // Element number 1 should be what was matched between the () in the above match. so everything between % and $
               var command = command_array[0]; // The first part is the command.
@@ -593,6 +591,4 @@ class EnvisaLink {
     }
   }
 }
-
-util.inherits(EnvisaLink, EventEmitter)
 module.exports = EnvisaLink
