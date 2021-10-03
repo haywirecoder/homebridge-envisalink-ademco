@@ -33,11 +33,11 @@ Please Note: I recommended not using the master user or installer code in the co
 | heartbeatInterval | *(optional)* Heartbeat interval to determine if envisalink sessions has hang. Default is 30 second. |
 | commandTimeOut    | *(optional)* Time-out value for alarm command to return provided in second. Default is 10 second.          |
 | autoreconnect     | *(optional)* Automatic reconnect to server if network channel is broken. Default is true.                                        |
-| chimeToggle     | *(optional)*  Create a switch to enable and disabled Chime bell. Default is false.                         |
+| chimeToggle     | *(optional)*  Create a switch to enable and disabled Chime bell. Panel only allow change bell status when alarm is not armed. Default is false.                         |
 | maintenanceMode     | *(optional)*  Disable communication with Envisakit module. **Note:** This will disable all updates.                        |
-| **zones**         | *(Optional)* List of zones to appear and monitor in homekit                                                              |
+| **zones**         | *(Optional)* List of zones to appear and monitor in Homekit                                                              |
 | **bypass**        | *(Optional)* Creates a bypass control (a switch) to bypass zones which are open (faulted)                                |
-|                   | By design the bypass switch can only bypass zone that are being monitored in homekit and the zone entry "bypassenable" set to true.    |
+|                   | By design the bypass switch can only bypass zone that are being monitored in Homekit and the zone entry "bypassenable" set to true.    |
 |                   | "quickbypass" Can be used to bypass all fault zones. This feature must to be enabled in ademco panel *(refer to panel guide)*.                               |
 | **keys**          | *(Optional)* Create controls (switches) to replicate the special function keys on Ademco keypad                           |
 
@@ -76,7 +76,7 @@ Example configuration is below.
     "host": "192.168.YYY.XXX",
     "deviceType": "Honeywell Vista",
     "password": "---envisalink password (default is user)---",
-    "pin": "---panel pin for disarming---",
+    "pin": "---panel pin for arming/disarming---",
     "partitions": [
     {
         "name": "House"
@@ -92,7 +92,8 @@ Example configuration is below.
         {
         "name": "Master Bedroom Window",
         "sensorType": "window",
-        "partition": 1
+        "partition": 1,
+        "bypassEnabled": true
         }
     ],
     "bypass": [
