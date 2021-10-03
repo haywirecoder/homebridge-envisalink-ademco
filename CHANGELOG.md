@@ -1,15 +1,19 @@
 # Change Log
 
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
-# v1.1.25 (2021-02-05)
+# v1.1.25 (2021-10-05)
+## Enhancements
+# Add Support for Chime On/Off switch in HomeKit.
+# Add option to disabled communication with Envisakit module
+
 ## Changes
 * Correct "Characteristic not in required or optional characteristic section for service Switch" warning.
 * Envisalink data stream format error have been changed from an "Error" to a "Warning". 
-* General code maintaince.
+* General code cleanup and optimization.
 
 # v1.1.24 (2020-02-25)
 ## Changes
-* Documentions and tag mis-match. CO2 configuration tag replace with CO to algin with standard. Manual correction will be needed in the configuration file for those using Carbon Monoxide Detector type from v1.1.23 (e.g. Replace C02 with CO).
+* Documentions and tag mis-match. CO2 config guration tag replace with CO to algin with standard. Manual correction will be needed in the configuration file for those using Carbon Monoxide Detector type from v1.1.23 (e.g. Replace C02 with CO).
 
 # v1.1.23 (2021-02-05)
 ## Enhancements

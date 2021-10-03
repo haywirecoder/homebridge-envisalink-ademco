@@ -24,15 +24,17 @@ Please Note: I recommended not using the master user or installer code in the co
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | host              | Envisalink server host IP Address.  *Note:* Plug-in and homebridge will shutdown if not configured.                      |
 | port              | Envisalink server Port address. Default is 4025.                                                                         |
-| deviceType        | Device Model. Default is "Honeywell Vista"                                                                               |
+| deviceType        | Device Model. Default is "Honeywell Vista".                                                                              |
 | password          | Envisalink server password. Default is "user".                                                                           |
 | pin               | Your local alarm PIN. Recommend creating a seperate alarm user for this plug-in. Default pin is 1234                     |
-| **partitions**    | List of partition to monitor in homekit                                                                                  |
+| **partitions**    | List of partition to monitor in Homekit.                                                                                  |
 | openZoneTimeout   | *(optional)* Time out value for zone provided in second. Default is 30 second.                             |
 | sessionsWatcher | *(optional)*  Automatic disconnect and recreate a new session if module detect a hang session. This is done by periodically (i.e. heartbeatInterval) checking the last updates from the virtual keypad. Autreconnect value must also be set to true for this option to be valid. Default is true. |
 | heartbeatInterval | *(optional)* Heartbeat interval to determine if envisalink sessions has hang. Default is 30 second. |
 | commandTimeOut    | *(optional)* Time-out value for alarm command to return provided in second. Default is 10 second.          |
 | autoreconnect     | *(optional)* Automatic reconnect to server if network channel is broken. Default is true.                                        |
+| chimeToggle     | *(optional)*  Create a switch to enable and disabled Chime bell. Default is false.                         |
+| maintenanceMode     | *(optional)*  Disable communication with Envisakit module. **Note:** This will disable all updates.                        |
 | **zones**         | *(Optional)* List of zones to appear and monitor in homekit                                                              |
 | **bypass**        | *(Optional)* Creates a bypass control (a switch) to bypass zones which are open (faulted)                                |
 |                   | By design the bypass switch can only bypass zone that are being monitored in homekit and the zone entry "bypassenable" set to true.    |

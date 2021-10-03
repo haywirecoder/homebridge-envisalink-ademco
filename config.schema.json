@@ -83,6 +83,18 @@
         "default": true,
         "description": "Enable session watcher for drop connections. The heartbeat value will determine the internal to checking for connection."
       },
+      "chimeToggle": {
+        "title": "Display a switch to toggle chime sound On/Off",
+        "type": "boolean",
+        "default": false,
+        "description": "Create a switch in HomeKit to allow turning On/Off of the chime sound on the Ademco panel."
+      },
+      "maintenanceMode": {
+        "title": "Disabled connection to Envisalink module for maintenance. <b>WARNING:</b> This will diasable all updates and operations.",
+        "type": "boolean",
+        "default": false,
+        "description": "Place the plug-in in maintenance mode, to allow testing and/or replacement of the Envisalink module without impacting previous automations or filling logs with error messages."
+      },
       "partitions": {
         "description": "List of partitions",
         "type": "array",
@@ -101,7 +113,7 @@
         }
       },
       "zones": {
-        "description": "Alarm zones to monitor, manage and display in Homekit",
+        "description": "Alarm zones to monitor, manage and display in HomeKit",
         "type": "array",
         "maxItems": 48,
         "items": {
@@ -176,13 +188,13 @@
               "title": "Zone Bypass Enabled",
               "type": "boolean",
               "required": false,
-              "description": "Allow this zone to be Bypass by Homekit."
+              "description": "Allow this zone to be Bypass by HomeKit."
             }
           }
         }
       },
       "bypass": {
-        "description": "Create switch for bypassing zones that are being monitored.",
+        "description": "Display a switch for bypassing zones that are being monitored.",
         "type": "array",
         "maxItems": 1,
         "items": {
@@ -203,7 +215,7 @@
         }
       },
       "keys": {
-        "description": "Speed Keypad keys",
+        "description": "Display Speed Keypad keys",
         "type": "array",
         "maxItems": 4,
         "items": {
@@ -303,6 +315,7 @@
       "expandable": true,
       "expanded": false,
       "items": [
+        "chimeToggle",
         "openZoneTimeout",
         "sessionwatcher",
         "heartbeatInterval",
@@ -327,7 +340,8 @@
             "keys[].name",
             "keys[].panelfunction"
           ]
-        }
+        },
+        "maintenanceMode"
       ]
     }
   ]
