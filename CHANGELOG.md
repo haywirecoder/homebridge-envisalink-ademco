@@ -3,8 +3,8 @@
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
 # v1.1.25 (2021-10-05)
 ## Enhancements
-# Add Support for Chime On/Off switch in HomeKit.
-# Add option to disabled communication with Envisakit module
+* Add Support for Chime On/Off switch in HomeKit.
+* Add option to disabled communication with Envisakit module
 
 ## Changes
 * Correct "Characteristic not in required or optional characteristic section for service Switch" warning.
