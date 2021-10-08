@@ -151,9 +151,9 @@ class EnvisalinkPlatform {
             funckey.SerialNumber = "Envisalink.KeyFunction." + i;
             funckey.partition = 1;
             if (funckey.name != undefined) {
-            var keycode = funckey.panelfunction ? funckey.panelfunction : String.fromCharCode(i + 65);
-            var accessory = new EnvisalinkAccessory(this.log, "keys", funckey, funckey.partition, keycode, []);
-            this.platformPartitionAccessories.push(accessory);
+                var keycode = funckey.panelfunction ? funckey.panelfunction : String.fromCharCode(i + 65);
+                var accessory = new EnvisalinkAccessory(this.log, "keys", funckey, funckey.partition, keycode, []);
+                this.platformPartitionAccessories.push(accessory);
             }
             else {
                 this.log.error("Misconfigured Function key defination " + funckey.name + " igoring.");
@@ -181,7 +181,7 @@ class EnvisalinkPlatform {
         var accessorybypassIndex = this.platformPartitionAccessoryMap['b.' + Number(data.partition)];
         var accessoryChimeIndex = this.platformPartitionAccessoryMap['c.' + Number(data.partition)];
         // partition update information
-        if ((data.partition) && (partition.processingAlarm == false) && (partition.accessoryType == "partition")) {
+        if ((partition.processingAlarm == false) && (partition.accessoryType == "partition")) {
             if (partition.status != data.mode) {
                 partition.status = data.mode;
                 this.log.debug("Set system status on accessory " + partition.name + ' to ' + partition.status);
@@ -259,37 +259,35 @@ class EnvisalinkPlatform {
                     this.log.debug("Set status on accessory " + accessory.name + ' to ' + JSON.stringify(accessory.status));
 
                     var accservice = (accessory.getServices())[0];
-
                     if (accservice) {
-                        if (accessory.accessoryType == "motion" || accessory.accessoryType == "glass") {
-
-                            accessory.getMotionStatus(function (nothing, returnValue) {
-                                accservice.getCharacteristic(Characteristic.MotionDetected).setValue(returnValue);
-                            });
-
-                        } else if (accessory.accessoryType == "door" || accessory.accessoryType == "window") {
-
-                            accessory.getContactSensorState(function (nothing, returnValue) {
-                                accservice.getCharacteristic(Characteristic.ContactSensorState).setValue(returnValue);
-                            });
-
-                        } else if (accessory.accessoryType == "leak") {
-
-                            accessory.getLeakStatus(function (nothing, returnValue) {
-                                accservice.getCharacteristic(Characteristic.LeakDetected).setValue(returnValue);
-                            });
-
-                        } else if (accessory.accessoryType == "smoke") {
-
-                            accessory.getSmokeStatus(function (nothing, returnValue) {
-                                accservice.getCharacteristic(Characteristic.SmokeDetected).setValue(returnValue);
-                            });
-                        }
-                        else if (accessory.accessoryType == "co") {
-
-                            accessory.getCOStatus(function (nothing, returnValue) {
-                                accservice.getCharacteristic(Characteristic.CarbonMonoxideDetected).setValue(returnValue);
-                            });
+                        switch(accessory.accessoryType) {
+                            case "motion":
+                            case "glass":
+                                accessory.getMotionStatus(function (nothing, returnValue) {
+                                    accservice.getCharacteristic(Characteristic.MotionDetected).setValue(returnValue);
+                                });
+                            break;
+                            case "door":
+                            case "window":
+                                accessory.getContactSensorState(function (nothing, returnValue) {
+                                    accservice.getCharacteristic(Characteristic.ContactSensorState).setValue(returnValue);
+                                });
+                            break;
+                            case "leak":
+                                accessory.getLeakStatus(function (nothing, returnValue) {
+                                    accservice.getCharacteristic(Characteristic.LeakDetected).setValue(returnValue);
+                                });
+                            break;
+                            case "smoke":
+                                accessory.getSmokeStatus(function (nothing, returnValue) {
+                                    accservice.getCharacteristic(Characteristic.SmokeDetected).setValue(returnValue);
+                                });
+                            break;
+                            case "co":
+                                accessory.getCOStatus(function (nothing, returnValue) {
+                                    accservice.getCharacteristic(Characteristic.CarbonMonoxideDetected).setValue(returnValue);
+                                });
+                            break;
                         }
                     }
                 }
@@ -431,7 +429,7 @@ class EnvisalinkAccessory {
             break;
         
             case "chime":
-                // These are push button key, upon processing request will return to off.
+                // These are push button key, upon processing request will return current state of chime report by keypad event.
                 var service = new Service.Switch(this.name);
                 service
                     .getCharacteristic(Characteristic.On)
@@ -503,6 +501,8 @@ class EnvisalinkAccessory {
                 break;
                 case 'READY':
                 case 'READY_BYPASS':
+                case 'NOT_READY':
+                case 'NOT_READY_TROUBLE':
                     status = Characteristic.SecuritySystemCurrentState.DISARMED;
                 break;
             }
