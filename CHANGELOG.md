@@ -1,15 +1,16 @@
 # Change Log
 
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
-# v1.1.25 (2021-10-05)
+
+# v1.1.26 (2021-10-05)
 ## Enhancements
-* Add Support for Chime On/Off switch in HomeKit.
-* Add option to disabled communication with Envisakit module
+* Add Support for Chime On/Off switch in HomeKit (issue #16).
+* Add option to place plug-in in maintenance mode. This disabled communication with Envisakit module, allowing for maintenance of the module without losing configuration and/or filling up the Homebridge logs with errors/warnings.
 
 ## Changes
-* Correct "Characteristic not in required or optional characteristic section for service Switch" warning.
-* Envisalink data stream format error have been changed from an "Error" to a "Warning". 
-* General code cleanup and optimization.
+* Correct "Characteristic not in required or optional characteristic section for service Switch" warning (issue #14).
+* Envisalink data stream format error have been changed from an "Error" to a "Warning".
+* Phase 1 code cleanup and optimization.
 
 # v1.1.24 (2020-02-25)
 ## Changes
