@@ -85,7 +85,7 @@ class EnvisalinkPlatform {
         }
     }
 
-    // Create associates in Homekit based on devices in flo account
+    // Create associates in Homekit based on configuration file
     refreshAccessories() {
         this.log("Configuring Envisalink Ademco platform.");
         // Process partition data
