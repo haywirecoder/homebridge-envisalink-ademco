@@ -64,6 +64,7 @@ class EnvisalinkPlatform {
             this.refreshAccessories();
 
             // Provide status on configurations completed
+            this.log("Partition configured: ", this.partitions.length);
             if (this.zones.length > 0) this.log("Zone accessories configured: ", this.zones.length);
             if (this.bypass.length > 0) this.log("Bypass accessories configured.");
             if (this.keys.length > 0) this.log("Speed keys accessories configured.");
@@ -91,6 +92,7 @@ class EnvisalinkPlatform {
         // Process partition data
         for (var i = 0; i < this.partitions.length; i++) {
             var partition = this.partitions[i];
+            var partitionNumber = this.partitions[i].partitionNumber ? this.partitions[i].partitionNumber : (i+1);
             partition.pin = this.config.pin ? this.config.pin : "1234"
             if(isNaN(partition.pin)) {
                 this.log.error("Ademco Pin must be a number. Please update configuration for the Envisakit Ademco plug-in.");
@@ -101,9 +103,10 @@ class EnvisalinkPlatform {
                 this.log.warn("Ademco PIN are normally lenght of 4 digits. The provided PIN lenght may result in unusual behaviour.");
             }
             partition.Model = this.config.deviceType + " Keypad";
-            partition.SerialNumber = "Envisalink." + (i + 1);
-            var accessory = new EnvisalinkAccessory(this.log, "partition", partition, i + 1, []);
+            partition.SerialNumber = "Envisalink." + partitionNumber;
+            var accessory = new EnvisalinkAccessory(this.log, "partition", partition, partitionNumber, []);
             this.platformPartitionAccessories.push(accessory);
+            this.log.debug("Partition number ", partitionNumber , " configured.");
         }
 
         //process zone data
@@ -120,6 +123,7 @@ class EnvisalinkPlatform {
                 var accessory = new EnvisalinkAccessory(this.log, zone.sensorType, zone, zone.partition, zoneNum, []);
                 var accessoryIndex = this.platformZoneAccessories.push(accessory) - 1;
                 this.platformZoneAccessoryMap['z.' + zoneNum] = accessoryIndex;
+                this.log.debug("Zone number ", zoneNum , " configured.");
             } else {
                 this.log.error("Misconfigured Zone defination " + zone.name + ". Entry - " + i + " igoring.");
             }
