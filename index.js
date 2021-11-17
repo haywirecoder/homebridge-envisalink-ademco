@@ -675,7 +675,7 @@ class EnvisalinkAccessory {
                             this.log.debug("Reviewing Zone", zoneinfo.name + ", " + zoneinfo.status + ", " + zoneinfo.bypassEnabled);
                             if ((zoneinfo.status == "OPEN") && (zoneinfo.bypassEnabled)) {
                                 this.log("Bypassing", zoneinfo.name);
-                                command = this.pin + tpidefs.alarmcommand.bypass + zoneinfo.zone;
+                                command = this.pin + tpidefs.alarmcommand.bypass + (("0" + zoneinfo.zone).slice(-2));
                                 // don't over load the command buffer, waiting 500 ms before requesting another bypass request
                                 if (!isMaintenanceMode) alarm.sendCommand(command);
                                 utilfunc.sleep(500);
