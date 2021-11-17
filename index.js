@@ -43,7 +43,8 @@ class EnvisalinkPlatform {
         } else {
 
             // Read configuration file and set default if needed.
-            this.deviceType = config.deviceType ? config.deviceType : "Honeywell Vista";
+            this.deviceType = config.deviceType ? config.deviceType : "10P";
+            this.deviceDescription = "Honeywell VISTA-" + this.deviceType;
             this.partitions = config.partitions ? config.partitions : [{
                 name: 'House'
             }];
@@ -61,6 +62,7 @@ class EnvisalinkPlatform {
             isMaintenanceMode = config.maintenanceMode ? config.maintenanceMode: false
             
             // Build device list
+            this.log("Configuring", this.deviceDescription, "for Homekit...");
             this.refreshAccessories();
 
             // Provide status on configurations completed
@@ -88,7 +90,6 @@ class EnvisalinkPlatform {
 
     // Create associates in Homekit based on configuration file
     refreshAccessories() {
-        this.log("Configuring Envisalink Ademco platform.");
         // Process partition data
         for (var i = 0; i < this.partitions.length; i++) {
             var partition = this.partitions[i];
@@ -102,7 +103,8 @@ class EnvisalinkPlatform {
             if(partition.pin.length != 4) {
                 this.log.warn("Ademco PIN are normally lenght of 4 digits. The provided PIN lenght may result in unusual behaviour.");
             }
-            partition.Model = this.config.deviceType + " Keypad";
+            partition.Model = this.config.deviceDescription + " Keypad";
+            partition.deviceType =  this.deviceType;
             partition.SerialNumber = "Envisalink." + partitionNumber;
             var accessory = new EnvisalinkAccessory(this.log, "partition", partition, partitionNumber, []);
             var partitionIndex =  this.platformPartitionAccessories.push(accessory) - 1;
@@ -119,7 +121,8 @@ class EnvisalinkPlatform {
                 if (zoneNum > maxZone) {
                     maxZone = zoneNum;
                 }
-                zone.Model = this.config.deviceType + " " + zone.sensorType.charAt(0).toUpperCase() + zone.sensorType.slice(1) + " sensor";
+                zone.Model = this.config.deviceDescription + " " + zone.sensorType.charAt(0).toUpperCase() + zone.sensorType.slice(1) + " sensor";
+                zone.deviceType =  this.deviceType;
                 zone.SerialNumber = "Envisalink." + zone.partition + "." + zoneNum;
                 var accessory = new EnvisalinkAccessory(this.log, zone.sensorType, zone, zone.partition, zoneNum, []);
                 var accessoryIndex = this.platformZoneAccessories.push(accessory) - 1;
@@ -134,7 +137,8 @@ class EnvisalinkPlatform {
         if (this.bypass.length > 0) {
             var bypassswitch = this.bypass[0];
             bypassswitch.pin = this.config.pin ? this.config.pin : 1234;
-            bypassswitch.Model = this.config.deviceType + " Keypad";
+            bypassswitch.Model = this.config.deviceDescription + " Keypad";
+            bypassswitch.deviceType =  this.deviceType;
             bypassswitch.SerialNumber = "Envisalink.ByPass.1";
             bypassswitch.partition = 1;
             if (bypassswitch.name != undefined) {
@@ -146,13 +150,14 @@ class EnvisalinkPlatform {
             else{
                 this.log.error("Misconfigured Bypass switch defination " + bypassswitch.name + " igoring.");
             }
-
         }
 
         // Creating special function key (pre-program)
         for (var i = 0; i < this.keys.length; i++) {
             var funckey = this.keys[i];
-            funckey.Model = this.config.deviceType + " Keypad";
+            funckey.pin = this.config.pin ? this.config.pin : 1234;
+            funckey.Model = this.config.deviceDescription + " Keypad";
+            funckey.deviceType =  this.deviceType;
             funckey.SerialNumber = "Envisalink.KeyFunction." + i;
             funckey.partition = 1;
             if (funckey.name != undefined) {
@@ -169,7 +174,8 @@ class EnvisalinkPlatform {
         if (this.chime ) {
         var chimeswitch = {};
         chimeswitch.pin = this.config.pin ? this.config.pin : 1234;
-        chimeswitch.Model = this.config.deviceType + " Keypad";
+        chimeswitch.Model = this.config.deviceDescription + " Keypad";
+        chimeswitch.deviceType =  this.deviceType;
         chimeswitch.SerialNumber = "Envisalink.Chime.1";
         chimeswitch.name  = "Chime";
         chimeswitch.partition = 1;
@@ -184,19 +190,24 @@ class EnvisalinkPlatform {
         this.log.debug('System status changed to: ', data.mode);
         //var partition = this.platformPartitionAccessories[Number(data.partition) - 1];
 
-        var partition = this.platformPartitionAccessories[this.platformPartitionAccessoryMap['p.' + Number(data.partition)]];
+        var partitionIndex = this.platformPartitionAccessoryMap['p.' + Number(data.partition)];
         var accessorybypassIndex = this.platformPartitionAccessoryMap['b.' + Number(data.partition)];
         var accessoryChimeIndex = this.platformPartitionAccessoryMap['c.' + Number(data.partition)];
-        // partition update information
-        if ((partition.processingAlarm == false) && (partition.accessoryType == "partition")) {
-            if (partition.status != data.mode) {
-                partition.status = data.mode;
-                this.log.debug("Set system status on accessory " + partition.name + ' to ' + partition.status);
-                var partitionService = (partition.getServices())[0];
-                if (partitionService) {
-                    partition.getAlarmState(function (nothing, returnValue) {
-                                partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,returnValue)
-                        });
+        if (partitionIndex !== undefined ) {
+            var partition = this.platformPartitionAccessories[partitionIndex];
+            // partition update information
+            if (partition) {
+                if ((partition.processingAlarm == false) && (partition.accessoryType == "partition")) {
+                    if (partition.status != data.mode) {
+                        partition.status = data.mode;
+                        this.log.debug("Set system status on accessory " + partition.name + ' to ' + partition.status);
+                        var partitionService = (partition.getServices())[0];
+                        if (partitionService) {
+                            partition.getAlarmState(function (nothing, returnValue) {
+                                    partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,returnValue)
+                            });
+                        }
+                    }
                 }
             }
         }
@@ -235,10 +246,11 @@ class EnvisalinkPlatform {
     partitionUpdate(data) {
         this.log.debug('Partition status changed to: ', data.mode);
         // var partition = this.platformPartitionAccessories[Number(data.partition) - 1];
-        var partition = this.platformPartitionAccessories[this.platformPartitionAccessoryMap['p.' + Number(data.partition)]];
-
-        if ((data.partition) && (partition.partition == data.partition)) {
-               partition.status = data.mode;
+        var partitionIndex = this.platformPartitionAccessoryMap['p.' + Number(data.partition)];
+        if (partitionIndex !== undefined ) {
+            var partition = this.platformPartitionAccessories[partitionIndex];
+            if (partition) {
+                partition.status = data.mode;
                 this.log.debug("Set system status on accessory " + partition.name + ' to ' + partition.status);
                 var partitionService = (partition.getServices())[0];
                 if (partitionService) {
@@ -253,6 +265,7 @@ class EnvisalinkPlatform {
                     armingTimeOut = undefined;
                     partition.proccessAlarmTimer();
                 }
+            }
         }
     }
 
@@ -325,6 +338,7 @@ class EnvisalinkAccessory {
         this.accessoryType = accessoryType;
         this.partition = partition;
         this.pin = config.pin ? config.pin : 1234;
+        this.deviceType = config.deviceType;
         this.zone = code;
         this.status = null;
         this.processingAlarm = false;
@@ -675,7 +689,11 @@ class EnvisalinkAccessory {
                             this.log.debug("Reviewing Zone", zoneinfo.name + ", " + zoneinfo.status + ", " + zoneinfo.bypassEnabled);
                             if ((zoneinfo.status == "OPEN") && (zoneinfo.bypassEnabled)) {
                                 this.log("Bypassing", zoneinfo.name);
-                                command = this.pin + tpidefs.alarmcommand.bypass + (("0" + zoneinfo.zone).slice(-2));
+                                // Require leading zero for zone numbers which are not two or three digit (128 Panel)
+                                if (this.deviceType == "128FBP") 
+                                    command = this.pin + tpidefs.alarmcommand.bypass + (("00" + zoneinfo.zone).slice(-3));
+                                else
+                                    command = this.pin + tpidefs.alarmcommand.bypass + (("0" + zoneinfo.zone).slice(-2));
                                 // don't over load the command buffer, waiting 500 ms before requesting another bypass request
                                 if (!isMaintenanceMode) alarm.sendCommand(command);
                                 utilfunc.sleep(500);
