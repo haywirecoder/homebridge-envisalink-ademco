@@ -525,16 +525,16 @@ class EnvisalinkAccessory {
             if (this.processingAlarm == false) {
                 if (state == Characteristic.SecuritySystemCurrentState.DISARMED) {
                     this.log("Disarming alarm with PIN.  [Partition ", this.partition, "]");
-                    command = this.pin + tpidefs.alarmcommand.disarm + this.partition;
+                    command = this.pin + tpidefs.alarmcommand.disarm;
                 } else if (state == Characteristic.SecuritySystemCurrentState.STAY_ARM) {
                     this.log("Arming alarm to Stay (Home) [Partition ", this.partition, "]");
-                    command = this.pin + tpidefs.alarmcommand.stay + this.partition;
+                    command = this.pin + tpidefs.alarmcommand.stay;
                 } else if (state == Characteristic.SecuritySystemCurrentState.NIGHT_ARM) {
                     this.log("Arming alarm to Night. [Partition ", this.partition, "]");
-                    command = this.pin + tpidefs.alarmcommand.night + this.partition;
+                    command = this.pin + tpidefs.alarmcommand.night;
                 } else if (state == Characteristic.SecuritySystemCurrentState.AWAY_ARM) {
                     this.log("Arming alarm to Away. [Partition ", this.partition, "]");
-                    command = this.pin + tpidefs.alarmcommand.away + this.partition;
+                    command = this.pin + tpidefs.alarmcommand.away;
                 }
 
                 if (command) {
