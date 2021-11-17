@@ -105,7 +105,8 @@ class EnvisalinkPlatform {
             partition.Model = this.config.deviceType + " Keypad";
             partition.SerialNumber = "Envisalink." + partitionNumber;
             var accessory = new EnvisalinkAccessory(this.log, "partition", partition, partitionNumber, []);
-            this.platformPartitionAccessories.push(accessory);
+            var partitionIndex =  this.platformPartitionAccessories.push(accessory) - 1;
+            this.platformPartitionAccessoryMap['p.' + partitionNumber] = partitionIndex;
             this.log.debug("Partition number ", partitionNumber , " configured.");
         }
 
@@ -114,7 +115,7 @@ class EnvisalinkPlatform {
         for (var i = 0; i < this.zones.length; i++) {
             var zone = this.zones[i];
             if ((zone.sensorType == "motion" || zone.sensorType == "glass" || zone.sensorType == "window" || zone.sensorType == "door" || zone.sensorType == "leak" || zone.sensorType == "smoke" || zone.sensorType == "co") && (zone.name != undefined)){
-                var zoneNum = zone.zoneNumber ? zone.zoneNumber : (i + 1);
+                var zoneNum = zone.zoneNumber ? zone.zoneNumber : (i+1);
                 if (zoneNum > maxZone) {
                     maxZone = zoneNum;
                 }
@@ -139,7 +140,7 @@ class EnvisalinkPlatform {
             if (bypassswitch.name != undefined) {
                 // Pass the list of zone to bypass control and speed to the first partition
                 var accessory = new EnvisalinkAccessory(this.log, "bypass", bypassswitch, bypassswitch.partition, 206, this.platformZoneAccessories);
-                var accessoryIndex = this.platformPartitionAccessories.push(accessory);
+                var accessoryIndex = this.platformPartitionAccessories.push(accessory) - 1;
                 this.platformPartitionAccessoryMap['b.' + bypassswitch.partition] = accessoryIndex;
             }
             else{
@@ -174,14 +175,16 @@ class EnvisalinkPlatform {
         chimeswitch.partition = 1;
         // Create Chime Toogle button
         var accessory = new EnvisalinkAccessory(this.log, "chime", chimeswitch, chimeswitch.partition , 209, []);
-        var accessoryIndex = this.platformPartitionAccessories.push(accessory);
+        var accessoryIndex = this.platformPartitionAccessories.push(accessory) - 1;
         this.platformPartitionAccessoryMap['c.' + chimeswitch.partition] = accessoryIndex;
         }
     }
 
     systemUpdate(data) {
         this.log.debug('System status changed to: ', data.mode);
-        var partition = this.platformPartitionAccessories[Number(data.partition) - 1];
+        //var partition = this.platformPartitionAccessories[Number(data.partition) - 1];
+
+        var partition = this.platformPartitionAccessories[this.platformPartitionAccessoryMap['p.' + Number(data.partition)]];
         var accessorybypassIndex = this.platformPartitionAccessoryMap['b.' + Number(data.partition)];
         var accessoryChimeIndex = this.platformPartitionAccessoryMap['c.' + Number(data.partition)];
         // partition update information
@@ -199,7 +202,7 @@ class EnvisalinkPlatform {
         }
          // if chime enable update status
          if (accessoryChimeIndex !== undefined) {
-            var accessoryChime = this.platformPartitionAccessories[accessoryChimeIndex - 1];
+            var accessoryChime = this.platformPartitionAccessories[accessoryChimeIndex];
             if (accessoryChime) {
                 accessoryChime.status = data.keypadledstatus.chime;
                 this.log.debug("Set status on accessory Chime " + accessoryChime.status);
@@ -214,7 +217,7 @@ class EnvisalinkPlatform {
 
         // if bypass enable update status
         if (accessorybypassIndex !== undefined) {
-            var accessoryBypass = this.platformPartitionAccessories[accessorybypassIndex - 1];
+            var accessoryBypass = this.platformPartitionAccessories[accessorybypassIndex];
             if (accessoryBypass) {
                 accessoryBypass.status = data.mode;
                 this.log.debug("Set status on accessory " + accessoryBypass.name + ' to ' + accessoryBypass.status);
@@ -231,7 +234,8 @@ class EnvisalinkPlatform {
 
     partitionUpdate(data) {
         this.log.debug('Partition status changed to: ', data.mode);
-        var partition = this.platformPartitionAccessories[Number(data.partition) - 1];
+        // var partition = this.platformPartitionAccessories[Number(data.partition) - 1];
+        var partition = this.platformPartitionAccessories[this.platformPartitionAccessoryMap['p.' + Number(data.partition)]];
 
         if ((data.partition) && (partition.partition == data.partition)) {
                partition.status = data.mode;
@@ -520,18 +524,16 @@ class EnvisalinkAccessory {
         if (currentState != "NOT_READY") {
             if (this.processingAlarm == false) {
                 if (state == Characteristic.SecuritySystemCurrentState.DISARMED) {
-                    this.log("Disarming alarm with PIN.");
+                    this.log("Disarming alarm with PIN.  [Partition ", this.partition, "]");
                     command = this.pin + tpidefs.alarmcommand.disarm + this.partition;
-
                 } else if (state == Characteristic.SecuritySystemCurrentState.STAY_ARM) {
-                    this.log("Arming alarm to Stay (Home).");
+                    this.log("Arming alarm to Stay (Home) [Partition ", this.partition, "]");
                     command = this.pin + tpidefs.alarmcommand.stay + this.partition;
                 } else if (state == Characteristic.SecuritySystemCurrentState.NIGHT_ARM) {
-                    this.log("Arming alarm to Night.");
+                    this.log("Arming alarm to Night. [Partition ", this.partition, "]");
                     command = this.pin + tpidefs.alarmcommand.night + this.partition;
-
                 } else if (state == Characteristic.SecuritySystemCurrentState.AWAY_ARM) {
-                    this.log("Arming alarm to Away.");
+                    this.log("Arming alarm to Away. [Partition ", this.partition, "]");
                     command = this.pin + tpidefs.alarmcommand.away + this.partition;
                 }
 
