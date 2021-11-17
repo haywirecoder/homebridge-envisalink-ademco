@@ -28,7 +28,32 @@
         "title": "Device Model",
         "type": "string",
         "required": true,
-        "default": "Honeywell Vista"
+        "default": "Honeywell VISTA-10P",
+        "oneOf": [{
+          "title": "Honeywell VISTA-10P",
+          "enum": [
+            "10P"
+          ]
+        },
+        {
+          "title": "Honeywell VISTA-15P",
+          "enum": [
+            "15P"
+          ]
+        },
+        {
+          "title": "Honeywell VISTA-20P",
+          "enum": [
+            "20P"
+          ]
+        },
+        {
+          "title": "Honeywell VISTA-128FBP",
+          "enum": [
+            "128FBP"
+          ]
+        }
+      ]
       },
       "password": {
         "title": "Password",
@@ -71,13 +96,13 @@
         "minimum": 5,
         "maximum": 30
       },
-      "autoreconnect": {
+      "autoReonnect": {
         "title": "Automatic re-connect to Envisakit server",
         "type": "boolean",
         "default": true,
         "description": "Automatic reconnect to Envisakit server, if session is terminated."
       },
-      "sessionwatcher": {
+      "sessionWatcher": {
         "title": "Enable session watcher for Envisakit server",
         "type": "boolean",
         "default": true,
@@ -104,10 +129,15 @@
           "type": "object",
           "properties": {
             "name": {
-              "title": "Partition name",
+              "title": "Name",
               "required": true,
               "type": "string",
               "default": "House"
+            },
+            "number": {
+              "title": "Number",
+              "required": false,
+              "type": "string"
             }
           }
         }
@@ -287,7 +317,8 @@
         "type": "array",
         "orderable": false,
         "items": [
-          "partitions[].name"
+          "partitions[].name",
+          "partitions[].number"
         ]
       }]
     },
