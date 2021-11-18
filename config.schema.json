@@ -134,7 +134,7 @@
               "type": "string",
               "default": "House"
             },
-            "number": {
+            "partitionNumber": {
               "title": "Number",
               "required": false,
               "type": "string"
@@ -318,7 +318,7 @@
         "orderable": false,
         "items": [
           "partitions[].name",
-          "partitions[].number"
+          "partitions[].partitionNumber"
         ]
       }]
     },
