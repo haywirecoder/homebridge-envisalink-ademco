@@ -4,7 +4,6 @@ var tpidefs = require('./tpi.js');
 var Service, Characteristic, Accessory, uuid;
 var inherits = require('util').inherits;
 var utilfunc = require('./helper.js');
-var armingTimeOut = undefined;
 var isMaintenanceMode = false;
 var commandTimeOut;
 var alarm;
@@ -172,24 +171,23 @@ class EnvisalinkPlatform {
         
         // Process toggle chime switch functionality 
         if (this.chime ) {
-        var chimeswitch = {};
-        chimeswitch.pin = this.config.pin ? this.config.pin : 1234;
-        chimeswitch.Model = this.config.deviceDescription + " Keypad";
-        chimeswitch.deviceType =  this.deviceType;
-        chimeswitch.SerialNumber = "Envisalink.Chime.1";
-        chimeswitch.name  = "Chime";
-        chimeswitch.partition = 1;
-        // Create Chime Toogle button
-        var accessory = new EnvisalinkAccessory(this.log, "chime", chimeswitch, chimeswitch.partition , 209, []);
-        var accessoryIndex = this.platformPartitionAccessories.push(accessory) - 1;
-        this.platformPartitionAccessoryMap['c.' + chimeswitch.partition] = accessoryIndex;
+            var chimeswitch = {};
+            chimeswitch.pin = this.config.pin ? this.config.pin : 1234;
+            chimeswitch.Model = this.config.deviceDescription + " Keypad";
+            chimeswitch.deviceType =  this.deviceType;
+            chimeswitch.SerialNumber = "Envisalink.Chime.1";
+            chimeswitch.name  = "Chime";
+            chimeswitch.partition = 1;
+            // Create Chime Toogle button
+            var accessory = new EnvisalinkAccessory(this.log, "chime", chimeswitch, chimeswitch.partition , 209, []);
+            var accessoryIndex = this.platformPartitionAccessories.push(accessory) - 1;
+            this.platformPartitionAccessoryMap['c.' + chimeswitch.partition] = accessoryIndex;
         }
     }
 
     systemUpdate(data) {
-        this.log.debug('System status changed to: ', data.mode);
+        this.log.debug('System status changed to: ', data);
         //var partition = this.platformPartitionAccessories[Number(data.partition) - 1];
-
         var partitionIndex = this.platformPartitionAccessoryMap['p.' + Number(data.partition)];
         var accessorybypassIndex = this.platformPartitionAccessoryMap['b.' + Number(data.partition)];
         var accessoryChimeIndex = this.platformPartitionAccessoryMap['c.' + Number(data.partition)];
@@ -210,18 +208,23 @@ class EnvisalinkPlatform {
                     }
                 }
             }
+        } else {
+            this.log.debug("Partition not monitored dismissing status update. "); 
+            return;
         }
          // if chime enable update status
-         if (accessoryChimeIndex !== undefined) {
+        if (accessoryChimeIndex !== undefined) {
             var accessoryChime = this.platformPartitionAccessories[accessoryChimeIndex];
             if (accessoryChime) {
-                accessoryChime.status = data.keypadledstatus.chime;
-                this.log.debug("Set status on accessory Chime " + accessoryChime.status);
-                if (accessoryChime.accessoryType == "chime") {
-                    var accservice = (accessoryChime.getServices())[0];
-                    accessoryChime.getChime(function (nothing, returnValue) {
-                        accservice.updateCharacteristic(Characteristic.On,returnValue)
-                    });
+                if (accessoryChime.status != data.keypadledstatus.chime) {
+                    accessoryChime.status = data.keypadledstatus.chime;
+                    this.log.debug("Set status on accessory " + accessoryChime.name + ' to ' +  accessoryChime.status);
+                    if (accessoryChime.accessoryType == "chime") {
+                        var accservice = (accessoryChime.getServices())[0];
+                        accessoryChime.getChime(function (nothing, returnValue) {
+                            accservice.updateCharacteristic(Characteristic.On,returnValue)
+                        });
+                    }
                 }
             }
         }
@@ -230,13 +233,15 @@ class EnvisalinkPlatform {
         if (accessorybypassIndex !== undefined) {
             var accessoryBypass = this.platformPartitionAccessories[accessorybypassIndex];
             if (accessoryBypass) {
-                accessoryBypass.status = data.mode;
-                this.log.debug("Set status on accessory " + accessoryBypass.name + ' to ' + accessoryBypass.status);
-                if (accessoryBypass.accessoryType == "bypass") {
-                    var accservice = (accessoryBypass.getServices())[0];
-                    accessoryBypass.getByPass(function (nothing, returnValue) {
-                        accservice.updateCharacteristic(Characteristic.On,returnValue)
-                    });
+                if (accessoryBypass.status !=  data.mode) {
+                    accessoryBypass.status = data.mode;
+                    this.log.debug("Set status on accessory " + accessoryBypass.name + ' to ' + accessoryBypass.status);
+                    if (accessoryBypass.accessoryType == "bypass") {
+                        var accservice = (accessoryBypass.getServices())[0];
+                        accessoryBypass.getByPass(function (nothing, returnValue) {
+                            accservice.updateCharacteristic(Characteristic.On,returnValue)
+                        });
+                    }
                 }
             }
         }
@@ -244,7 +249,7 @@ class EnvisalinkPlatform {
 
 
     partitionUpdate(data) {
-        this.log.debug('Partition status changed to: ', data.mode);
+        this.log.debug('System status changed to: ', data);
         // var partition = this.platformPartitionAccessories[Number(data.partition) - 1];
         var partitionIndex = this.platformPartitionAccessoryMap['p.' + Number(data.partition)];
         if (partitionIndex !== undefined ) {
@@ -259,25 +264,27 @@ class EnvisalinkPlatform {
                         });
                 }
                 if (partition.processingAlarm) {
-                    // clear timer and return state immediately
+                    // clear timer 
                     partition.processingAlarm = false;
-                    clearTimeout(armingTimeOut);
-                    armingTimeOut = undefined;
-                    partition.proccessAlarmTimer();
+                    clearTimeout(partition.armingTimeOut);
+                    partition.armingTimeOut = undefined;
                 }
             }
+        }
+        else {
+            this.log.debug("Partition not monitored dismissing partition update. "); 
         }
     }
 
     zoneUpdate(data) {
-        this.log.debug('ZoneUpdate status changed to: ', data.mode);
+        this.log.debug('ZoneUpdate status changed to: ', data);
         for (var i = 0; i < data.zone.length; i++) {
             var accessoryIndex = this.platformZoneAccessoryMap['z.' + data.zone[i]];
             if (accessoryIndex !== undefined) {
                 var accessory = this.platformZoneAccessories[accessoryIndex];
                 if (accessory) {
                     accessory.status = data.mode;
-                    this.log.debug("Set status on accessory " + accessory.name + ' to ' + JSON.stringify(accessory.status));
+                    this.log.debug("Set status on accessory " + accessory.name + ' to ' + accessory.status);
 
                     var accservice = (accessory.getServices())[0];
                     if (accservice) {
@@ -355,12 +362,10 @@ class EnvisalinkAccessory {
                     .getCharacteristic(Characteristic.SecuritySystemTargetState)
                     .on('get', this.getAlarmState.bind(this))
                     .on('set', this.setAlarmState.bind(this));
-                service
-                    .addCharacteristic(Characteristic.StatusFault)
-                    .on('get', this.getReadyState.bind(this));
                 this.services.push(service);
                 this.status = "READY";
                 this.lastTargetState = Characteristic.SecuritySystemCurrentState.DISARMED;
+                this.armingTimeOut = undefined;
             break;
         
             case "motion":
@@ -435,6 +440,7 @@ class EnvisalinkAccessory {
                 this.services.push(service);
                 this.zoneaccessories = accessories;
                 this.quickbypass = config.quickbypass ? config.quickbypass : false;
+                this.status = false;
             break;
         
             case "keys":
@@ -476,19 +482,6 @@ class EnvisalinkAccessory {
         return this.services;
     }
 
-    getReadyState(callback) {
-
-        var currentState = this.status;
-        var status = Characteristic.StatusFault.NO_FAULT;
-        if (currentState) {
-            if (currentState == "NOT_READY")
-                status = Characteristic.StatusFault.GENERAL_FAULT;
-        }
-
-        this.log.debug("Readystate Return ", status);
-        callback(null, status);
-    }
-
     getMotionStatus(callback) {
 
         if (this.status == "OPEN") {
@@ -501,10 +494,10 @@ class EnvisalinkAccessory {
     getAlarmState(callback) {
 
         var currentState = this.status;
-        // Assume last target state
+        // Assume last target state and in arming state.
         var status = this.lastTargetState;
         if (this.processingAlarm == false) {
-            this.log.debug("Getting status.", currentState);
+            this.log.debug("Getting status current state: ", currentState);
             switch (currentState) {
                 case "ALARM":
                     status = Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED;
@@ -529,6 +522,7 @@ class EnvisalinkAccessory {
                 break;
             }
         }
+        this.log.debug('Return Alarm Status Get: ', status);
         callback(null, status);
     }
 
@@ -555,7 +549,7 @@ class EnvisalinkAccessory {
                     this.processingAlarm = true;
                     this.lastTargetState = state;
                     if (!isMaintenanceMode) alarm.sendCommand(command);
-                    armingTimeOut = setTimeout(this.proccessAlarmTimer.bind(this), commandTimeOut * 1000);
+                    this.armingTimeOut = setTimeout(this.proccessAlarmTimer.bind(this), commandTimeOut * 1000);
                     callback(null, state);
                 } else {
                     this.log.error("Unhandled alarm state: " + state);
@@ -581,10 +575,7 @@ class EnvisalinkAccessory {
             this.getAlarmState(function (nothing, returnValue) {
                 partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,returnValue);
             });
-        } else {
-            partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,this.lastTargetState);
-            
-        }
+        } 
     }
 
     getContactSensorState(callback) {
@@ -627,7 +618,7 @@ class EnvisalinkAccessory {
 
     getByPass(callback) {
         var status = false;
-        this.log.debug('Triggered Bypass Get', this.status);
+        this.log.debug('Triggered Bypass Get: ', this.status);
         switch (this.status) {
             // if zone are bypass set button to on position.
             case "READY_BYPASS":
@@ -638,6 +629,7 @@ class EnvisalinkAccessory {
             default:
                 status = false;
         }
+        this.log.debug('Return Bypass Get: ', status);
         callback(null, status);
     }
 
@@ -759,7 +751,7 @@ class EnvisalinkAccessory {
 
     getChime(callback) {
 
-        this.log.debug('Triggered Chime Get ', this.status);
+        this.log.debug('Return Chime Get: ', this.status);
         callback(null, this.status);
     }
 
