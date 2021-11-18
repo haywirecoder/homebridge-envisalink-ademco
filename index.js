@@ -92,7 +92,7 @@ class EnvisalinkPlatform {
         // Process partition data
         for (var i = 0; i < this.partitions.length; i++) {
             var partition = this.partitions[i];
-            var partitionNumber = this.partitions[i].partitionNumber ? this.partitions[i].partitionNumber : (i+1);
+            var partitionNumber = Number(partition.partitionNumber ? partition.partitionNumber : (i+1));
             partition.pin = this.config.pin ? this.config.pin : "1234"
             if(isNaN(partition.pin)) {
                 this.log.error("Ademco Pin must be a number. Please update configuration for the Envisakit Ademco plug-in.");
@@ -108,7 +108,7 @@ class EnvisalinkPlatform {
             var accessory = new EnvisalinkAccessory(this.log, "partition", partition, partitionNumber, []);
             var partitionIndex =  this.platformPartitionAccessories.push(accessory) - 1;
             this.platformPartitionAccessoryMap['p.' + partitionNumber] = partitionIndex;
-            this.log.debug("Partition number ", partitionNumber , " configured.");
+            this.log.debug("Partition number: ", partitionNumber , " configured.");
         }
 
         //process zone data
@@ -116,7 +116,7 @@ class EnvisalinkPlatform {
         for (var i = 0; i < this.zones.length; i++) {
             var zone = this.zones[i];
             if ((zone.sensorType == "motion" || zone.sensorType == "glass" || zone.sensorType == "window" || zone.sensorType == "door" || zone.sensorType == "leak" || zone.sensorType == "smoke" || zone.sensorType == "co") && (zone.name != undefined)){
-                var zoneNum = zone.zoneNumber ? zone.zoneNumber : (i+1);
+                var zoneNum = Number(zone.zoneNumber ? zone.zoneNumber : (i+1));
                 if (zoneNum > maxZone) {
                     maxZone = zoneNum;
                 }
@@ -126,7 +126,7 @@ class EnvisalinkPlatform {
                 var accessory = new EnvisalinkAccessory(this.log, zone.sensorType, zone, zone.partition, zoneNum, []);
                 var accessoryIndex = this.platformZoneAccessories.push(accessory) - 1;
                 this.platformZoneAccessoryMap['z.' + zoneNum] = accessoryIndex;
-                this.log.debug("Zone number ", zoneNum , " configured.");
+                this.log.debug("Zone number: ", zoneNum , " configured.");
             } else {
                 this.log.error("Misconfigured Zone defination " + zone.name + ". Entry - " + i + " igoring.");
             }
@@ -209,8 +209,7 @@ class EnvisalinkPlatform {
                 }
             }
         } else {
-            this.log.debug("Partition not monitored dismissing status update. "); 
-            return;
+            this.log.debug("System status changed: Partition not monitored dismissing status update."); 
         }
          // if chime enable update status
         if (accessoryChimeIndex !== undefined) {
@@ -249,7 +248,7 @@ class EnvisalinkPlatform {
 
 
     partitionUpdate(data) {
-        this.log.debug('System status changed to: ', data);
+        this.log.debug('Partition status change: ', data);
         // var partition = this.platformPartitionAccessories[Number(data.partition) - 1];
         var partitionIndex = this.platformPartitionAccessoryMap['p.' + Number(data.partition)];
         if (partitionIndex !== undefined ) {
@@ -272,14 +271,14 @@ class EnvisalinkPlatform {
             }
         }
         else {
-            this.log.debug("Partition not monitored dismissing partition update. "); 
+            this.log.debug("Partition status change: Partition not monitored dismissing partition update. "); 
         }
     }
 
     zoneUpdate(data) {
-        this.log.debug('ZoneUpdate status changed to: ', data);
+        this.log.debug('Zone status changed to: ', data);
         for (var i = 0; i < data.zone.length; i++) {
-            var accessoryIndex = this.platformZoneAccessoryMap['z.' + data.zone[i]];
+            var accessoryIndex = this.platformZoneAccessoryMap['z.' + Number(data.zone[i])];
             if (accessoryIndex !== undefined) {
                 var accessory = this.platformZoneAccessories[accessoryIndex];
                 if (accessory) {
