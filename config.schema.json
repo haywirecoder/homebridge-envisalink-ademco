@@ -29,31 +29,32 @@
         "type": "string",
         "required": true,
         "default": "Honeywell VISTA-10P",
-        "oneOf": [{
-          "title": "Honeywell VISTA-10P",
-          "enum": [
-            "10P"
-          ]
-        },
-        {
-          "title": "Honeywell VISTA-15P",
-          "enum": [
-            "15P"
-          ]
-        },
-        {
-          "title": "Honeywell VISTA-20P",
-          "enum": [
-            "20P"
-          ]
-        },
-        {
-          "title": "Honeywell VISTA-128FBP",
-          "enum": [
-            "128FBP"
-          ]
-        }
-      ]
+        "oneOf": [
+          {
+            "title": "Honeywell VISTA-10P",
+            "enum": [
+              "10P"
+            ]
+          },
+          {
+            "title": "Honeywell VISTA-15P",
+            "enum": [
+              "15P"
+            ]
+          },
+          {
+            "title": "Honeywell VISTA-20P",
+            "enum": [
+              "20P"
+            ]
+          },
+          {
+            "title": "Honeywell VISTA-128FBP",
+            "enum": [
+              "128FBP"
+            ]
+          }
+        ]
       },
       "password": {
         "title": "Password",
@@ -63,12 +64,12 @@
         "description": "Password to Envisalink server."
       },
       "pin": {
-        "title": "Alarm PIN",
+        "title": "Global Alarm PIN/Code",
         "type": "string",
         "pattern": "^[0-9]+$",
         "required": true,
         "default": 1234,
-        "description": "Your local alarm PIN. Please Note: The PIN must be 4 digits, 0–9 .",
+        "description": "Your global system alarm PIN. <b>Please Note:</b> The PIN must be 4 digits, 0–9 .",
         "minLength": 4,
         "maxLength": 4
       },
@@ -76,7 +77,7 @@
         "title": "Zone timeout value in second",
         "type": "integer",
         "default": 30,
-        "description": "Lenght of time to wait before a zone is considered closed. Default: 30",
+        "description": "Lenght of time to wait before a zone is considered closed. Default: 30 seconds.",
         "minimum": 5,
         "maximum": 120
       },
@@ -84,7 +85,7 @@
         "title": "Heartbeat value in second",
         "type": "integer",
         "default": 30,
-        "description": "Heartbeat interval to check for disconnected Envisalink session. Default: 30",
+        "description": "Heartbeat interval to check for disconnected Envisalink session. Default: 30 seconds.",
         "minimum": 10,
         "maximum": 600
       },
@@ -92,7 +93,7 @@
         "title": "Command timeout in second",
         "type": "integer",
         "default": 10,
-        "description": "Lenght of time to wait for alarm command to return. Default: 10",
+        "description": "Lenght of time to wait for alarm command to return. Default: 10 seconds.",
         "minimum": 5,
         "maximum": 30
       },
@@ -109,10 +110,17 @@
         "description": "Enable session watcher for drop connections. The heartbeat value will determine the internal to checking for connection."
       },
       "chimeToggle": {
-        "title": "Display a switch to toggle chime sound On/Off",
+        "title": "Display a switch in Homekit to toggle chime sound On/Off",
         "type": "boolean",
         "default": false,
         "description": "Create a switch in HomeKit to allow turning On/Off of the chime sound on the Ademco panel."
+      },
+      "batteryRunTime": {
+        "title": "Expected runtime of battery backup.",
+        "type": "integer",
+        "description": "Run time of battery backup in hours.",
+        "minimum": 1,
+        "maximum": 168
       },
       "maintenanceMode": {
         "title": "Disabled connection to Envisalink module for maintenance. <b>WARNING:</b> This will diasable all updates and operations.",
@@ -123,7 +131,7 @@
       "partitions": {
         "description": "List of partitions",
         "type": "array",
-        "maxItems": 3,
+        "maxItems": 7,
         "items": {
           "title": "Alarm partitions",
           "type": "object",
@@ -137,7 +145,17 @@
             "partitionNumber": {
               "title": "Number",
               "required": false,
-              "type": "string"
+              "type": "string",
+              "description": "Direct managment of specific partition number. <b>Note:</b> Not needed for non-partition systems. "
+            },
+            "partitionPin": {
+              "title": "Partition PIN/Code",
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "required": false,
+              "description": "If arming with a non-global PIN. <b>Please Note:</b> The PIN must be 4 digits, 0–9. This value will override the global PIN value for this parttition.",
+              "minLength": 4,
+              "maxLength": 4
             }
           }
         }
@@ -145,7 +163,7 @@
       "zones": {
         "description": "Alarm zones to monitor, manage and display in HomeKit",
         "type": "array",
-        "maxItems": 48,
+        "maxItems": 128,
         "items": {
           "title": "Zones",
           "type": "object",
@@ -231,38 +249,39 @@
           "title": "Bypass Options",
           "type": "object",
           "properties": {
-            "name": {
-              "title": "Bypass control name",
-              "type": "string",
-              "required": true
+            "enabledbyPass": {
+              "title": "Display a switch in Homekit to enable and disable zone bypass",
+              "type": "boolean",
+              "default": false
             },
             "quickbypass": {
               "title": "Panel support quick (i.e: force) bypass",
               "type": "boolean",
-              "required": true
+              "required": false
             }
           }
         }
       },
-      "keys": {
-        "description": "Display Speed Keypad keys",
-        "type": "array",
-        "maxItems": 4,
-        "items": {
+      "speedKeys": {
+      "description": "Display Speed Keypad keys",
+      "type": "array",
+      "maxItems": 4,
+      "items": {
           "title": "Speed keys options",
           "type": "object",
           "properties": {
             "name": {
-              "title": "Function key label",
+              "title": "Speed Key Label",
               "type": "string",
               "required": true,
               "maxLength": 12
             },
-            "panelfunction": {
-              "title": "Functional Key code",
-              "type": "string",
-              "required": true,
-              "oneOf": [{
+            "speedcommand": {
+            "title": "Speed Key Code",
+            "type": "string",
+            "required": true,
+            "oneOf": [
+                {
                   "title": "A Key",
                   "enum": [
                     "A"
@@ -285,15 +304,28 @@
                   "enum": [
                     "D"
                   ]
+                },
+                {
+                  "title": "Custom Macro Command",
+                  "enum": [
+                    "custom"
+                  ]
                 }
-              ]
+              ]      
+            },
+            "command": {
+              "title": "Custom macro command",
+              "type": "string",
+              "required": false,
+              "description": "Command to send to alarm panel. An escape charater of @PIN will replace with master PIN/Code"
             }
           }
         }
       }
     }
   },
-  "layout": [{
+  "layout": [
+    {
       "type": "section",
       "title": "General Setting",
       "expandable": true,
@@ -318,7 +350,8 @@
         "orderable": false,
         "items": [
           "partitions[].name",
-          "partitions[].partitionNumber"
+          "partitions[].partitionNumber",
+          "partitions[].partitionPin"
         ]
       }]
     },
@@ -327,51 +360,66 @@
       "title": "Zone Information",
       "expandable": true,
       "expanded": false,
-      "items": [{
+      "items": [
+        {
         "key": "zones",
         "type": "array",
         "orderable": false,
+        "buttonText": "Add Zone",
         "items": [
           "zones[].name",
           "zones[].partition",
           "zones[].zoneNumber",
           "zones[].sensorType",
           "zones[].bypassEnabled"
-        ]
-      }]
+          ]
+        }
+      ]
     },
     {
       "type": "section",
-      "title": "Other Optional Settings",
+      "title": "Keypad Button Options (Optional)",
       "expandable": true,
       "expanded": false,
       "items": [
         "chimeToggle",
-        "openZoneTimeout",
-        "sessionwatcher",
-        "heartbeatInterval",
-        "commandTimeOut",
-        "autoreconnect",
         {
           "key": "bypass",
+          "title": "Zone Bypass",
+          "description": "Display a Homekit switch for bypassing zones that are being monitored.",
           "type": "array",
-          "orderable": false,
-          "buttonText": "Add Bypass button",
           "items": [
-            "bypass[].name",
+            "bypass[].enabledbyPass",
             "bypass[].quickbypass"
           ]
         },
         {
-          "key": "keys",
+          "key": "speedKeys",
+          "title": "Speed Key (Macro) keys",
+          "description": "These Keys (A,B,C and/or D) are usually on the left side of the alarm keypad. They execute pre-stored automated sequences in the system's memory or input custom automated input sequence that imitates keypad inputs.",
           "type": "array",
           "orderable": false,
-          "buttonText": "Add Speed key",
+          "buttonText": "Add Speed Key",
           "items": [
-            "keys[].name",
-            "keys[].panelfunction"
+            "speedKeys[].name",
+            "speedKeys[].speedcommand",
+            "speedKeys[].command"
           ]
-        },
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Additional Setting (Optional)",
+      "expandable": true,
+      "expanded": false,
+      "items": [
+        "openZoneTimeout",
+        "sessionWatcher",
+        "heartbeatInterval",
+        "commandTimeOut",
+        "autoreconnect",
+        "batteryRunTime",
         "maintenanceMode"
       ]
     }

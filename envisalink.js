@@ -19,23 +19,26 @@ class EnvisaLink extends EventEmitter {
       host: config.host,
       port: config.port ? config.port : 4025,
       password: config.password ? config.password : "user",
-      zones: config.panelzones ? config.panelzones : 64,
-      partitions: config.panelpartition ? config.panelpartition : 1,
     };
 
     if (config.autoreconnect == undefined)
       this.options.autoreconnect = true;
     else
-      this.options.autoreconnect = config.autoreconnect;
+      this.options.autoreconnect = config.autoReconnect;
 
     if (config.sessionwatcher == undefined)
       this.options.sessionwatcher = true;
     else
-      this.options.sessionwatcher = config.sessionwatcher;
+      this.options.sessionwatcher = config.sessionWatcher;
 
-    this.options.heartbeatInterval = utilfunc.toIntBetween(config.heartbeatInterval, 10, 600, 30);
-    this.options.openZoneTimeout = utilfunc.toIntBetween(config.openZoneTimeout, 5, 120, 30);
+    // are we in maintanance mode?
+    this.isMaintenanceMode = config.maintenanceMode ? config.maintenanceMode: false
 
+    //this.options.heartbeatInterval = utilfunc.toIntBetween(config.heartbeatInterval, 10, 600, 30);
+    //this.options.openZoneTimeout = utilfunc.toIntBetween(config.openZoneTimeout, 5, 120, 30);
+    this.options.heartbeatInterval = Math.min(600,Math.max(10,config.heartbeatInterval));  
+    this.options.openZoneTimeout = Math.min(120,Math.max(5,config.openZoneTimeout));  
+    
     this.zones = {};
     this.lastmessage = new Date();
 
@@ -53,7 +56,7 @@ class EnvisaLink extends EventEmitter {
     this.isConnectionIdleHandle = undefined;
 
     // Display starting of connection.
-    this.log("Starting connection to envisalink module at: " + this.options.host + ", port: " + this.options.port);
+    this.log.info(`Starting connection to envisalink module at: ${this.options.host}, port: ${this.options.port}`);
    
     actual = net.createConnection({
       port: this.options.port,
@@ -106,7 +109,7 @@ class EnvisaLink extends EventEmitter {
             _this.log.info('Successful TPI session established');
             if(_this.shouldReconnect && _this.options.sessionwatcher)
             {
-              _this.log.info("Checking for disconnected session every: ",_this.options.heartbeatInterval, " seconds.")
+              _this.log.info(`Checking for disconnected session every: ${_this.options.heartbeatInterval} seconds.`)
               _this.isConnectionIdleHandle = setTimeout( isConnectionIdle, (_this.options.heartbeatInterval * 1000) ); // Check every idle seconds...
             }
             else  
@@ -244,25 +247,24 @@ class EnvisaLink extends EventEmitter {
       for (var i = 0; i < partition_string.length; i = i + 2) { // Start at the begining, and move up two bytes at a time.
         var byte = parseInt(partition_string.substr(i, 2), 10); // convert hex (base 10) to int.
         var partition = (i / 2) + 1;
-        if (partition <= _this.options.partitions) {
-          var mode = modeToHumanReadable(byte);
-          var initialUpdate = _this.partitions[partition] === undefined;
-          _this.partitions[partition] = {
-            send: tpi.send,
-            name: tpi.name,
-            code: {
-              "partition": partition,
-              "value": mode
-            }
-          };
-          _this.emit('updatepartition', {
-            partition: partition,
-            mode: mode,
-            code: byte,
-            status: tpi.name,
-            initialUpdate: initialUpdate
-          });
-        }
+        var mode = modeToHumanReadable(byte);
+        var initialUpdate = _this.partitions[partition] === undefined;
+        _this.partitions[partition] = {
+          send: tpi.send,
+          name: tpi.name,
+          code: {
+            "partition": partition,
+            "value": mode
+          }
+        };
+        _this.emit('updatepartition', {
+          partition: partition,
+          mode: mode,
+          code: byte,
+          status: tpi.name,
+          initialUpdate: initialUpdate
+        });
+        
       }
     }
 
@@ -457,38 +459,37 @@ class EnvisaLink extends EventEmitter {
         position++;
       }
 
-      if (partition <= _this.options.partitions) {
-        var initialUpdate = _this.partitions[partition] === undefined;
-        _this.partitions[partition] = {
-          send: tpi.send,
-          name: tpi.name,
-          code: data
-        };
+      var initialUpdate = _this.partitions[partition] === undefined;
+      _this.partitions[partition] = {
+        send: tpi.send,
+        name: tpi.name,
+        code: data
+      };
 
-        // Update zone information timer. 
-        // Depending on the state of the update it will either represent a zone, or a user.
-        // module makes assumption, if system is not-ready and panel text display "FAULT" assume zone is in fault.
-        
-        if ((mode == 'NOT_READY') && (keypad_txt.includes('FAULT')))
-        {    
-               zoneTimerOpen(tpi, zone, "OPEN")  
-        }
-       
-
-        _this.emit('keypadupdate', {
-          partition: partition,
-          code: {
-            icon: icon_array,
-            zone: zone,
-            beep: beep,
-            txt: keypad_txt
-          },
-          status: tpi.name,
-          keypadledstatus: keypadledstatus,
-          mode: mode,
-          initialUpdate: initialUpdate
-        });
+      // Update zone information timer. 
+      // Depending on the state of the update it will either represent a zone, or a user.
+      // module makes assumption, if system is not-ready and panel text display "FAULT" assume zone is in fault.
+      
+      if ((mode == 'NOT_READY') && (keypad_txt.includes('FAULT')))
+      {    
+              zoneTimerOpen(tpi, zone, "OPEN")  
       }
+      
+
+      _this.emit('keypadupdate', {
+        partition: partition,
+        code: {
+          icon: icon_array,
+          zone: zone,
+          beep: beep,
+          txt: keypad_txt
+        },
+        status: tpi.name,
+        keypadledstatus: keypadledstatus,
+        mode: mode,
+        initialUpdate: initialUpdate
+      });
+      
     }
 
     function zoneTimerDump(tpi, data) {
@@ -584,11 +585,14 @@ class EnvisaLink extends EventEmitter {
   }
 
   sendCommand(command) {
-    if (actual && !actual.destroyed && this.IsConnected) {
-      actual.write(command + '\r\n');
-    } else {
-      this.log.error('Command not successful, no TPI session established.');
-    }
+    if (!this.isMaintenanceMode) {
+      if (actual && !actual.destroyed && this.IsConnected) {
+        actual.write(command + '\r\n');
+      } else {
+        this.log.error('Command not successful, no TPI session established.');
+      }
+    } else 
+      this.log.warn('This module running in maintenance mode, command not send.');
   }
 }
 module.exports = EnvisaLink
