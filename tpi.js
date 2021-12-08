@@ -251,3 +251,13 @@ exports.led_status = {
     'stay': '3',
     'togglechime': '9'
   }
+
+  exports.command_response_codes = {
+
+    '00' : 'Command Accepted',
+    '01' : 'Receive Buffer Overrun (a command is received while another is still being processed)',
+    '02' : 'Unknown Command',
+    '03' : 'Syntax Error. Data appended to the command is incorrect in some fashion',
+    '04' : 'Receive Buffer Overflow',
+    '05' : 'Receive State Machine Timeout (command not completed within 3 seconds)'
+  }

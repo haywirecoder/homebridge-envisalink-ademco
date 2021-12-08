@@ -1,9 +1,11 @@
 // 'use strict'
+const MAXPARTITIONS = 16;
+const MAXZONES = 128;
+const MAXALARMUSERS = 47;
 var net = require('net')
 var EventEmitter = require('events');
 var tpidefs = require('./tpi.js')
 var ciddefs = require('./cid.js')
-var utilfunc = require('./helper.js');
 var actual;
 var activezones = [];
 var activeZoneTimeOut = undefined;
@@ -41,16 +43,14 @@ class EnvisaLink extends EventEmitter {
     
     this.zones = {};
     this.lastmessage = new Date();
+    this.lastsentcommand = "";
 
   }
 
   
-  connect() {
+  startSession() {
     var _this = this;
-    this.partitions = {};
-    this.users = {};
     this.shouldReconnect = this.options.autoreconnect;
-    this.cid = {};
     this.IsConnected = false;
     this.lastmessage = new Date();
     this.isConnectionIdleHandle = undefined;
@@ -65,7 +65,7 @@ class EnvisaLink extends EventEmitter {
 
 
     actual.on('error', function (ex) {
-      _this.log.error(ex);
+      _this.log.error("EnvisaLink: ", ex);
     });
 
     actual.on('close', function (hadError) {
@@ -77,7 +77,7 @@ class EnvisaLink extends EventEmitter {
       setTimeout(function () {
         if (_this.shouldReconnect && (actual === undefined || actual.destroyed)) {
           _this.log.warn("Session closed unexpectedly. Re-establishing Session...");
-          _this.connect();
+          _this.startSession();
         }
       }, 5000);
     });
@@ -101,7 +101,7 @@ class EnvisaLink extends EventEmitter {
             _this.IsConnected = true;
             _this.sendCommand(_this.options.password);
           } else if ((datapacket.substring(0, 6) === 'FAILED') || (datapacket.substring(0, 9) === 'Timed Out')) {
-            _this.log.error("Login failed.");
+            _this.log.error("EnvisaLink: Login failed.");
             // The session will be closed.
             _this.IsConnected = false;
           } else if (datapacket.substring(0, 2) === 'OK') {
@@ -117,33 +117,44 @@ class EnvisaLink extends EventEmitter {
              _this.log.warn("Warning: Session monitoring is disabled. Envisalink-Ademco will not watch for hung sessions.") 
             }
           } else {
-            var command_str = datapacket.match(/^%(.+)\$/); // pull out everything between the % and $
-            if (command_str == null) {
-              _this.log.warn("Envisalink data steam format invalid! : '" + datapacket + "'");
+            var tpi_str = datapacket.match(/^%(.+)\$/); // pull out everything between the % and $
+            if (tpi_str == null) {
+              tpi_str = datapacket.match(/\^(.+)\$/); // module command string, could be result of previous command  pull out everything between the ^ sand $.
+              if (tpi_str == null)
+              {
+                _this.log.warn("Envisalink data steam format invalid! : '" + datapacket + "'");
+              }  
+              else
+              {
+                if(_this.lastsentcommand == tpi_str[1].split(',')[0]) 
+                  _this.log.info("Envisakit module command return: ", tpidefs.command_response_codes[tpi_str[1].split(',')[1]]);
+              }
+
             } else {
-              var command_array = command_str[1].split(','); // Element number 1 should be what was matched between the () in the above match. so everything between % and $
-              var command = command_array[0]; // The first part is the command.
+              var data_array = tpi_str[1].split(','); // Element number 1 should be what was matched between the () in the above match. so everything between % and $
+              var command = data_array[0]; // The first part is the command.
               var tpi = tpidefs.tpicommands[command];
               if (tpi) {
                 if (tpi.bytes === '' || tpi.bytes === 0) {
                   _this.log.warn(tpi.pre + ' - ' + tpi.post);
                 } else {
-                  _this.log.debug(tpi.pre + ' | ' + command_str + ' | ' + tpi.post)
+                  _this.log.debug(tpi.pre + ' | ' + tpi_str + ' | ' + tpi.post)
+                  _this.log.debug('Envisakit Operation: ' + tpi.action);
                   switch (tpi.action) {
                     case 'updatezone':
-                      updateZone(tpi, command_array);
+                      updateZone(tpi, data_array);
                       break;
                     case 'updatepartition':
-                      updatePartition(tpi, command_array);
+                      updatePartition(tpi, data_array);
                       break;
                     case 'updatekeypad':
-                      updateKeypad(tpi, command_array);
+                      updateKeypad(tpi, data_array);
                       break;
                     case 'cidEvent':
-                      cidEvent(tpi, command_array);
+                      cidEvent(tpi, data_array);
                       break;
                     case 'zonetimerdump':
-                      zoneTimerDump(tpi, command_array);
+                      zoneTimerDump(tpi, data_array);
                       break;
 
                   }
@@ -165,8 +176,8 @@ class EnvisaLink extends EventEmitter {
       _this.log.debug("Checking for Heartbeat...");
      if (deltaTime > (_this.options.heartbeatInterval)) {
         _this.log.warn("Missing Heartbeat - Time drift: ", deltaTime ,". Trying to re-connect session...");
-        _this.disconnect();
-        setTimeout(function () {_this.connect()}, 5000);
+        _this.endSession();
+        setTimeout(function () {_this.startSession()}, 5000);
       } else {
         // Connection not idle. Check again connection idle time seconds...
         _this.log.debug("Heartbeat successful. Last message time: " + _this.lastmessage)
@@ -214,23 +225,20 @@ class EnvisaLink extends EventEmitter {
       }
       _this.log.debug("Zone updated");
       var z_list = [];
-      var initialUpdate; // this isn't good. After the for each, initialUpdate will be the value of the last one... 
 
       zone_array.forEach(function (z, i, a) {
         z_list.push(z);
-        initialUpdate = _this.zones[z] === undefined;
         _this.zones[z] = {
           send: tpi.send,
           name: tpi.name,
           code: z
         };
-        zoneTimerOpen(tpi, z, "OPEN");
+        zoneTimerOpen(tpi, z, "open");
       });
       _this.emit('zoneupdate', {
         zone: z_list,
         code: data[0],
-        status: tpi.name,
-        initialUpdate: initialUpdate
+        status: tpi.name
       });
 
     }
@@ -248,28 +256,18 @@ class EnvisaLink extends EventEmitter {
         var byte = parseInt(partition_string.substr(i, 2), 10); // convert hex (base 10) to int.
         var partition = (i / 2) + 1;
         var mode = modeToHumanReadable(byte);
-        var initialUpdate = _this.partitions[partition] === undefined;
-        _this.partitions[partition] = {
-          send: tpi.send,
-          name: tpi.name,
-          code: {
-            "partition": partition,
-            "value": mode
-          }
-        };
         _this.emit('updatepartition', {
           partition: partition,
           mode: mode,
           code: byte,
-          status: tpi.name,
-          initialUpdate: initialUpdate
+          status: tpi.name
         });
         
       }
     }
 
     function findZone(zonelist, zone) {
-
+      // Find zone that was being previously track.
       for (var i = 0; i < zonelist.length; i++) {
         if (zone == zonelist[i].zone) {
           _this.log.debug("Found zone - ", zone);
@@ -289,7 +287,7 @@ class EnvisaLink extends EventEmitter {
         _this.log.debug("Zone found in active zone list index - ", zoneid);
         activezones[zoneid].eventepoch = Math.floor(Date.now() / 1000);
       } else {
-        if (mode == "OPEN")
+        if (mode == "open")
         {
           _this.log.debug("Adding new zone - ", zone);
           activezones.push({
@@ -317,7 +315,7 @@ class EnvisaLink extends EventEmitter {
     }
 
     function zoneTimerClose() {
-      var mode = "CLOSE";
+      var mode = "close";
       var z_close = [];
       var z = activezones.length;
       var l_zonetimeout = _this.options.openZoneTimeout;
@@ -421,7 +419,6 @@ class EnvisaLink extends EventEmitter {
     function updateKeypad(tpi, data) {
 
       var partition = data[1]; // one byte field indicating which partition the update applies to.
-      var initialUpdate = _this.partitions[partition] === undefined;
       // ICON bit field is as follows:
       // 15: ARMED STAY
       // 14: LOW BATTERY
@@ -442,7 +439,7 @@ class EnvisaLink extends EventEmitter {
       var ICON = data[2]; //two byte, HEX, representation of the bitfield.
       var keypadledstatus = getKeyPadLedStatus(data[2]);
       var mode = keyPadToHumanReadable(keypadledstatus);
-      var zone = data[3]; // one byte field, representing extra info, either the user or the zone.
+      var userOrZone = data[3]; // one byte field, representing extra info, either the user or the zone.
       var beep = tpidefs.virtual_keypad_beep[data[4]]; // information for the keypad on how to beep.
       var keypad_txt = data[5]; // 32 byte ascii string, a concat of 16 byte top and 16 byte bottom of display
       var icon_array = [];
@@ -459,37 +456,35 @@ class EnvisaLink extends EventEmitter {
         position++;
       }
 
-      var initialUpdate = _this.partitions[partition] === undefined;
-      _this.partitions[partition] = {
-        send: tpi.send,
-        name: tpi.name,
-        code: data
-      };
-
       // Update zone information timer. 
       // Depending on the state of the update it will either represent a zone, or a user.
       // module makes assumption, if system is not-ready and panel text display "FAULT" assume zone is in fault.
       
       if ((mode == 'NOT_READY') && (keypad_txt.includes('FAULT')))
       {    
-              zoneTimerOpen(tpi, zone, "OPEN")  
+        zoneTimerOpen(tpi, userOrZone, "open")  
       }
-      
-
+    
       _this.emit('keypadupdate', {
         partition: partition,
         code: {
           icon: icon_array,
-          zone: zone,
+          zone: userOrZone,
           beep: beep,
           txt: keypad_txt
         },
         status: tpi.name,
         keypadledstatus: keypadledstatus,
-        mode: mode,
-        initialUpdate: initialUpdate
+        mode: mode
       });
       
+    }
+
+    function zoneTimeToHumanReadable(duration) {
+      var hours = Math.floor(duration / 60 / 60);
+      var minutes = Math.floor(duration / 60) - (hours * 60);
+      var seconds = duration % 60; 
+      return hours.toString().padStart(2, '0') + 'h:' + minutes.toString().padStart(2, '0') + 'm:' + seconds.toString().padStart(2, '0') +'s';
     }
 
     function zoneTimerDump(tpi, data) {
@@ -500,81 +495,108 @@ class EnvisaLink extends EventEmitter {
       // is actually 5 seconds so a zone timer of 0xFFFE means “5
       // seconds ago”. Remember, the zone timers are LITTLE ENDIAN so the
       // above example would be transmitted as FEFF.
-
-      var zone_bits = data[1];
-      var swappedBit = [];
-      var zone_time = [];
+      const MAXINT = 65536;
+      var zone_time = Date.now();
+      var zonenum = 0;
+      var aHexStringInt = data[1];
+      var swappedBits = [];
+      var zonesDumpData = []; // Array to store zone information from zone dump
+      var leZoneTimerDumpHexStr; // zone timers in LITTLE ENDIAN
+      var zoneClosedTimeCountDown;
       var byte;
-      var timer;
-
-      var initialUpdate = undefined;
-
-      for (var i = 0; i < zone_bits.length; i = i + 4) { // work from left to right, one byte at a time.
-        byte = zone_bits.substr(i, 4); // get the two character hex byte value into an int
-
-        // swapbits to get actual time
-        swappedBit = [];
-        swappedBit = byte.substr(2, 4);
-        swappedBit += byte.substr(1, 2);
-        // Determine how much mins since last event
-        timer = Math.floor(5 / 60);
-
-        if (swappedBit != "0000") {
-          timer = (parseInt('FFFF', 16) - parseInt(swappedBit, 16));
-          zone_time.push(Math.floor((timer * 5) / 60));
-        } else
-          zone_time.push(0);
+      for (var i = 0; i < aHexStringInt.length; i = i + 4) { // work from left to right, one byte at a time.
+          byte = aHexStringInt.substr(i, 4); // get the two character hex byte value into an int
+          zonenum += 1; // Current zone number
+          // swapbits to get actual time
+          swappedBits = [];
+          swappedBits = byte.substr(2, 4);
+          swappedBits += byte.substr(0, 2);
+          leZoneTimerDumpHexStr += swappedBits;
+          zoneClosedTimeCountDown = (MAXINT - parseInt(swappedBits.toString(),16)) * 5; 
+          if (swappedBits == "FFFF")
+          {
+            zonesDumpData.push({
+                  zone: zonenum,
+                  zonestatus: 'open',
+                  ClosedTimeCount: 0,
+                  zone_txt: 'Currently Open'
+            });
+          }
+          if (swappedBits == "0000")
+            {
+              zonesDumpData.push({
+                    zone: zonenum,
+                    zonestatus: 'close',
+                    ClosedTimeCount: MAXINT,
+                    zone_txt: 'Last Closed longer ago than I can remember'
+                });
+            }
+            else {
+              zonesDumpData.push({
+                  zone: zonenum,
+                  zonestatus: 'close',
+                  ClosedTimeCount: zoneClosedTimeCountDown,
+                  zone_txt: "Last Closed " + zoneTimeToHumanReadable(zoneClosedTimeCountDown)
+              });
+            }
       }
-
-      _this.emit('zoneTimerDump', {
+      _this.emit('zonetimerdump', {
         zonedump: zone_time,
         status: tpi.name,
-        initialUpdate: initialUpdate
+        zoneTimers: zonesDumpData,
+        zoneHexData: leZoneTimerDumpHexStr
       });
     }
 
+
+   
     function cidEvent(tpi, data) {
+      // When a system event happens that is signaled to either the Envisalerts servers or the central monitoring station, 
+      // it is also presented through this command. The CID event differs from other TPI 
+      // commands as it is a binary coded decimal, not HEX.
+      // QXXXPPZZZ0
+      // Where:
+      // Q = Qualifier. 1 = Event, 3 = Restoral
+      // XXX = 3 digit CID code
+      // PP = 2 digit Partition
+      // ZZZ = Zone or User (depends on CID code) 0 = Always 0 (padding)
+      // NOTE: The CID event Codes are ContactID codes. Lists of these codes are widely available but will not be reproduced here.
+      // Example: 3441010020
+      // 3 = Restoral (Closing in this case) 441 = Armed in STAY mode
+      // 01 = Partition 1
+      // 002 = User 2 did it
+      // 0 = Always 0
+
       var cid = data[1];
       var qualifier = cid.substr(0, 1);
       if (qualifier == 1) { // Event
-        qualifier = "Event";
+        qualifier = "event";
       } else if (qualifier == 3) { // Restoral
-        qualifier = "Restoral";
+        qualifier = "restoral";
       } else { // Unknown Qualifier!!
-        this.log.error('log-error: ', " Unrecognized qualifier '" + qualifier + "' received from Panel!");
+        this.log.error(`EnvisaLink: Unrecognized qualifier: ${qualifier} received from Panel!`);
         return undefined;
       }
       var code = cid.substr(1, 3);
       var partition = cid.substr(4, 2);
       var zone_or_user = cid.substr(6, 3);
-      var cid_obj = ciddefs.cid_event_def[code];
-      var initialUpdate = _this.cid === undefined;
-      _this.cid = {
-        send: tpi.send,
-        name: tpi.name,
-        code: cid,
+      var cid_obj = ciddefs.cid_events_def[code];
+      
+      var cidupdate_object = {
+        partition: partition,
         qualifier: qualifier,
         code: code,
         type: cid_obj.type,
-        subject: cid_obj.msg_subject,
-        partition: partition
+        subject: cid_obj.label,
+        status: tpi.name
       };
-      var an_object = {
-        qualifier: qualifier,
-        code: cid,
-        partition: partition,
-        type: cid_obj.type,
-        subject: cid_obj.msg_subject,
-        description: cid_obj.txt,
-        status: tpi.name,
-        initialUpdate: initialUpdate
-      };
-      an_object[cid_obj.type] = zone_or_user;
-      _this.emit('cidupdate', an_object);
+      cidupdate_object[cid_obj.type] = zone_or_user;
+      
+      _this.emit('cidupdate', cidupdate_object);
     }
   }
 
-  disconnect() {
+  endSession() {
     this.shouldReconnect = false;
     if (actual && !actual.destroyed && this.IsConnected) {
       actual.end();
@@ -587,12 +609,41 @@ class EnvisaLink extends EventEmitter {
   sendCommand(command) {
     if (!this.isMaintenanceMode) {
       if (actual && !actual.destroyed && this.IsConnected) {
+        this.log.debug('!WARNING! PIN/CODE may appear in the clear TX >', command);
         actual.write(command + '\r\n');
       } else {
-        this.log.error('Command not successful, no TPI session established.');
+        this.log.error('Envisakit Module: Command not successful, no TPI session established.');
       }
     } else 
       this.log.warn('This module running in maintenance mode, command not send.');
+  }
+
+  dumpZoneTimers() {
+    var to_send = '^02,$';
+    this.lastsentcommand = "02";
+    this.sendCommand(to_send);
+  }
+
+  changePartition(partitionNumber) {
+
+    if ((partitionNumber > -1) && (partitionNumber < MAXPARTITIONS)) {
+      var to_send = '^01,' + partitionNumber.toString() + '$';
+      this.lastsentcommand = "01";
+      this.sendCommand(to_send);
+    }
+    else
+      this.log.error(`EnvisaLink: Invalid Partition Number ${partitionNumber} specified when trying to change partition, ignoring.`);
+  }
+
+  sendCommandToPartition(partitionNumber,command) {
+    if ((partitionNumber > -1) && (partitionNumber < MAXPARTITIONS)) {
+      var to_send = '^03,' + partitionNumber.toString() + ',' + command.toString() +'$';
+      this.lastsentcommand = "03";
+      this.sendCommand(to_send);
+    }
+    else
+      this.log.error(`EnvisaLink: Invalid Partition Number ${partitionNumber} specified when trying to change partition, ignoring.`);
+    
   }
 }
 module.exports = EnvisaLink
