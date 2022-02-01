@@ -111,7 +111,7 @@ Example configuration is below.
         {
         "name": "Special key",
         "speedcommand": "custom",
-        "command": "0103@PIN1234"
+        "command": "@PIN1234"
         }
     ]
 }
