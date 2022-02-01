@@ -125,7 +125,6 @@
         "title": "Expected runtime of battery backup.",
         "type": "integer",
         "description": "Run time of battery backup in hours.",
-        "default": 0,
         "minimum": 1,
         "maximum": 168
       },
@@ -272,7 +271,7 @@
       "speedKeys": {
       "description": "Display Speed Keypad keys",
       "type": "array",
-      "maxItems": 4,
+      "maxItems": 8,
       "items": {
           "title": "Speed keys options",
           "type": "object",
@@ -320,11 +319,11 @@
                 }
               ]      
             },
-            "command": {
+            "customcommand": {
               "title": "Custom macro command",
               "type": "string",
               "required": false,
-              "description": "Command to send to alarm panel. An escape charater of @PIN will replace with master PIN/Code"
+              "description": "For custom macro, provide the command string to send to alarm panel. An escape string of <b>{pin}</b> will replace with master PIN/Code"
             }
           }
         }
@@ -411,7 +410,7 @@
           "items": [
             "speedKeys[].name",
             "speedKeys[].speedcommand",
-            "speedKeys[].command"
+            "speedKeys[].customcommand"
           ]
         }
       ]

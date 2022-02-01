@@ -57,7 +57,8 @@ class EnvisalinkPlatform {
             this.batteryRunTime = config.batteryRunTime ? config.batteryRunTime: 0;
             //this.commandTimeOut = utilfunc.toIntBetween(config.commandTimeOut, 1, 30, 10);
             this.commandTimeOut = Math.min(30,Math.max(1,config.commandTimeOut));  
-            // Should partition be changed when executing command? Option only valid if this multiple 
+            // Should partition be changed when executing command? 
+            // Option only valid if this is a multiple partitions system
             this.changePartition = config.changePartition ? config.changePartition: false;
           
             // are we in maintanance mode?
@@ -164,23 +165,16 @@ class EnvisalinkPlatform {
         }
 
         // Creating macro/speed keys
-        for (var i = 0; i < this.speedKeys.length; i++) {
-            var speedkey = this.speedKeys[i];
+        if (this.speedKeys.length > 0) {
+            var speedkey = [];
             speedkey.pin = this.masterPin;
             speedkey.Model = this.deviceDescription + " Keypad";
             speedkey.deviceType =  this.deviceType;
-            speedkey.SerialNumber = "Envisalink.SpeedKey." + i;
+            speedkey.SerialNumber = "Envisalink.SpeedKey";
             speedkey.partition = 1;
-            if (speedkey.name != undefined) {
-                var speedkeycmd = speedkey.speedcommand ? speedkey.speedcommand : String.fromCharCode(i + 65);
-                if (speedkeycmd == "custom")
-                    speedkeycmd = speedkey.command ? speedkey.command : String.fromCharCode(i + 65);
-                var accessory = new EnvisalinkAccessory(this.log, "speedkeys", speedkey, speedkey.partition, speedkeycmd, []);
-                this.platformPartitionAccessories.push(accessory);
-            }
-            else {
-                this.log.error("Misconfigured macro/speed key defination " + speedkey.name + " igoring.");
-            }
+            speedkey.name = "Speed Key";
+            var accessory = new EnvisalinkAccessory(this.log, "speedkeys", speedkey, speedkey.partition,"speedkey", this.speedKeys);
+            this.platformPartitionAccessories.push(accessory);
         }
         
         // Process toggle chime switch functionality 
@@ -322,10 +316,7 @@ class EnvisalinkPlatform {
                             case "glass":
                                 accessory.getMotionStatus(function (nothing, returnValue) {
                                     accservice.getCharacteristic(Characteristic.MotionDetected).setValue(returnValue);        
-                                });
-                                accservice.updateCharacteristic(Characteristic.StatusTampered, Characteristic.StatusTampered.TAMPERED);
-                                accservice.updateCharacteristic(Characteristic.StatusLowBattery, Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
-                        
+                                });          
                             break;
                             case "door":
                             case "window":
@@ -452,27 +443,30 @@ class EnvisalinkAccessory {
                 service
                     .setCharacteristic(Characteristic.StatusTampered, Characteristic.StatusTampered.NOT_TAMPERED);
 
+               
                 // Add battery service
-                var batteryService = new Service.Battery(this.name + " Backup Battery");
-                batteryService
-                    .getCharacteristic(Characteristic.StatusLowBattery)
-                    .on('get', this.getPanelStatusLowBattery.bind(this));
-                // Only show battery level if user has provided a battery run time.
                 // Set initial battery level
                 this.batteryLevel = 100;
+                var batteryService = new Service.Battery(this.name + " Backup Battery");
+                batteryService
+                        .getCharacteristic(Characteristic.StatusLowBattery)
+                        .on('get', this.getPanelStatusLowBattery.bind(this));
+                batteryService.setCharacteristic(Characteristic.BatteryLevel,this.batteryLevel);
+                
                 if (serviceConfig.batteryRunTime > 0) {
+                    // Only show battery level if user has provided a battery run time.
                     batteryService
                         .getCharacteristic(Characteristic.BatteryLevel)
                         .on('get', this.getPanelBatteryLevel.bind(this)); 
                     batteryService
                         .getCharacteristic(Characteristic.ChargingState)
-                        .on('get', this.getPanelCharingState.bind(this)); 
-                    batteryService.setCharacteristic(Characteristic.BatteryLevel,this.batteryLevel);
+                        .on('get', this.getPanelCharingState.bind(this));     
+                   
                 }
-                
                 // link battery service to partition
                 service.addLinkedService(batteryService);
                 this.services.push(batteryService);
+                
                 this.services.push(service);
 
                 // Set default for security service
@@ -593,25 +587,35 @@ class EnvisalinkAccessory {
             break;
         
             case "speedkeys":
-                // These are push button key, upon processing request will return to off.
-                var service = new Service.Switch(this.name);
-                service
-                    .getCharacteristic(Characteristic.On)
-                    .on('set', this.setSpeedKey.bind(this));
-                this.services.push(service);
-                this.command = uid;
-                this.status = false;
+                // These are push button key, upon processing request will return to off
+               this.command = [];
+               this.subname = [];
+               this.log(accessories);
+                for (var i = 0; i < accessories.length; i++) {
+                  
+                    var service = new Service.Switch(accessories[i].name, "SPEED_KEY_"+i);
+                    service
+                        .getCharacteristic(Characteristic.On)
+                        .on('set', this.setSpeedKey.bind(this,i));
+                    this.services.push(service);
+                    this.subname[i] = accessories[i].name;
+                    if (accessories[i].speedcommand == "custom")  
+                        this.command[i]= accessories[i].customcommand;
+                    else
+                        this.command[i]= accessories[i].speedcommand;
+                }
             break;
 
             case "chime":
                 // These are push button key, upon processing request will return current state of chime report by keypad event.
+               
                 var service = new Service.Switch(this.name);
                 service
                     .getCharacteristic(Characteristic.On)
                     .on('get', this.getChime.bind(this))
                     .on('set', this.setChime.bind(this));
                 this.services.push(service);
-                this.status = true;
+                this.status = false;
             break;
         }
         // set device informaiton.
@@ -905,32 +909,34 @@ class EnvisalinkAccessory {
                 this.log("Alarm is ", this.status, " no action required. Ignoring Bypass request.");
                 this.status = false;
                 // Turn off switch, since no action was completed.
-                setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,false)},500);
+                setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,false)},2000);
                 callback(null, false);
             break;
             default:
                 // Nothing to process, return to previous state, 
                 this.status = !value;
-                setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,!value)},500);
+                setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,!value)},2000);
                 callback(null, !value);
             break;
 
         }
     }
 
-    setSpeedKey(value, callback) {
+    setSpeedKey(key,value,callback) {
 
-        this.log('Triggered macro/speed key');
-         // Get the button service and updated switch soon after set function is complete 
+        this.log.debug('Triggered macro/speed keys', key);
         if (value) {
-            var switchService = this.getServices()[0];
-             // Replace token values with pin
-            var command = this.command.replace("@PIN%",this.pin);
-            this.log("Sending command ", command);
-            alarm.sendCommand(command);
+            // Get the button service and updated switch soon after set function is complete
+            var switchService = this.getServices()[key];
+            // Replace token values with pin
+            var alarmcommand = this.command[key].replace("{pin}",this.pin);
+            this.log(`Sending panel command for key ${this.subname[key]}`);
+            alarm.sendCommand(alarmcommand);
+              // turn off after 2 sec
             setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,false)}.bind(this),2000);
         }
         callback(null);
+      
     }
 
     getChime(callback) {
