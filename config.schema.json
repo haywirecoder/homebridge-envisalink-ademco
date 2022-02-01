@@ -323,7 +323,7 @@
               "title": "Custom macro command",
               "type": "string",
               "required": false,
-              "description": "For custom macro, provide the command string to send to alarm panel. An escape string of <b>{pin}</b> will replace with master PIN/Code"
+              "description": "For custom macro, provide the command string to send to alarm panel. An escape string of <b>@pin</b> will replace with master PIN/Code"
             }
           }
         }

@@ -43,8 +43,8 @@ Please Note: I recommended not using the master user or installer code in the co
 **partitions**
 
 > - name : partition name - *if not present default value to "house"*
-> - partitionNumber: partition number - *if not present consecutive number is used, which is not ideal. Not need in single partition configuration.*
-> - partitionPIN: partition PIN/Code - *if not present master configure PIN is used. Not need in single partition configuration.*
+> - partitionNumber: partition number - *if not present consecutive number is used, which is not ideal. Not needed in a single partition configuration.*
+> - partitionPIN: partition PIN/Code - *if not present master configure PIN is used. Not needed in a single partition configuration.*
 
 **zones** *(Optional section -- Atleast one zone must be define if used)*
 
@@ -62,7 +62,7 @@ Please Note: I recommended not using the master user or installer code in the co
 **speedkeys** *(Optional section)*
 > - name: Name of special function key to display in Homekit - *This is a required value for this section*
 > - speedcommand: A | B | C | D | Custom - Indicates which special function key (e.g. A, B, C and D keys) will be associated with this switch. The special keys are located to the left of the numeric keys can be programmed with special function at the alarm panel. Custom allow the use of command field to input custom automated input sequence that imitates keypad inputs. *This is a required value for this section*
-> - command: Input custom automated input sequence that imitates keypad inputs. Special @PIN notation will be replace with configuration master PIN/Code. *This is a required if custom is select as speedcommand.*
+> - command: Input custom automated input sequence that imitates keypad inputs. Special @pin notation will be replace with configuration master PIN/Code. *This is a required if custom is select as speedcommand.*
 
 Example configuration is below.
 
@@ -111,7 +111,7 @@ Example configuration is below.
         {
         "name": "Special key",
         "speedcommand": "custom",
-        "command": "@PIN1234"
+        "command": "@pin03"
         }
     ]
 }
