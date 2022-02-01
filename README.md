@@ -38,11 +38,13 @@ Please Note: I recommended not using the master user or installer code in the co
 | **bypass**        | *(Optional)* Creates a bypass control (a switch) to bypass zones which are open (faulted)                                |
 |                   | By design the bypass switch can only bypass zone that are being monitored in Homekit and the zone entry "bypassenable" set to true.    |
 |                   | "quickbypass" Can be used to bypass all fault zones. This feature must to be enabled in ademco panel *(refer to panel guide)*.                               |
-| **keys**          | *(Optional)* Create controls (switches) to replicate the special function keys on Ademco keypad                           |
+| **speedkeys**          | *(Optional)* Create controls (switches) to replicate the special function keys on Ademco keypad                           |
 
 **partitions**
 
 > - name : partition name - *if not present default value to "house"*
+> - partitionNumber: partition number - *if not present consecutive number is used, which is not ideal. Not need in single partition configuration.*
+> - partitionPIN: partition PIN/Code - *if not present master configure PIN is used. Not need in single partition configuration.*
 
 **zones** *(Optional section -- Atleast one zone must be define if used)*
 
@@ -54,13 +56,13 @@ Please Note: I recommended not using the master user or installer code in the co
 
 **bypass** *(Optional section)*
 
-> - name: Bypass switch name to display in Homekit - *This is a required value for this section*
+> - enabledbyPass: true | false   - Create bypass switch in homekit
 > - quickbypass : true | false   - Must be pre-configure on alarm panel (please refer to your alarm panel programning guide). If programmed, "Quick Bypass" allows you to easily bypass all open (faulted) zones without having to configure zone individually and perform operation quicker. *This is a required value for this section*
 
-**keys** *(Optional section)*
+**speedkeys** *(Optional section)*
 > - name: Name of special function key to display in Homekit - *This is a required value for this section*
-> - panelcode: A | B | C | D - Indicates which special function key (e.g. A, B, C and D keys) will be associated with this switch. The special keys are located to the left of the numeric keys can be programmed with special function at the alarm panel. *This is a required value for this section*
-
+> - speedcommand: A | B | C | D | Custom - Indicates which special function key (e.g. A, B, C and D keys) will be associated with this switch. The special keys are located to the left of the numeric keys can be programmed with special function at the alarm panel. Custom allow the use of command field to input custom automated input sequence that imitates keypad inputs. *This is a required value for this section*
+> - command: Input custom automated input sequence that imitates keypad inputs. Special @PIN notation will be replace with configuration master PIN/Code. *This is a required if custom is select as speedcommand.*
 
 Example configuration is below.
 
@@ -97,14 +99,19 @@ Example configuration is below.
     ],
     "bypass": [
         {
-        "name": "Home Bypass",
+        "enabledbyPass": true,
         "quickbypass": false
         }
     ],
-    "keys" : [
+    "speedkeys" : [
         {
         "name": "Panic",
-        "panelfunction": "A"
+        "speedcommand": "A"
+        },
+        {
+        "name": "Special key",
+        "speedcommand": "custom",
+        "command": "@PIN1234"
         }
     ]
 }
