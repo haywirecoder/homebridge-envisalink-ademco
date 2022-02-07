@@ -49,6 +49,12 @@
             ]
           },
           {
+            "title": "Honeywell VISTA-21IP",
+            "enum": [
+              "21IP"
+            ]
+          },
+          {
             "title": "Honeywell VISTA-128FBP",
             "enum": [
               "128FBP"
