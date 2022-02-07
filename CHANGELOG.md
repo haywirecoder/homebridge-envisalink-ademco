@@ -1,6 +1,23 @@
 # Change Log
 
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v1.2 (2022-02-04)
+## Enhancements
+* Add support for low battery status for both panel and sensors
+* Add support for custom macro keys. This allow creation of switches that execute custom keypad commands.
+* Add system tamper notification support via Homekit.
+* Add Support for partition numbering, custom partition PIN/CODE and changing partitions for operations. This allow partitions to be skip (issue #17) and targetted actities for partition. <i>BETA: Multiple partition plug-in feedback/validation needed. </i>
+* Configuration UI update to support partition numbering, partition PIN and selection of panel/device type. <b>Please note: </b> selecting proper panel type is important for 128 panel users.
+
+## Changes
+* <b>MPORTANT:</b> "Keys" section has been replace with "speedKeys" to allow for custom macro keys. The orginal "Keys" confguration must be re-configure in configure file/UX. In addition to save space speedkey are group together by default. 
+* <b>MPORTANT:</b> Option to create a Bypass switch has been updated. It will need to be re-enabled in configure file/UX. 
+* Steamline configuration UX.
+
+## Break fixes
+* Fix issues which was suppressing partition controls messages in core Envisikit engine (issue #17).
+* Bypass zones must be fix formatted to either 2 digit or 3 digit for larger panels.
+* Fix issue with function key display error upon excution. Correction include as part of speedkey configuation.
 
 # v1.1.26 (2021-10-05)
 ## Enhancements
