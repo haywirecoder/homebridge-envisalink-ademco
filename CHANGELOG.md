@@ -1,7 +1,11 @@
 # Change Log
 
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
-# v1.2 (2022-02-04)
+# v1.2.1 (2022-02-10)
+## Enhancements
+* Add Device Model Vista 21ip (#21) to configuration.json.
+
+# v1.2.0 (2022-02-04)
 ## Enhancements
 * Add support for low battery status for both panel and sensors
 * Add support for custom macro keys. This allow creation of switches that execute custom keypad commands.
