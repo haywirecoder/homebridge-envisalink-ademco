@@ -12,7 +12,9 @@ Limits:
 
 * When system is "Armed" the panel no longer report the state of each zone. All zone will age out and be considered close once armed. Note: A bypass zone will automaticly show as fault (open) once the alarm is disarmed.
 
-* Envisalink module only support one connection. Once this plug-in is connected, any other connections will result in an error.
+* Envisalink module only support one connection. Once this plug-in is connected, any other connections will result in an error. Vice-versa, if Envisalink is being used other purpose this module will not able connect or connect indeterminately. 
+
+* This plug-in uses "Arm-Instant (Zero Delay-Stay)" as indicator of <i>NIGHT STAY</i>. Arms-Instant is similar to the STAY mode, but without the entry delay feature and usually associated with <i>NIGHT STAY</i>.
 
 Please Note: I recommended not using the master user or installer code in the configure file. Create a seperate alarm user with the proper access permissions (please refer to your panel guide).
   
@@ -33,6 +35,7 @@ Please Note: I recommended not using the master user or installer code in the co
 | commandTimeOut    | *(optional)* Time-out value for alarm command to return provided in second. Default is 10 second.          |
 | autoreconnect     | *(optional)* Automatic reconnect to server if network channel is broken. Default is true.                                        |
 | chimeToggle     | *(optional)*  Create a switch to enable and disabled Chime bell. Panel only allow change bell status when alarm is not armed. Default is false.                         |
+| batteryRunTime     | *(optional)*  User suppied run time of main system battery backup in hours. This value allows plug-in to estimate remaining time when system switch to backup battery. |  
 | maintenanceMode     | *(optional)*  Disable communication with Envisakit module. **Note:** This will disable all updates.                        |
 | **zones**         | *(Optional)* List of zones to appear and monitor in Homekit                                                              |
 | **bypass**        | *(Optional)* Creates a bypass control (a switch) to bypass zones which are open (faulted)                                |

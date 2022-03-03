@@ -109,7 +109,7 @@
         "minimum": 5,
         "maximum": 30
       },
-      "autoReonnect": {
+      "autoReconnect": {
         "title": "Automatic re-connect to Envisakit server",
         "type": "boolean",
         "default": true,
@@ -431,7 +431,7 @@
         "sessionWatcher",
         "heartbeatInterval",
         "commandTimeOut",
-        "autoReonnect",
+        "autoReconnect",
         "batteryRunTime",
         "maintenanceMode"
       ]

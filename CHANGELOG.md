@@ -1,9 +1,16 @@
 # Change Log
 
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v1.2.2 (2022-04-06)
+## Enhancements
+* Envisalink TPI connection issues now surface in Homekit as a general faults. <i>Please note:</i> Apple Home application doesn't show visual indicators for faults (it appears in the setting of alarm tile). Other 3rd party application such as Eve Home do show visual indicator.
+
+## Break fixes
+* Corrected Typo in config.scheme.json and coding issue which prevented auto re-connect from functioning property (#23). If your issue where auto connect is not enabling, please set attribute via the configure tool.
+
 # v1.2.1 (2022-02-10)
 ## Enhancements
-* Add Device Model Vista 21ip (#21) to configuration.json.
+* Add Device Model Vista 21ip (#21) to config.scheme.json.
 
 # v1.2.0 (2022-02-04)
 ## Enhancements

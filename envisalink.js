@@ -9,6 +9,7 @@ var ciddefs = require('./cid.js')
 var actual;
 var activezones = [];
 var activeZoneTimeOut = undefined;
+var inTrouble = false;
 
 
 
@@ -23,12 +24,12 @@ class EnvisaLink extends EventEmitter {
       password: config.password ? config.password : "user",
     };
 
-    if (config.autoreconnect == undefined)
+    if (config.autoReconnect == undefined)
       this.options.autoreconnect = true;
     else
       this.options.autoreconnect = config.autoReconnect;
 
-    if (config.sessionwatcher == undefined)
+    if (config.sessionWatcher == undefined)
       this.options.sessionwatcher = true;
     else
       this.options.sessionwatcher = config.sessionWatcher;
@@ -36,8 +37,7 @@ class EnvisaLink extends EventEmitter {
     // are we in maintanance mode?
     this.isMaintenanceMode = config.maintenanceMode ? config.maintenanceMode: false
 
-    //this.options.heartbeatInterval = utilfunc.toIntBetween(config.heartbeatInterval, 10, 600, 30);
-    //this.options.openZoneTimeout = utilfunc.toIntBetween(config.openZoneTimeout, 5, 120, 30);
+    // Set interval for testing connection and how long should zone should be consider without any update.
     this.options.heartbeatInterval = Math.min(600,Math.max(10,config.heartbeatInterval));  
     this.options.openZoneTimeout = Math.min(120,Math.max(5,config.openZoneTimeout));  
     
@@ -70,6 +70,7 @@ class EnvisaLink extends EventEmitter {
 
     actual.on('close', function (hadError) {
       _this.IsConnected = false;
+      var source = "session_connect_status";
       if (_this.isConnectionIdleHandle !== undefined) 
       {
          clearTimeout(_this.isConnectionIdleHandle);
@@ -77,6 +78,16 @@ class EnvisaLink extends EventEmitter {
       setTimeout(function () {
         if (_this.shouldReconnect && (actual === undefined || actual.destroyed)) {
           _this.log.warn("Session closed unexpectedly. Re-establishing Session...");
+          // Generate event to indicate there is issue with EVL module connection
+          //  Qualifier. 1 = Event, 3 = Restoral
+          if (!inTrouble)
+          {
+            _this.emit('enviselinkupdate', {
+              source: source,
+              qualifier: 1
+            });
+            inTrouble = true;
+          }
           _this.startSession();
         }
       }, 5000);
@@ -91,6 +102,7 @@ class EnvisaLink extends EventEmitter {
 
     actual.on('data', function (data) {
       var dataslice = data.toString().replace(/[\n\r]/g, '|').split('|');
+      var source = "session_connect_status";
       _this.lastmessage = new Date(); // Everytime a message comes in, reset the lastmessage timer
       for (var i = 0; i < dataslice.length; i++) {
         var datapacket = dataslice[i];
@@ -106,7 +118,18 @@ class EnvisaLink extends EventEmitter {
             _this.IsConnected = false;
           } else if (datapacket.substring(0, 2) === 'OK') {
             // ignore, OK is good. or report successful connection.    
-            _this.log.info('Successful TPI session established');
+            _this.log.info(`Successful TPI session established.`);
+            // If connection had issue prior clear and generate restoral event
+            //  Qualifier. 1 = Event, 3 = Restoral
+            if (inTrouble)
+            {
+              _this.emit('enviselinkupdate', {
+                source: source,
+                qualifier: 3
+              });
+              inTrouble = false;
+            }
+            // Determine if option to monitor connection is enabled.
             if(_this.shouldReconnect && _this.options.sessionwatcher)
             {
               _this.log.info(`Checking for disconnected session every: ${_this.options.heartbeatInterval} seconds.`)
@@ -127,7 +150,7 @@ class EnvisaLink extends EventEmitter {
               else
               {
                 if(_this.lastsentcommand == tpi_str[1].split(',')[0]) 
-                  _this.log.info("Envisakit module command return: ", tpidefs.command_response_codes[tpi_str[1].split(',')[1]]);
+                  _this.log.info(`Envisakit module command return: ${tpidefs.command_response_codes[tpi_str[1].split(',')[1]]}`);
               }
 
             } else {
@@ -168,15 +191,18 @@ class EnvisaLink extends EventEmitter {
 
 
     function isConnectionIdle() {
-      // we didn't receive any messages for greater than heartbeatInterval seconds. Assume dropped  and re-connect.
+      // we didn't receive any messages for greater than heartbeatInterval seconds. Assume dropped and re-connect.
+      // clear handle for interval checking of connection
       clearTimeout(_this.isConnectionIdleHandle);
       var nowDate = new Date();
       var deltaTime = Math.abs(nowDate.getTime() -_this.lastmessage.getTime()) / 1000;
 
+      // Was there traffic in allocated timeframe?
       _this.log.debug("Checking for Heartbeat...");
      if (deltaTime > (_this.options.heartbeatInterval)) {
         _this.log.warn("Missing Heartbeat - Time drift: ", deltaTime ,". Trying to re-connect session...");
         _this.endSession();
+       // Generate event to indicate there is issue with EVL module connection
         setTimeout(function () {_this.startSession()}, 5000);
       } else {
         // Connection not idle. Check again connection idle time seconds...
@@ -597,7 +623,7 @@ class EnvisaLink extends EventEmitter {
   }
 
   endSession() {
-    this.shouldReconnect = false;
+    // Is connected terminate the connection.
     if (actual && !actual.destroyed && this.IsConnected) {
       actual.end();
       return false;

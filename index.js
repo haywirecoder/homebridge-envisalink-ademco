@@ -55,7 +55,6 @@ class EnvisalinkPlatform {
             this.platformPartitionAccessoryMap = {};
             this.chime = config.chimeToggle ? config.chimeToggle: false;
             this.batteryRunTime = config.batteryRunTime ? config.batteryRunTime: 0;
-            //this.commandTimeOut = utilfunc.toIntBetween(config.commandTimeOut, 1, 30, 10);
             this.commandTimeOut = Math.min(30,Math.max(1,config.commandTimeOut));  
             // Should partition be changed when executing command? 
             // Option only valid if this is a multiple partitions system
@@ -88,6 +87,7 @@ class EnvisalinkPlatform {
                 alarm.on('zoneevent', this.zoneUpdate.bind(this));
                 alarm.on('updatepartition', this.partitionUpdate.bind(this));
                 alarm.on('cidupdate', this.cidUpdate.bind(this));
+                alarm.on('enviselinkupdate', this.envisalinkUpdate.bind(this));
             }
             else
                 this.log.warn("This plug-in is running in maintenance mode. All updates and operations are disabled!");
@@ -192,6 +192,30 @@ class EnvisalinkPlatform {
             this.platformPartitionAccessoryMap['c.' + chimeswitch.partition] = accessoryIndex;
         }
     }
+    // The envisalink event represent issue related to low level layers which effect all partitions.
+    envisalinkUpdate(data) {
+        this.log.debug('Envisalink status changed to: ', data);
+        // since issue related to EVL module it affect all partition. For each partition set condition
+        for (var i = 1; i < this.partitions.length+1; i++) {
+            var partitionIndex = this.platformPartitionAccessoryMap['p.' + Number(i)];
+            if (partitionIndex !== undefined ) {
+                var partition = this.platformPartitionAccessories[partitionIndex];
+                if (partition) {
+                    var partitionService = (partition.getServices())[1];
+                    switch(data.source)
+                    {
+                        case "session_connect_status":
+                            {
+                                if(data.qualifier == 1) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT);
+                                if(data.qualifier == 3) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.NO_FAULT);
+                             
+                           }
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
     systemUpdate(data) {
         this.log.debug('System status changed to: ', data);
@@ -210,26 +234,14 @@ class EnvisalinkPlatform {
                         var partitionService = (partition.getServices())[1];
                         if (partitionService) {
                             partition.getAlarmState(function (nothing, returnValue) {
-                                    partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,returnValue)
+                                    partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,returnValue);
+                                    partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,returnValue);
                             });
                         }
-                    }
-                    // Panel issue low battery, auto set battery level to critical
-                    // if (data.keypadledstatus.low_battery) if (partition.batteryLevel > 20) partition.batteryLevel = 20;
-                    // if (data.keypadledstatus.ac_present) {
-                    //     partition.ChargingState = Characteristic.ChargingState.CHARGING; 
-                    //     if (!data.keypadledstatus.low_battery) partition.batteryLevel = 100;
-                    // }
-                    // else {
-                    //     // Partition lost power, mark the downtime.
-                    //     partition.ChargingState = Characteristic.ChargingState.NOT_CHARGING; 
-                    //     partition.downTime = new Date();
-                    // }
-
-                    // Set fault if alarm panel has trouble
-                    if (data.keypadledstatus.system_trouble) partition.systemfault = Characteristic.StatusFault.GENERAL_FAULT; 
-                    else partition.systemfault = Characteristic.StatusFault.NO_FAULT;
-
+                        // Set fault if alarm panel has trouble
+                        if (data.keypadledstatus.system_trouble) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT); 
+                        else partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.NO_FAULT);
+                    }                 
                 }
             }
         } else {
@@ -243,9 +255,9 @@ class EnvisalinkPlatform {
                     accessoryChime.status = data.keypadledstatus.chime;
                     this.log.debug("Set status on accessory " + accessoryChime.name + ' to ' +  accessoryChime.status);
                     if (accessoryChime.accessoryType == "chime") {
-                        var accservice = (accessoryChime.getServices())[0];
+                        var accessoryService = (accessoryChime.getServices())[0];
                         accessoryChime.getChime(function (nothing, returnValue) {
-                            accservice.updateCharacteristic(Characteristic.On,returnValue)
+                            accessoryService.updateCharacteristic(Characteristic.On,returnValue)
                         });
                     }
                 }
@@ -260,9 +272,9 @@ class EnvisalinkPlatform {
                     accessoryBypass.status = data.mode;
                     this.log.debug("Set status on accessory " + accessoryBypass.name + ' to ' + accessoryBypass.status);
                     if (accessoryBypass.accessoryType == "bypass") {
-                        var accservice = (accessoryBypass.getServices())[0];
+                        var accessoryService = (accessoryBypass.getServices())[0];
                         accessoryBypass.getByPass(function (nothing, returnValue) {
-                            accservice.updateCharacteristic(Characteristic.On,returnValue)
+                            accessoryService.updateCharacteristic(Characteristic.On,returnValue)
                         });
                     }
                 }
@@ -273,7 +285,6 @@ class EnvisalinkPlatform {
 
     partitionUpdate(data) {
         this.log.debug('Partition status change: ', data);
-        // var partition = this.platformPartitionAccessories[Number(data.partition) - 1];
         var partitionIndex = this.platformPartitionAccessoryMap['p.' + Number(data.partition)];
         if (partitionIndex !== undefined ) {
             var partition = this.platformPartitionAccessories[partitionIndex];
@@ -283,7 +294,8 @@ class EnvisalinkPlatform {
                 var partitionService = (partition.getServices())[1];
                 if (partitionService) {
                         partition.getAlarmState(function (nothing, returnValue) {
-                            partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,returnValue)
+                            partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,returnValue);
+                            partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,returnValue);
                         });
                 }
                 if (partition.processingAlarm) {
@@ -309,34 +321,34 @@ class EnvisalinkPlatform {
                     accessory.status = data.mode;
                     this.log.debug("Set status on accessory " + accessory.name + ' to ' + accessory.status);
 
-                    var accservice = (accessory.getServices())[0];
-                    if (accservice) {
+                    var accessoryService = (accessory.getServices())[0];
+                    if (accessoryService) {
                         switch(accessory.accessoryType) {
                             case "motion":
                             case "glass":
                                 accessory.getMotionStatus(function (nothing, returnValue) {
-                                    accservice.getCharacteristic(Characteristic.MotionDetected).setValue(returnValue);        
+                                    accessoryService.getCharacteristic(Characteristic.MotionDetected).setValue(returnValue);        
                                 });          
                             break;
                             case "door":
                             case "window":
                                 accessory.getContactSensorState(function (nothing, returnValue) {
-                                    accservice.getCharacteristic(Characteristic.ContactSensorState).setValue(returnValue);
+                                    accessoryService.getCharacteristic(Characteristic.ContactSensorState).setValue(returnValue);
                                 });
                             break;
                             case "leak":
                                 accessory.getLeakStatus(function (nothing, returnValue) {
-                                    accservice.getCharacteristic(Characteristic.LeakDetected).setValue(returnValue);
+                                    accessoryService.getCharacteristic(Characteristic.LeakDetected).setValue(returnValue);
                                 });
                             break;
                             case "smoke":
                                 accessory.getSmokeStatus(function (nothing, returnValue) {
-                                    accservice.getCharacteristic(Characteristic.SmokeDetected).setValue(returnValue);
+                                    accessoryService.getCharacteristic(Characteristic.SmokeDetected).setValue(returnValue);
                                 });
                             break;
                             case "co":
                                 accessory.getCOStatus(function (nothing, returnValue) {
-                                    accservice.getCharacteristic(Characteristic.CarbonMonoxideDetected).setValue(returnValue);
+                                    accessoryService.getCharacteristic(Characteristic.CarbonMonoxideDetected).setValue(returnValue);
                                 });
                             break;
                         }
@@ -354,18 +366,18 @@ class EnvisalinkPlatform {
             var accessoryIndex = this.platformZoneAccessoryMap['z.' + Number(data.zone)];
             if (accessoryIndex !== undefined) {
                 var accessory = this.platformZoneAccessories[accessoryIndex];
-                var accservice = (accessory.getServices())[0];
-                this.log(`Security Event: ${accservice.name} ${data.subject}.`);
+                var accessoryService = (accessory.getServices())[0];
+                this.log(`Security Event: ${accessoryService.name} ${data.subject}.`);
                 switch (data.code) { 
                     // qualifier can be 1 = 'Event or Opening', 3 = 'Restore or Closing',
                     case 384: // RF LOW BATTERY
-                        if(data.qualifier == 1) accservice.updateCharacteristic(Characteristic.StatusLowBattery, Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
-                        if(data.qualifier == 3)  accservice.updateCharacteristic(Characteristic.StatusLowBattery, Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+                        if(data.qualifier == 1) accessoryService.updateCharacteristic(Characteristic.StatusLowBattery, Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                        if(data.qualifier == 3)  accessoryService.updateCharacteristic(Characteristic.StatusLowBattery, Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
                    
                     break;
                     case 383: // SENSOR TAMPER
-                        if(data.qualifier == 1) accservice.updateCharacteristic(Characteristic.StatusTampered, Characteristic.StatusTampered.TAMPERED);
-                        if(data.qualifier == 3)  accservice.updateCharacteristic(Characteristic.StatusTampered, Characteristic.StatusTampered.NOT_TAMPERED);
+                        if(data.qualifier == 1) accessoryService.updateCharacteristic(Characteristic.StatusTampered, Characteristic.StatusTampered.TAMPERED);
+                        if(data.qualifier == 3)  accessoryService.updateCharacteristic(Characteristic.StatusTampered, Characteristic.StatusTampered.NOT_TAMPERED);
                     break;
                 }
             }
@@ -388,12 +400,32 @@ class EnvisalinkPlatform {
                         if(data.qualifier == 1)
                             if (partition.batteryLevel > 20) partition.batteryLevel = 20;
                         if(data.qualifier == 3) partition.batteryLevel = 100;
+                        var partitionService = (partition.getServices())[1];
+                        if (partitionService) partitionService.updateCharacteristic(Characteristic.BatteryLevel,partition.batteryLevel); 
                     break;
+                    case 309: // Trouble-Battery Test Failure (Battery failed at test interval)
+                    case 311: // Trouble-Battery Missing
+                        if(data.qualifier == 1)
+                            partition.batteryLevel = 0;
+                        if(data.qualifier == 3) partition.batteryLevel = 100;
+                        var partitionService = (partition.getServices())[1];
+                        if (partitionService) partitionService.updateCharacteristic(Characteristic.BatteryLevel,partition.batteryLevel); 
+                    break;
+                    case 144: // Alarm-Sensor Tamper-# 
+                    case 145: // Alarm-Exp. Module Tamper-#
+                    case 137: // Burg-Tamper-#
                     case 316: // Trouble System Tamper
                         var partitionService = (partition.getServices())[1];
                         if (partitionService) {
                             if(data.qualifier == 1) partitionService.updateCharacteristic(Characteristic.StatusTampered, Characteristic.StatusTampered.TAMPERED);
                             if(data.qualifier == 3)  partitionService.updateCharacteristic(Characteristic.StatusTampered, Characteristic.StatusTampered.NOT_TAMPERED);
+                        }
+                    case 147: // Trouble – Sensor Super. -#
+                    case 300: // Trouble-System Trouble
+                        var partitionService = (partition.getServices())[1];
+                        if (partitionService) {
+                            if(data.qualifier == 1)  partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT);
+                            if(data.qualifier == 3)  partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.NO_FAULT);
                         }
                     break;
                 }
@@ -438,12 +470,9 @@ class EnvisalinkAccessory {
                     .on('get', this.getAlarmState.bind(this))
                     .on('set', this.setAlarmState.bind(this));
                 service
-                    .addCharacteristic(Characteristic.StatusFault)
-                    .on('get', this.getReadyState.bind(this));
+                    .setCharacteristic(Characteristic.StatusFault, Characteristic.StatusFault.NO_FAULT);    
                 service
                     .setCharacteristic(Characteristic.StatusTampered, Characteristic.StatusTampered.NOT_TAMPERED);
-
-               
                 // Add battery service
                 // Set initial battery level
                 this.batteryLevel = 100;
@@ -608,7 +637,6 @@ class EnvisalinkAccessory {
 
             case "chime":
                 // These are push button key, upon processing request will return current state of chime report by keypad event.
-               
                 var service = new Service.Switch(this.name);
                 service
                     .getCharacteristic(Characteristic.On)
@@ -618,7 +646,7 @@ class EnvisalinkAccessory {
                 this.status = false;
             break;
         }
-        // set device informaiton.
+        // Set device informaiton.
         var serviceAccessoryInformation = new Service.AccessoryInformation();
         serviceAccessoryInformation.setCharacteristic(Characteristic.Manufacturer, 'Envisacor Technologies Inc.');
         serviceAccessoryInformation.setCharacteristic(Characteristic.Model, serviceConfig.Model);
@@ -647,20 +675,24 @@ class EnvisalinkAccessory {
                 case 'ARMED_STAY':
                 case 'ARMED_STAY_BYPASS':
                     status = Characteristic.SecuritySystemCurrentState.STAY_ARM;
+                    this.lastTargetState = Characteristic.SecuritySystemCurrentState.STAY_ARM;
                 break;
                 case 'ARMED_NIGHT':
                 case 'ARMED_NIGHT_BYPASS':    
                     status = Characteristic.SecuritySystemCurrentState.NIGHT_ARM;
+                    this.lastTargetState = Characteristic.SecuritySystemCurrentState.NIGHT_ARM;
                 break;
                 case 'ARMED_AWAY':
                 case 'ARMED_AWAY_BYPASS':
                     status = Characteristic.SecuritySystemCurrentState.AWAY_ARM;
+                    this.lastTargetState = Characteristic.SecuritySystemCurrentState.AWAY_ARM;
                 break;
                 case 'READY':
                 case 'READY_BYPASS':
                 case 'NOT_READY':
                 case 'NOT_READY_TROUBLE':
                     status = Characteristic.SecuritySystemCurrentState.DISARMED;
+                    this.lastTargetState = Characteristic.SecuritySystemCurrentState.DISARMED;
                 break;
             }
         }
@@ -701,11 +733,11 @@ class EnvisalinkAccessory {
                     this.armingTimeOut = setTimeout(this.proccessAlarmTimer.bind(this), this.commandTimeOut * 1000);
                     callback(null, state);
                 } else {
-                    this.log.error("Unhandled alarm state: " + state);
+                    this.log.error(`Unhandled alarm state: ${state}`);
                     callback(null, state);
                 }
             } else {
-                this.log.warn("Already handling Alarm state change, igorning request.");
+                this.log.warn(`Already handling Alarm state change, igorning request.`);
                 callback(null, this.lastTargetState);
             }
         } else {
@@ -715,10 +747,7 @@ class EnvisalinkAccessory {
             callback(null, Characteristic.SecuritySystemCurrentState.DISARMED);
         }
     }
-    getReadyState(callback) {
-        this.log.debug("Triggered System Fault Check: ", this.systemfault );
-        callback(null, this.systemfault);
-    }
+    
     // Battery status Low Battery status and Battery Level.
     getPanelStatusLowBattery(callback) {
         this.log.debug("Triggered Low Battery Check")
@@ -752,7 +781,7 @@ class EnvisalinkAccessory {
     proccessAlarmTimer() {
         var partitionService = this.getServices()[1];
         if (this.processingAlarm) {
-            this.log.warn("Alarm request did not return successful in allocated time. Current alarm status is ", this.status);
+            this.log.warn(`Alarm request did not return successful in allocated time. Current alarm status is ${this.status}`);
             this.processingAlarm = false;
             this.getAlarmState(function (nothing, returnValue) {
                 partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,returnValue);
@@ -929,7 +958,7 @@ class EnvisalinkAccessory {
             // Get the button service and updated switch soon after set function is complete
             var switchService = this.getServices()[key];
             // Replace token values with pin
-            var alarmcommand = this.command[key].replace("{pin}",this.pin);
+            var alarmcommand = this.command[key].replace("@pin",this.pin);
             this.log(`Sending panel command for key ${this.subname[key]}`);
             alarm.sendCommand(alarmcommand);
               // turn off after 2 sec
