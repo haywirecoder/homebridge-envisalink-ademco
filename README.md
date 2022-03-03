@@ -33,7 +33,7 @@ Please Note: I recommended not using the master user or installer code in the co
 | sessionsWatcher | *(optional)*  Automatic disconnect and recreate a new session if module detect a hang session. This is done by periodically (i.e. heartbeatInterval) checking the last updates from the virtual keypad. Autreconnect value must also be set to true for this option to be valid. Default is true. |
 | heartbeatInterval | *(optional)* Heartbeat interval to determine if envisalink sessions has hang. Default is 30 second. |
 | commandTimeOut    | *(optional)* Time-out value for alarm command to return provided in second. Default is 10 second.          |
-| autoreconnect     | *(optional)* Automatic reconnect to server if network channel is broken. Default is true.                                        |
+| autoReconnect     | *(optional)* Automatic reconnect to server if network channel is broken. Default is true.                                        |
 | chimeToggle     | *(optional)*  Create a switch to enable and disabled Chime bell. Panel only allow change bell status when alarm is not armed. Default is false.                         |
 | batteryRunTime     | *(optional)*  User suppied run time of main system battery backup in hours. This value allows plug-in to estimate remaining time when system switch to backup battery. |  
 | maintenanceMode     | *(optional)*  Disable communication with Envisakit module. **Note:** This will disable all updates.                        |
