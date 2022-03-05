@@ -1,12 +1,12 @@
 # Change Log
 
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
-# v1.2.2 (2022-04-06)
+# v1.2.2 (2022-04-05)
 ## Enhancements
-* Envisalink TPI connection issues now surface in Homekit as a general faults. <i>Please note:</i> Apple Home application doesn't show visual indicators for faults (it appears in the setting of alarm tile). Other 3rd party application such as Eve Home do show visual indicator.
+* Envisalink TPI connection issues now surface in Homekit as a general faults. <i>Please note:</i> Apple Home application doesn't show visual indicators for faults, it does appears in the setting security system tile. 3rd party applications such as Eve Home do show visual indicator.
 
 ## Break fixes
-* Corrected Typo in config.scheme.json and coding issue which prevented auto re-connect from functioning property (#23). If your issue where auto connect is not enabling, please set attribute via the configure tool.
+* Corrected Typo in config.scheme.json and coding issue which prevented auto re-connect from functioning property (#23). If your issue where auto connect is not enabling, please set attribute via the configure tool (autoReconnect=true).
 
 # v1.2.1 (2022-02-10)
 ## Enhancements
