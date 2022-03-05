@@ -12,7 +12,7 @@ Limits:
 
 * When system is "Armed" the panel no longer report the state of each zone. All zone will age out and be considered close once armed. Note: A bypass zone will automaticly show as fault (open) once the alarm is disarmed.
 
-* Envisalink module only support one connection. Once this plug-in is connected, any other connections will result in an error. Vice-versa, if Envisalink is being used for other purpose this module will not able connect. Confirm you have a stable network connection to the Envisalink module prior installing this plug-in. While the auto-reconnect logic option is avalaible it is design for occasional network issues.
+* Envisalink module only support one connection. Once this plug-in is connected, any other connections will result in an error. Vice-versa, if Envisalink is being used for other purpose this module will not be able to connect. Confirm you have a stable network connection to the Envisalink module prior installing this plug-in. While the auto-reconnect logic option is avalaible it is design for occasional network issues.
 
 * This plug-in uses "Arm-Instant (Zero Delay-Stay)" as indicator of <i>NIGHT STAY</i>. Arms-Instant is similar to the STAY mode, but without the entry delay feature and usually associated with <i>NIGHT STAY</i>.
 
