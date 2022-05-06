@@ -87,7 +87,7 @@ class EnvisalinkPlatform {
                 alarm.on('zoneevent', this.zoneUpdate.bind(this));
                 alarm.on('updatepartition', this.partitionUpdate.bind(this));
                 alarm.on('cidupdate', this.cidUpdate.bind(this));
-                alarm.on('enviselinkupdate', this.envisalinkUpdate.bind(this));
+                alarm.on('envisalinkupdate', this.envisalinkUpdate.bind(this));
             }
             else
                 this.log.warn("This plug-in is running in maintenance mode. All updates and operations are disabled!");
@@ -219,7 +219,6 @@ class EnvisalinkPlatform {
 
     systemUpdate(data) {
         this.log.debug('System status changed to: ', data);
-        //var partition = this.platformPartitionAccessories[Number(data.partition) - 1];
         var partitionIndex = this.platformPartitionAccessoryMap['p.' + Number(data.partition)];
         var accessorybypassIndex = this.platformPartitionAccessoryMap['b.' + Number(data.partition)];
         var accessoryChimeIndex = this.platformPartitionAccessoryMap['c.' + Number(data.partition)];
@@ -235,12 +234,11 @@ class EnvisalinkPlatform {
                         if (partitionService) {
                             partition.getAlarmState(function (nothing, returnValue) {
                                     partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,returnValue);
-                                    partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,returnValue);
                             });
                         }
-                        // Set fault if alarm panel has trouble
-                        if (data.keypadledstatus.system_trouble) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT); 
-                        else partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.NO_FAULT);
+                        // if system is not ready set general fault
+                        if (data.keypadledstatus.ready) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.NO_FAULT); 
+                        else partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT);
                     }                 
                 }
             }
@@ -295,8 +293,11 @@ class EnvisalinkPlatform {
                 if (partitionService) {
                         partition.getAlarmState(function (nothing, returnValue) {
                             partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,returnValue);
-                            partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,returnValue);
                         });
+                        // if system is not ready set general fault
+                        if (data.code != 3) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.NO_FAULT); 
+                        else partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT);
+
                 }
                 if (partition.processingAlarm) {
                     // clear timer 
@@ -367,7 +368,7 @@ class EnvisalinkPlatform {
             if (accessoryIndex !== undefined) {
                 var accessory = this.platformZoneAccessories[accessoryIndex];
                 var accessoryService = (accessory.getServices())[0];
-                this.log(`Security Event: ${accessoryService.name} ${data.subject}.`);
+                this.log(`Security Event: ${accessoryService.name} ${data.subject} ${data.code}.`);
                 switch (data.code) { 
                     // qualifier can be 1 = 'Event or Opening', 3 = 'Restore or Closing',
                     case 384: // RF LOW BATTERY
@@ -387,7 +388,7 @@ class EnvisalinkPlatform {
             var partitionIndex = this.platformPartitionAccessoryMap['p.' + Number(data.partition)];
             if (partitionIndex !== undefined ) {
                 var partition = this.platformPartitionAccessories[partitionIndex];
-                this.log(`Security Event: ${partition.name} ${data.subject}.`);
+                this.log(`Security Event: ${partition.name} ${data.subject} ${data.code}.`);
                 switch (data.code) {
                     case 301: // Trouble-AC Power
                         if(data.qualifier == 1) {
@@ -419,13 +420,6 @@ class EnvisalinkPlatform {
                         if (partitionService) {
                             if(data.qualifier == 1) partitionService.updateCharacteristic(Characteristic.StatusTampered, Characteristic.StatusTampered.TAMPERED);
                             if(data.qualifier == 3)  partitionService.updateCharacteristic(Characteristic.StatusTampered, Characteristic.StatusTampered.NOT_TAMPERED);
-                        }
-                    case 147: // Trouble – Sensor Super. -#
-                    case 300: // Trouble-System Trouble
-                        var partitionService = (partition.getServices())[1];
-                        if (partitionService) {
-                            if(data.qualifier == 1)  partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT);
-                            if(data.qualifier == 3)  partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.NO_FAULT);
                         }
                     break;
                 }
@@ -670,6 +664,7 @@ class EnvisalinkAccessory {
             this.log.debug("Getting status current state: ", currentState);
             switch (currentState) {
                 case "ALARM":
+                case "ALARM_MEMORY":
                     status = Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED;
                 break;
                 case 'ARMED_STAY':
@@ -689,6 +684,9 @@ class EnvisalinkAccessory {
                 break;
                 case 'READY':
                 case 'READY_BYPASS':
+                    status = Characteristic.SecuritySystemCurrentState.DISARMED;
+                    this.lastTargetState = Characteristic.SecuritySystemCurrentState.DISARMED;
+                break;
                 case 'NOT_READY':
                 case 'NOT_READY_TROUBLE':
                     status = Characteristic.SecuritySystemCurrentState.DISARMED;

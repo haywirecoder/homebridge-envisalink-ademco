@@ -1,6 +1,6 @@
 {
   "name": "homebridge-envisalink-ademco",
-  "version": "1.2",
+  "version": "1.2.3",
   "description": "Homebridge Plug-in Envisalink for Ademco/Honeywell",
   "main": "index.js",
   "directories": {
@@ -15,7 +15,7 @@
   },
   "engines": {
     "node": ">=14.17.5",
-    "homebridge": "^1.1.0"
+    "homebridge": ">=1.1.0"
   },
   "dependencies": {
     "net": ">=1.0"

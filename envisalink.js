@@ -82,7 +82,7 @@ class EnvisaLink extends EventEmitter {
           //  Qualifier. 1 = Event, 3 = Restoral
           if (!inTrouble)
           {
-            _this.emit('enviselinkupdate', {
+            _this.emit('envisalinkupdate', {
               source: source,
               qualifier: 1
             });
@@ -123,7 +123,7 @@ class EnvisaLink extends EventEmitter {
             //  Qualifier. 1 = Event, 3 = Restoral
             if (inTrouble)
             {
-              _this.emit('enviselinkupdate', {
+              _this.emit('envisalinkupdate', {
                 source: source,
                 qualifier: 3
               });
@@ -418,6 +418,8 @@ class EnvisaLink extends EventEmitter {
       var readableCode = 'NOT_READY';
       if (mode.alarm || mode.alarm_fire_zone || mode.fire) {
         readableCode = 'ALARM';
+      } else if (mode.alarm_in_memory) {
+        readableCode = 'ALARM_MEMORY';
       } else if (mode.system_trouble) {
         readableCode = 'NOT_READY_TROUBLE';
       } else if (mode.bypass && mode.armed_stay) {
