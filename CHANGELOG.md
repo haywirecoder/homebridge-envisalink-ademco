@@ -2,15 +2,15 @@
 
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
 # v1.2.3 (2022-05-05)
-## Break fixes
-* Alarm trigger notification cleared without user interaction.
+## Enhancements
+* Panel "Not Ready" result in a general faults. <i>Please note:</i> Apple Home application doesn't show visual indicators for faults, it does appears in the setting security system tile. 3rd party applications such as Eve Home do show visual indicator.
+* "Alarm Memory" result in an alarm trigger event.
 
 ## Changes
 * Security update for dependency library.
-* "Alarm Memory" result in an Alarm trigger event.
 
-## Enhancements
-* Panel "Not Ready" result in a general faults. <i>Please note:</i> Apple Home application doesn't show visual indicators for faults, it does appears in the setting security system tile. 3rd party applications such as Eve Home do show visual indicator.
+## Break fixes
+* Alarm trigger notification cleared without user interaction.
 
 # v1.2.2 (2022-04-05)
 ## Enhancements
