@@ -14,7 +14,7 @@ var inTrouble = false;
 
 
 class EnvisaLink extends EventEmitter {
-
+  
   constructor(log, config) {
     super();
     this.log = log;
@@ -428,7 +428,7 @@ class EnvisaLink extends EventEmitter {
         readableCode = 'ARMED_AWAY_BYPASS';
       } else if (mode.bypass && mode.armed_zero_entry_delay) {
         readableCode = 'ARMED_NIGHT_BYPASS';
-      } else if (mode.bypass) {
+      } else if (mode.bypass && mode.ready) {
         readableCode = 'READY_BYPASS';
       } else if (mode.ready) {
         readableCode = 'READY';
@@ -438,6 +438,8 @@ class EnvisaLink extends EventEmitter {
         readableCode = 'ARMED_AWAY';
       } else if (mode.armed_zero_entry_delay) {
         readableCode = 'ARMED_NIGHT';
+      } else if (mode.bypass && !mode.ready) {
+        readableCode = 'NOT_READY_BYPASS';
       } else if (mode.not_used2 && mode.not_used3) {
         readableCode = 'NOT_READY';
       } // added to handle 'Hit * for faults'
@@ -549,6 +551,9 @@ class EnvisaLink extends EventEmitter {
                   ClosedTimeCount: 0,
                   zone_txt: 'Currently Open'
             });
+
+            // Track of zone status
+            zoneTimerOpen(tpi, zonenum, "open");
           }
           if (swappedBits == "0000")
             {
@@ -571,7 +576,7 @@ class EnvisaLink extends EventEmitter {
       _this.emit('zonetimerdump', {
         zonedump: zone_time,
         status: tpi.name,
-        zoneTimers: zonesDumpData,
+        zoneTimerStatus: zonesDumpData,
         zoneHexData: leZoneTimerDumpHexStr
       });
     }
@@ -594,13 +599,13 @@ class EnvisaLink extends EventEmitter {
       // 01 = Partition 1
       // 002 = User 2 did it
       // 0 = Always 0
-
+      var qualifier_description;
       var cid = data[1];
       var qualifier = cid.substr(0, 1);
       if (qualifier == 1) { // Event
-        qualifier = "event";
+        qualifier_description = "event";
       } else if (qualifier == 3) { // Restoral
-        qualifier = "restoral";
+        qualifier_description = "restoral";
       } else { // Unknown Qualifier!!
         this.log.error(`EnvisaLink: Unrecognized qualifier: ${qualifier} received from Panel!`);
         return undefined;
@@ -613,6 +618,7 @@ class EnvisaLink extends EventEmitter {
       var cidupdate_object = {
         partition: partition,
         qualifier: qualifier,
+        qualifier_description: qualifier_description,
         code: code,
         type: cid_obj.type,
         subject: cid_obj.label,

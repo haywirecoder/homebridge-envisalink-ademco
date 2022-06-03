@@ -3,7 +3,6 @@ var elink = require('./envisalink.js');
 var tpidefs = require('./tpi.js');
 var Service, Characteristic, Accessory, uuid;
 var inherits = require('util').inherits;
-var utilfunc = require('./helper.js');
 var alarm;
 
 
@@ -62,6 +61,10 @@ class EnvisalinkPlatform {
           
             // are we in maintanance mode?
             this.isMaintenanceMode = config.maintenanceMode ? config.maintenanceMode: false;
+
+            // surpress envisalink failure?
+            this.isEnvisalinkFailureSuppress = config.envisalinkFailureSuppress ? config.envisalinkFailureSuppress: false;
+
             
             // Create connection object 
             alarm = new elink(log, config);
@@ -87,7 +90,10 @@ class EnvisalinkPlatform {
                 alarm.on('zoneevent', this.zoneUpdate.bind(this));
                 alarm.on('updatepartition', this.partitionUpdate.bind(this));
                 alarm.on('cidupdate', this.cidUpdate.bind(this));
-                alarm.on('envisalinkupdate', this.envisalinkUpdate.bind(this));
+                
+                // Should module errors be suppress from homekit notification?
+                if (this.isEnvisalinkFailureSuppress == false) alarm.on('envisalinkupdate', this.envisalinkUpdate.bind(this));
+                else this.log.warn("No alarm Tamper will be generated for Envisalink communication failure. Pleae refer to your Homebridge logs for commication failures.");
             }
             else
                 this.log.warn("This plug-in is running in maintenance mode. All updates and operations are disabled!");
@@ -152,6 +158,7 @@ class EnvisalinkPlatform {
             bypassswitch.deviceType =  this.deviceType;
             bypassswitch.SerialNumber = "Envisalink.ByPass.1";
             bypassswitch.partition = 1;
+            bypassswitch.commandTimeOut = this.commandTimeOut
             if (bypassswitch.enabledbyPass) {
                 bypassswitch.name = "Zone Bypass"
                 // Pass the list of zone to bypass control and speed to the first partition
@@ -206,8 +213,8 @@ class EnvisalinkPlatform {
                     {
                         case "session_connect_status":
                             {
-                                if(data.qualifier == 1) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT);
-                                if(data.qualifier == 3) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.NO_FAULT);
+                                if(data.qualifier == 1) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusTampered.TAMPERED);
+                                if(data.qualifier == 3) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusTampered.NOT_TAMPERED);
                              
                            }
                         break;
@@ -235,15 +242,15 @@ class EnvisalinkPlatform {
                             partition.getAlarmState(function (nothing, returnValue) {
                                     partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,returnValue);
                             });
+                            // if system is not ready set general fault
+                            if (partition.status.includes('NOT_READY')) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT); 
+                            else partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.NO_FAULT);
                         }
-                        // if system is not ready set general fault
-                        if (data.keypadledstatus.ready) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.NO_FAULT); 
-                        else partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT);
                     }                 
                 }
             }
         } else {
-            this.log.debug("System status changed: Partition not monitored dismissing status update."); 
+            this.log.debug("System status reported: Partition not monitored dismissing status update."); 
         }
          // if chime enable update status
         if (accessoryChimeIndex !== undefined) {
@@ -266,9 +273,9 @@ class EnvisalinkPlatform {
         if (accessorybypassIndex !== undefined) {
             var accessoryBypass = this.platformPartitionAccessories[accessorybypassIndex];
             if (accessoryBypass) {
-                if (accessoryBypass.status !=  data.mode) {
-                    accessoryBypass.status = data.mode;
-                    this.log.debug("Set status on accessory " + accessoryBypass.name + ' to ' + accessoryBypass.status);
+                if (accessoryBypass.alarmstatus !=  data.mode) {
+                    accessoryBypass.alarmstatus = data.mode;
+                    this.log.debug("Set status on accessory " + accessoryBypass.name + ' to ' + accessoryBypass.alarmstatus);
                     if (accessoryBypass.accessoryType == "bypass") {
                         var accessoryService = (accessoryBypass.getServices())[0];
                         accessoryBypass.getByPass(function (nothing, returnValue) {
@@ -294,10 +301,8 @@ class EnvisalinkPlatform {
                         partition.getAlarmState(function (nothing, returnValue) {
                             partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,returnValue);
                         });
-                        // if system is not ready set general fault
-                        if (data.code != 3) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.NO_FAULT); 
-                        else partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT);
-
+                        if (partition.status.includes('NOT_READY')) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT); 
+                        else partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.NO_FAULT);
                 }
                 if (partition.processingAlarm) {
                     // clear timer 
@@ -368,14 +373,19 @@ class EnvisalinkPlatform {
             if (accessoryIndex !== undefined) {
                 var accessory = this.platformZoneAccessories[accessoryIndex];
                 var accessoryService = (accessory.getServices())[0];
-                this.log(`Security Event: ${accessoryService.name} ${data.subject} ${data.code}.`);
-                switch (data.code) { 
-                    // qualifier can be 1 = 'Event or Opening', 3 = 'Restore or Closing',
+                this.log.debug(`Security Event Zone: ${accessoryIndex} Name: ${accessory.name} Code: ${data.code} Qualifier: ${data.qualifier}.`);
+                switch (Number(data.code)) { 
+                    // qualifier can be 1 = 'Event or Opening', 3 = 'Restore or Closing'
+                    case 570:  // ByPass event
+                        if(data.qualifier == 1) this.log(`${accessory.name} has been bypass.`);
+                        if(data.qualifier == 3) this.log(`${accessory.name} has been unbypass.`);
+                    break;
+
                     case 384: // RF LOW BATTERY
                         if(data.qualifier == 1) accessoryService.updateCharacteristic(Characteristic.StatusLowBattery, Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
                         if(data.qualifier == 3)  accessoryService.updateCharacteristic(Characteristic.StatusLowBattery, Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
-                   
                     break;
+
                     case 383: // SENSOR TAMPER
                         if(data.qualifier == 1) accessoryService.updateCharacteristic(Characteristic.StatusTampered, Characteristic.StatusTampered.TAMPERED);
                         if(data.qualifier == 3)  accessoryService.updateCharacteristic(Characteristic.StatusTampered, Characteristic.StatusTampered.NOT_TAMPERED);
@@ -388,8 +398,8 @@ class EnvisalinkPlatform {
             var partitionIndex = this.platformPartitionAccessoryMap['p.' + Number(data.partition)];
             if (partitionIndex !== undefined ) {
                 var partition = this.platformPartitionAccessories[partitionIndex];
-                this.log(`Security Event: ${partition.name} ${data.subject} ${data.code}.`);
-                switch (data.code) {
+                this.log.debug(`Security Event Partition: ${partitionIndex} Name: ${partition.name} Code: ${data.code} Qualifier: ${data.qualifier}.`);
+                switch (Number(data.code)) {
                     case 301: // Trouble-AC Power
                         if(data.qualifier == 1) {
                             partition.ChargingState = Characteristic.ChargingState.NOT_CHARGING; 
@@ -397,6 +407,7 @@ class EnvisalinkPlatform {
                         }
                         if(data.qualifier == 3) partition.ChargingState = Characteristic.ChargingState.CHARGING; 
                     break;
+
                     case 302: // Trouble-Low Battery (AC is lost, battery is getting low)
                         if(data.qualifier == 1)
                             if (partition.batteryLevel > 20) partition.batteryLevel = 20;
@@ -404,6 +415,7 @@ class EnvisalinkPlatform {
                         var partitionService = (partition.getServices())[1];
                         if (partitionService) partitionService.updateCharacteristic(Characteristic.BatteryLevel,partition.batteryLevel); 
                     break;
+
                     case 309: // Trouble-Battery Test Failure (Battery failed at test interval)
                     case 311: // Trouble-Battery Missing
                         if(data.qualifier == 1)
@@ -412,6 +424,7 @@ class EnvisalinkPlatform {
                         var partitionService = (partition.getServices())[1];
                         if (partitionService) partitionService.updateCharacteristic(Characteristic.BatteryLevel,partition.batteryLevel); 
                     break;
+
                     case 144: // Alarm-Sensor Tamper-# 
                     case 145: // Alarm-Exp. Module Tamper-#
                     case 137: // Burg-Tamper-#
@@ -607,6 +620,9 @@ class EnvisalinkAccessory {
                 this.zoneaccessories = accessories;
                 this.quickbypass = serviceConfig.quickbypass ? serviceConfig.quickbypass : false;
                 this.status = false;
+                this.isProcessingBypass = false;
+                this.commandTimeOut = serviceConfig.commandTimeOut;
+                this.alarmstatus = "READY";
             break;
         
             case "speedkeys":
@@ -689,6 +705,7 @@ class EnvisalinkAccessory {
                 break;
                 case 'NOT_READY':
                 case 'NOT_READY_TROUBLE':
+                case 'NOT_READY_BYPASS':
                     status = Characteristic.SecuritySystemCurrentState.DISARMED;
                     this.lastTargetState = Characteristic.SecuritySystemCurrentState.DISARMED;
                 break;
@@ -698,7 +715,7 @@ class EnvisalinkAccessory {
         callback(null, status);
     }
 
-    setAlarmState(state, callback) {
+    async setAlarmState(state, callback) {
         var currentState = this.status;
         var command = null;
         if (currentState != "NOT_READY") {
@@ -725,7 +742,8 @@ class EnvisalinkAccessory {
 
                         this.log(`Changing Partition to ${this.partition}`);
                         alarm.changePartition(this.partition);
-                        utilfunc.sleep(2000);
+                        //utilfunc.sleep(2000);
+                        await new Promise(r => setTimeout(r, 3000));
                     }
                     alarm.sendCommand(command);
                     this.armingTimeOut = setTimeout(this.proccessAlarmTimer.bind(this), this.commandTimeOut * 1000);
@@ -835,117 +853,118 @@ class EnvisalinkAccessory {
     }
 
     getByPass(callback) {
-        var status = false;
-        this.log.debug('Triggered Bypass Get: ', this.status);
-        switch (this.status) {
+        this.log.debug('Triggered Bypass Get: ', this.alarmstatus);
+        switch (this.alarmstatus) {
             // if zone are bypass set button to on position.
             case "READY_BYPASS":
             case "ARMED_STAY_BYPASS":
             case "ARMED_NIGHT_BYPASS":
-                status = true;
+                this.status = true;
             break;
             default:
-                status = false;
+                this.status = false;
         }
-        this.log.debug('Return Bypass Get: ', status);
-        callback(null, status);
+        this.log.debug('Return Bypass Get: ', this.status);
+        callback(null, this.status);
     }
 
-    setByPass(value, callback) {
-        this.log.debug('Triggered Bypass: ', value);
+    async setByPass(value, callback) {
+        this.log.debug('Triggered Bypass: ', value, this.alarmstatus);
         // Determine if processing another bypass command.
-        if (this.processingBypass) {
+        if (this.isProcessingBypass) {
             this.log("Already processing bypass request. Command ignored.");
             callback(null,this.status);
         }
         else
         {
             this.status = value;
-        }
-
-         // Get the button service and updated switch soon after set function is complete 
-        var switchService = this.getServices()[0];
-        // If alarm is on ignore request
-        switch (this.status) {
-            case "NOT_READY":
-                // System not ready, candidate for zone bypass 
-                if (value) {
-                    this.processingBypass = true;
-                    this.log("Reviewing fault zones for bypassing...");
-                    var command;
-                    if (this.quickbypass) {
-                        this.log("Quick Bypass configured. Quick bypass of fault zones.");
-                        command = this.pin + tpidefs.alarmcommand.quickbypass;
-                        alarm.sendCommand(command);
-                        this.processingBypass = false;
-                        callback(null,value);
-                        break;
-                    }
-                    // Reviewing zone that are being monitored and are bypass enabled (allowed to be bypass)
-                    if (this.zoneaccessories.length == 0) {
-                        this.log.warn("No zones defined for Bypassing.");
-                        this.processingBypass = false;
-                        this.status = false;
-                        setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,false)},500);
-                        callback(null, false);
-                        break;
-                    }
-                    var bypasscount = 0;
-                    var bValue = false;
-                    for (var i = 0; i < this.zoneaccessories.length; i++) {
-                        var zoneinfo = this.zoneaccessories[i];
-                        if (zoneinfo) {
-                            // Only bypass zone that are open and has been enabled for bypass, default is false for all zone define in configuration file.
-                            this.log.debug("Reviewing Zone: ", zoneinfo.name + ", " + zoneinfo.status + ", " + zoneinfo.bypassEnabled);
-                            if ((zoneinfo.status == "open") && (zoneinfo.bypassEnabled)) {
-                                this.log("Bypassing", zoneinfo.name);
-                                // Require leading zero for zone numbers which are not two or three digit (128 Panel)
-                                if (this.deviceType == "128FBP") 
-                                    command = this.pin + tpidefs.alarmcommand.bypass + (("00" + zoneinfo.zone).slice(-3));
-                                else
-                                    command = this.pin + tpidefs.alarmcommand.bypass + (("0" + zoneinfo.zone).slice(-2));
-                                // don't over load the command buffer, waiting 500 ms before requesting another bypass request
-                                alarm.sendCommand(command);
-                                //Honeywell panels expect a minimum 2 second delay between sending different sequences of commands to the panel,
-                                utilfunc.sleep(2000);
-                                bypasscount = bypasscount + 1;
-                                bValue = true;
-                            }
+            this.isProcessingBypass = true;
+            // Get the button service and updated switch soon after set function is complete 
+            var switchService = this.getServices()[0];
+            // If alarm is on ignore request
+            switch (this.alarmstatus) {
+                case "NOT_READY":
+                    // System not ready, review candidate for zone bypass 
+                    if (value) {
+                        this.log(`Reviewing fault zones for bypassing...`);
+                        var command;
+                        if (this.quickbypass) {
+                            this.log(`Quick Bypass configured. Quick bypass of fault zones.`);
+                            command = this.pin + tpidefs.alarmcommand.quickbypass;
+                            alarm.sendCommand(command);
+                            callback(null,value);
+                            break;
                         }
+                        // Reviewing zone that are being monitored and are bypass enabled (allowed to be bypass)
+                        if (this.zoneaccessories.length == 0) {
+                            this.log.warn(`No zones were defined.`);
+                            this.status = false;
+                            setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,false)},500);
+                            callback(null, false);
+                            break;
+                        }
+                        var bypasscount = 0;
+                        var zonesToBypass = "";
+                        var bValue = false;
+                        for (var i = 0; i < this.zoneaccessories.length; i++) {
+                            var zoneinfo = this.zoneaccessories[i];
+                            if (zoneinfo) {
+                                // Only bypass zone that are open and has been enabled for bypass, default is false for all zone define in configuration file.
+                                this.log.debug("Reviewing Zone: ", zoneinfo.name + ", " + zoneinfo.status + ", " + zoneinfo.bypassEnabled);
+                                if ((zoneinfo.status == "open") && (zoneinfo.bypassEnabled)) {
+                                    this.log(`Requesting bypassing of ${zoneinfo.name} ...`);
+                                    if (zonesToBypass.length > 1) zonesToBypass = zonesToBypass + ","; 
+                                    // Require leading zero for zone numbers which are not two or three digit (128 Panel)
+                                    if (this.deviceType == "128FBP") 
+                                        zonesToBypass = zonesToBypass + (("00" + zoneinfo.zone).slice(-3));
+                                    else
+                                        zonesToBypass = zonesToBypass + (("0" + zoneinfo.zone).slice(-2));
+                                    bypasscount = bypasscount + 1;
+                                }
+                            }
+                        } 
+                        if (bypasscount == 0) {
+                            this.log("No zones were enabled for bypass. Please set bypassEnabled flag for zone(s) wanting to enable for bypass by Homekit.")
+                            bValue = false;
+                        }
+                        else {
+                            command = this.pin + tpidefs.alarmcommand.bypass + zonesToBypass;
+                            alarm.sendCommand(command);
+                            await new Promise(r => setTimeout(r, 2000));
+                            bValue = true;
+                            this.log(`${bypasscount.toString()} zone(s) were queued for bypass.`);
+                        }
+                    
                     }
-                    if (bypasscount == 0) this.log("No zones were enabled for Bypassing")
-                    else this.log("Bypass ", bypasscount.toString(), " zone(s)");
-                   
-                }
-                this.processingBypass = false;
-                this.status = bValue;
-                setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,bValue)},500);
-                callback(null, bValue);
-            break;
-            case "READY_BYPASS":
-                // Clear bypass zones
-                if (value == false) {
-                    this.log("Clearing bypass zones...")
-                    var command = this.pin + tpidefs.alarmcommand.disarm + this.partition;
-                    alarm.sendCommand(command);
-                }
-                this.status = false;
-                callback(null, false);
-            break;
-            case 'READY':
-                this.log("Alarm is ", this.status, " no action required. Ignoring Bypass request.");
-                this.status = false;
-                // Turn off switch, since no action was completed.
-                setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,false)},2000);
-                callback(null, false);
-            break;
-            default:
-                // Nothing to process, return to previous state, 
-                this.status = !value;
-                setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,!value)},2000);
-                callback(null, !value);
-            break;
-
+                    this.status = bValue;
+                    setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,bValue)},500);
+                    callback(null, bValue);
+                break;
+                case "READY_BYPASS":
+                    // Clear bypass zones
+                    if (value == false) {
+                        this.log(`Clearing bypass zones...`)
+                        var command = this.pin + tpidefs.alarmcommand.disarm + this.partition;
+                        alarm.sendCommand(command);
+                    }
+                    this.status = false;
+                    callback(null, false);
+                break;
+                case 'READY':
+                    this.log(`Alarm is ${this.alarmstatus} no action required. Ignoring bypass request.`);
+                    this.status = false;
+                    // Turn off switch, since no action was completed.
+                    setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,false)},2000);
+                    callback(null, false);
+                break;
+                default:
+                    // Nothing to process, return to previous state, 
+                    this.status = !value;
+                    setTimeout(function () {switchService.updateCharacteristic(Characteristic.On,!value)},2000);
+                    callback(null, !value);
+                break;
+            }
+            this.isProcessingBypass = false;
         }
     }
 

@@ -134,6 +134,13 @@
         "minimum": 1,
         "maximum": 168
       },
+      "envisalinkFailureSuppress": {
+        "title": "Turn off Envisalink module alarm Tamper events.",
+        "type": "boolean",
+        "default": false,
+        "description": "Turn off alarm Tamper events associated with Envisalink module communication error. <b>Note:</b> It will still be logged in Homebridge." 
+
+      },
       "maintenanceMode": {
         "title": "Disabled connection to Envisalink module for maintenance. <b>WARNING:</b> This will diasable all updates and operations.",
         "type": "boolean",
@@ -433,6 +440,7 @@
         "commandTimeOut",
         "autoReconnect",
         "batteryRunTime",
+        "envisalinkFailureSuppress",
         "maintenanceMode"
       ]
     }
