@@ -4,6 +4,7 @@
 [![npm](https://img.shields.io/npm/dt/homebridge-envisalink-ademco.svg?style=flat-square)](https://www.npmjs.com/package/homebridge-envisalink-ademco)
 
 <b>*** WARNING **** </b> 
+
 When upgrading from any prior version of the plugin to version 2.0.0+, you maybe prompted to re-add, re-assigned room, and rebuild existing automations. This is a one-time event and is not a bug. This is the result of upgrade to Homebridge modern dynamic platform.
 
 This module was designed to work with Ademco Envisalink module with the Vista series alarm panels. It supports alarm operations (e.g. Arm, disarm, night and stay), bypassing of zones, special function keys (e.g. Fire, Panic, Medical) and exposes the alarm system sensors to homebridge.
