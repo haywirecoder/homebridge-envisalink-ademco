@@ -9,7 +9,7 @@ When upgrading from any prior version of the plugin to version 2.0.0+, you maybe
 
 This module was designed to work with Ademco Envisalink module with the Vista series alarm panels. It supports alarm operations (e.g. Arm, disarm, night and stay), bypassing of zones, special function keys (e.g. Fire, Panic, Medical) and exposes the alarm system sensors to homebridge.
 
-
+----------------------------------
 Limits:
 
 * Ademco panels provide limited zone information to their peripherals. The panel only provide real-time information when a zone is faulted (opened) but not when it is restored (closed). However, the virtual key panel is continuously updated with zones information. This module auto set the faulted zone (opened) to restored (close) based the value set by *openZoneTimeout* attributes. Default configuration would result in zone closing 30 seconds after the virtual keypanel no longer reports a fault for the specific zone.
