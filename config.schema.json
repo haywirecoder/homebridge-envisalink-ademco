@@ -105,7 +105,7 @@
         "title": "Command timeout in second",
         "type": "integer",
         "default": 10,
-        "description": "Lenght of time to wait for alarm command to return. Default: 10 seconds.",
+        "description": "Lenght of time to wait for alarm command to return. ByPass command will automatic triple this value due lenght of those operations. Default: 10 seconds.",
         "minimum": 5,
         "maximum": 30
       },

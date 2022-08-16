@@ -35,7 +35,7 @@ Please Note: I recommended not using the master user or installer code in the co
 | commandTimeOut    | *(optional)* Time-out value for alarm command to return provided in second. Default is 10 second.          |
 | autoReconnect     | *(optional)* Automatic reconnect to server if network channel is broken. Default is true.                                        |
 | chimeToggle     | *(optional)*  Create a switch to enable and disabled Chime bell. Panel only allow change bell status when alarm is not armed. Default is false.                         |
-| batteryRunTime     | *(optional)*  User suppied run time of main system battery backup in hours. This value allows plug-in to estimate remaining time when system switch to backup battery. |  
+| batteryRunTime     | *(optional)*  User supplied run time of main system battery backup in hours. This value allows plug-in to estimate remaining time when system switch to backup battery. |  
 | maintenanceMode     | *(optional)*  Disable communication with Envisakit module. **Note:** This will disable all updates.                        |
 | **zones**         | *(Optional)* List of zones to appear and monitor in Homekit                                                              |
 | **bypass**        | *(Optional)* Creates a bypass control (a switch) to bypass zones which are open (faulted)                                |
@@ -78,7 +78,7 @@ Example configuration is below.
 
     "platform": "Envisalink-Ademco",
     "host": "192.168.YYY.XXX",
-    "deviceType": "Honeywell Vista",
+    "deviceType": "20P",
     "password": "---envisalink password (default is user)---",
     "pin": "---panel pin for arming/disarming---",
     "partitions": [

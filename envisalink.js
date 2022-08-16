@@ -14,7 +14,11 @@ var inTrouble = false;
 
 
 class EnvisaLink extends EventEmitter {
-  
+
+  isProcessingBypass;
+  isProcessingAlarm;
+  isProcessingBypassqueue;
+
   constructor(log, config) {
     super();
     this.log = log;
@@ -44,6 +48,10 @@ class EnvisaLink extends EventEmitter {
     this.zones = {};
     this.lastmessage = new Date();
     this.lastsentcommand = "";
+    this.isProcessingBypass = false;
+    this.isProcessingAlarm = false;
+    this.isProcessingBypassqueue = 0;
+
 
   }
 
