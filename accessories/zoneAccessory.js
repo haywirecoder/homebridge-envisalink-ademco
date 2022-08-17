@@ -117,25 +117,25 @@ class EnvisalinkZoneAccessory {
     }
   }
 
-async getMotionStatus(callback) {
-  callback(null, this.ENVISA_TO_HOMEKIT_MOTION[this.envisakitCurrentStatus]); 
-}
+  async getMotionStatus(callback) {
+    callback(null, this.ENVISA_TO_HOMEKIT_MOTION[this.envisakitCurrentStatus]); 
+  }
 
-async getContactSensorStatus(callback) {
-    callback(null, this.ENVISA_TO_HOMEKIT_CONTACT[this.envisakitCurrentStatus]);
-}
+  async getContactSensorStatus(callback) {
+      callback(null, this.ENVISA_TO_HOMEKIT_CONTACT[this.envisakitCurrentStatus]);
+  }
 
-async getLeakStatus(callback) {
-  callback(null, this.ENVISA_TO_HOMEKIT_LEAK[this.envisakitCurrentStatus]);
-}
+  async getLeakStatus(callback) {
+    callback(null, this.ENVISA_TO_HOMEKIT_LEAK[this.envisakitCurrentStatus]);
+  }
 
-async getSmokeStatus(callback) {
-  callback(null, this.ENVISA_TO_HOMEKIT_SMOKE[this.envisakitCurrentStatus]);
-}
+  async getSmokeStatus(callback) {
+    callback(null, this.ENVISA_TO_HOMEKIT_SMOKE[this.envisakitCurrentStatus]);
+  }
 
-async getCOStatus(callback) {
-  callback(null, this.ENVISA_TO_HOMEKIT_CO[this.envisakitCurrentStatus]);
-}
+  async getCOStatus(callback) {
+    callback(null, this.ENVISA_TO_HOMEKIT_CO[this.envisakitCurrentStatus]);
+  }
 
 }
 

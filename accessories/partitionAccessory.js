@@ -17,7 +17,7 @@ class EnvisalinkPartitionAccessory {
     this.uuid = UUIDGen.generate('envisalink.' + this.accessoryType + this.partitionNumber);
     this.alarm = alarm;
 
-    this.ENVISA_TO_HOMEKIT = {
+    this.ENVISA_TO_HOMEKIT_CURRENT = {
       'NOT_READY': Characteristic.SecuritySystemCurrentState.DISARMED,
       'NOT_READY_TROUBLE': Characteristic.SecuritySystemCurrentState.DISARMED,
       'NOT_READY_BYPASS': Characteristic.SecuritySystemCurrentState.DISARMED,
@@ -33,7 +33,20 @@ class EnvisalinkPartitionAccessory {
       'ALARM_MEMORY': Characteristic.SecuritySystemCurrentState.DISARMED
     };
 
-    
+    this.ENVISA_TO_HOMEKIT_TARGET = {
+        'NOT_READY': Characteristic.SecuritySystemTargetState.DISARM,
+        'NOT_READY_TROUBLE': Characteristic.SecuritySystemTargetState.DISARM,
+        'NOT_READY_BYPASS': Characteristic.SecuritySystemTargetState.DISARM,
+        'READY': Characteristic.SecuritySystemTargetState.DISARM,
+        'READY_BYPASS': Characteristic.SecuritySystemTargetState.DISARM,
+        'ARMED_STAY': Characteristic.SecuritySystemTargetState.STAY_ARM,
+        'ARMED_STAY_BYPASS': Characteristic.SecuritySystemTargetState.STAY_ARM,
+        'ARMED_AWAY': Characteristic.SecuritySystemTargetState.AWAY_ARM,
+        'ARMED_AWAY_BYPASS': Characteristic.SecuritySystemTargetState.AWAY_ARM,
+        'ARMED_NIGHT': Characteristic.SecuritySystemTargetState.NIGHT_ARM,
+        'ARMED_NIGHT_BYPASS': Characteristic.SecuritySystemTargetState.NIGHT_ARM,
+        'ALARM_MEMORY': Characteristic.SecuritySystemTargetState.DISARM
+      };
   }
 
 
@@ -94,7 +107,7 @@ class EnvisalinkPartitionAccessory {
 
 // Handle requests to get the alarm states. Return index of alarm state
 async getCurrentState(callback) {
-  var l_homeKitCurrentState = this.ENVISA_TO_HOMEKIT[this.envisakitCurrentStatus];
+  var l_homeKitCurrentState = this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus];
   return callback(null, l_homeKitCurrentState);
 }
 
@@ -102,6 +115,7 @@ async getTargetState(callback) {
     return callback(null, this.homekitLastTargetState);
   }
 
+// Timer triggered event if alarm is not process in an allocated time frame.
 proccessAlarmTimer() {
      // get security system
      const securitySevice = this.accessory.getService(this.Service.SecuritySystem);
@@ -109,8 +123,8 @@ proccessAlarmTimer() {
         this.log.warn(`Alarm request did not return successfully in allocated time. Current alarm status is ${this.l_envisalikCurrentStatus}`);
         this.processingAlarm = false;
         this.armingTimeOut = undefined;
-        securitySevice.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.ENVISA_TO_HOMEKIT[this.envisakitCurrentStatus]);
-        securitySevice.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.ENVISA_TO_HOMEKIT[this.envisakitCurrentStatus]);  
+        securitySevice.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus]);
+        securitySevice.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.ENVISA_TO_HOMEKIT_TARGET[this.envisakitCurrentStatus]);  
     } 
 }
 // Change smart water shutoff monitoring state.
@@ -208,3 +222,4 @@ async getSecuritySystemService() {
   
 }
 module.exports = EnvisalinkPartitionAccessory;
+

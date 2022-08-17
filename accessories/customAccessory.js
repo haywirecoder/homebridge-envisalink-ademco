@@ -77,11 +77,21 @@ class EnvisalinkCustomAccessory {
               
               this.speedKeySubname[index] = l_keylist[index].name;
               if (l_keylist[index].speedcommand == "custom")  
-                  this.speedKeyCommand[index]= l_keylist[index].customcommand;
+                  this.speedKeyCommand[index]= l_keylist[index].customcommand.replace("@pin",this.pin);
               else
                   this.speedKeyCommand[index]= l_keylist[index].speedcommand;
 
              }
+             // remove old switch services if they are no longer define as part of speedkey list
+             if(this.accessory.context.swSubnames){
+              var oldSwichnamelist = this.accessory.context.swSubnames.filter(x =>  this.speedKeySubname.indexOf(x) === -1);
+              for (var indexOld= 0; indexOld < oldSwichnamelist.length; indexOld++) {
+                this.log.debug('setAccessory: speedkeys Removing switch - ', oldSwichnamelist[indexOld]);
+                var swOldServiceSpeedkey = this.accessory.getServiceById(this.Service.Switch,SPEED_KEY_PREXFIX+oldSwichnamelist[indexOld]);
+                if(swOldServiceSpeedkey != undefined) this.accessory.removeService(swOldServiceSpeedkey);
+              }
+             }
+             this.accessory.context.swSubnames = this.speedKeySubname;
           break;
     }
 
