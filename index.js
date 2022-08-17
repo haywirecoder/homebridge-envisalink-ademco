@@ -247,7 +247,7 @@ class EnvisalinkPlatform {
                 // Add to active accessory list, which is later used to remove unused cache entries
                 this.activeAccessoryMap[customAccessory.uuid] = true;
                 var accessoryIndex = this.platformPartitionAccessories.push(customAccessory) - 1;
-                this.platformPartitionAccessoryMap['b.bypass'] = accessoryIndex;
+                this.platformPartitionAccessoryMap['c.bypass'] = accessoryIndex;
             }
             else{
                 this.log.error("Misconfigured Alarm Zone Bypass switch defination " + bypassswitch.name + " igoring.");
@@ -264,18 +264,23 @@ class EnvisalinkPlatform {
             speedkey.name = "Speed Key";
             speedkey.keyList = this.speedKeys;
             var customAccessory = new customDevices(this.log, speedkey, Service, Characteristic, UUIDGen, alarm);
-            // Macro key use identical cache ID and which can result modification one macro key not appear correctly. 
-            // Alway create new one and discard the cache version.
+            // check the accessory was not restored from cache
             var foundAccessory = this.accessories.find(accessory => accessory.UUID === customAccessory.uuid)
-            if (foundAccessory) this.removeAccessory(foundAccessory,true);
-            // create a new accessory
-            let newAccessory = new this.api.platformAccessory(customAccessory.name, customAccessory.uuid);
-            // add services and Characteristic
-            customAccessory.setAccessory(newAccessory);
-            // register the accessory
-            this.addAccessory(customAccessory);
+            if (!foundAccessory) {
+                // create a new accessory
+                let newAccessory = new this.api.platformAccessory(customAccessory.name, customAccessory.uuid);
+                // add services and Characteristic
+                customAccessory.setAccessory(newAccessory);
+                // register the accessory
+                this.addAccessory(customAccessory);
+            }
+            else { // accessory already exist just set characteristic
+                customAccessory.setAccessory(foundAccessory);
+            }
+            // Add to active accessory list, which is later used to remove unused cache entries
             this.activeAccessoryMap[customAccessory.uuid] = true;
-            
+            var accessoryIndex = this.platformPartitionAccessories.push(customAccessory) - 1;
+            this.platformPartitionAccessoryMap['c.speedkey'] = accessoryIndex;
         }
     }
 
@@ -310,7 +315,7 @@ class EnvisalinkPlatform {
     systemUpdate(data) {
         this.log.debug('systemUpdate: Status changed - ', data);
         var partitionIndex = this.platformPartitionAccessoryMap['p.' + Number(data.partition)];
-        var accessorybypassIndex = this.platformPartitionAccessoryMap['b.' + Number(data.partition)];
+        var accessorybypassIndex = this.platformPartitionAccessoryMap['c.bypass'];
         var accessoryChimeIndex = this.platformPartitionAccessoryMap['c.chimemode'];
         if (partitionIndex !== undefined ) {
             var partition = this.platformPartitionAccessories[partitionIndex];
@@ -323,11 +328,11 @@ class EnvisalinkPlatform {
                         this.log.debug("systemUpdate: partition change - " + partition.name + ' to ' + partition.envisakitCurrentStatus);
                         const partitionService = partition.accessory.getService(Service.SecuritySystem);
                         if (partitionService) {
-                            if (partition.homekitLastTargetState != partition.ENVISA_TO_HOMEKIT[data.mode])
+                            if (partition.homekitLastTargetState != partition.ENVISA_TO_HOMEKIT_TARGET[data.mode])
                                 {
-                                    partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,partition.ENVISA_TO_HOMEKIT[data.mode]);
-                                    if(data.mode != 'ALARM') partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,partition.ENVISA_TO_HOMEKIT[data.mode]);  
-                                    partition.homekitLastTargetState = partition.ENVISA_TO_HOMEKIT[data.mode];
+                                    partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,partition.ENVISA_TO_HOMEKIT_CURRENT[data.mode]);
+                                    if(data.mode != 'ALARM') partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,partition.ENVISA_TO_HOMEKIT_TARGET[data.mode]);  
+                                    partition.homekitLastTargetState = partition.ENVISA_TO_HOMEKIT_TARGET[data.mode];
                                 }       
                             // if system is not ready set general fault
                             if (partition.envisakitCurrentStatus.includes('NOT_READY') || partition.envisakitCurrentStatus.includes('ALARM_MEMORY')) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT); 
@@ -382,11 +387,11 @@ class EnvisalinkPlatform {
                 this.log.debug("partitionUpdate: Partition data - " + partition.name + ' to ' + partition.envisakitCurrentStatus);
                 const partitionService = partition.accessory.getService(Service.SecuritySystem);
                 if (partitionService) {
-                    if (partition.homekitLastTargetState != partition.ENVISA_TO_HOMEKIT[data.mode])
+                    if (partition.homekitLastTargetState != partition.ENVISA_TO_HOMEKIT_TARGET[data.mode])
                         {
-                            partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,partition.ENVISA_TO_HOMEKIT[data.mode]);
-                            if(data.mode != 'ALARM') partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,partition.ENVISA_TO_HOMEKIT[data.mode]);  
-                            partition.homekitLastTargetState = partition.ENVISA_TO_HOMEKIT[data.mode];
+                            partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,partition.ENVISA_TO_HOMEKIT_CURRENT[data.mode]);
+                            if(data.mode != 'ALARM') partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,partition.ENVISA_TO_HOMEKIT_TARGET[data.mode]);  
+                            partition.homekitLastTargetState = partition.ENVISA_TO_HOMEKIT_TARGET[data.mode];
                         }       
                     // if system is not ready set general fault
                     if (partition.envisakitCurrentStatus.includes('NOT_READY') || partition.envisakitCurrentStatus.includes('ALARM_MEMORY')) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT); 
@@ -461,7 +466,7 @@ class EnvisalinkPlatform {
                         if(data.qualifier == 1) this.log(`${accessory.name} has been bypass.`);
                         if(data.qualifier == 3) this.log(`${accessory.name} has been unbypass.`);
                         alarm.isProcessingBypassqueue = alarm.isProcessingBypassqueue - 1;
-                        if ((alarm.isProcessingBypassqueue <= 0 ) && (isProcessingBypassqueue)) { 
+                        if ((alarm.isProcessingBypassqueue <= 0 ) && (alarm.isProcessingBypassqueue)) { 
                             alarm.isProcessingBypass = false; 
                             alarm.isProcessingBypassqueue = 0;
                             this.log(`All queued Bypass completed.`)
@@ -584,4 +589,4 @@ const homebridge = homebridge => {
     homebridge.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, EnvisalinkPlatform);
 };
   
- module.exports = homebridge;
+module.exports = homebridge;

@@ -1,16 +1,17 @@
 # Change Log
 
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
-# v1.2.3 (2022-05-05)
 ## Enhancements
-* Panel "Not Ready" result in a general faults. <i>Please note:</i> Apple Home application doesn't show visual indicators for faults, it does appears in the setting security system tile. 3rd party applications such as Eve Home do show visual indicator.
-* "Alarm Memory" result in an alarm trigger event.
 
-## Changes
-* Security update for dependency library.
+* Complete refactor to modern dynamic platform, remove deprecated code, updated depended libraries and optimization of code. Improved response time all around and lay the foundation for future release.
+
+ <b>WARNING:</b> When upgrading from any prior version of the plugin to version 2.0.0+, you maybe prompted to re-add accessories, re-assigned accessories to rooms, and rebuild existing automations. This is a one-time event and is not a bug. This is the result of upgrade to Homebridge modern dynamic platform, which generated new unique internal ID.
+
+* Panel "Not Ready" or "Alarm In Memory" result in a general faults. <i>Please note:</i> Apple Home application doesn't show visual indicators for faults, it does appears in the setting security system tile. 3rd party applications such as Eve Home do show visual an indicator.
+* Envisalink TPI connection changed from General Fault to Tamper events in Homekit. This is now inline with other alarm errors from the panel. A configuration value in UX can now be used to surpress the event.
 
 ## Break fixes
-* Alarm trigger notification cleared without user interaction.
+* Corrected issue with Bypass functional not working with multiple zone bypass
 
 # v1.2.2 (2022-04-05)
 ## Enhancements
