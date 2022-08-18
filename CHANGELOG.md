@@ -1,9 +1,8 @@
 # Change Log
-
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v2.0.0 (2022-08-21)
 ## Enhancements
-
-* Complete refactor to modern dynamic platform, remove deprecated code, updated depended libraries and optimization of code. Improved response time all around and lay the foundation for future release.
+* Complete re-write/re-factoring to modern dynamic platform, remove deprecated code, updated depended libraries and optimization of code. Improved response time all around and lay the foundation for future release.
 
  <b>WARNING:</b> When upgrading from any prior version of the plugin to version 2.0.0+, you maybe prompted to re-add accessories, re-assigned accessories to rooms, and rebuild existing automations. This is a one-time event and is not a bug. This is the result of upgrade to Homebridge modern dynamic platform, which generated new unique internal ID.
 
@@ -92,14 +91,14 @@ All notable changes to this project will be documented in this file. This projec
 ### Break fixes
 * Configuration file zone attribute for bypass was not correctly expose in UX. 
   
-## v1.1.7 (2020-08-12)
+# v1.1.7 (2020-08-12)
 ### Changes
 * Added support to detect silent drop connections to Envisakit module and re-connect if autoconnect is enabled.
 
 ### Break fixes
 * Correct TypeError which cause module to terminate and shutdown homebridge.
 
-## v1.1.6 (2020-08-01)
+# v1.1.6 (2020-08-01)
 ### Break fixes
 * Correct configuration removing leading zero for alarm PIN. 
 * Addition to assure alarm PIN is all digit and proper lenght.
@@ -107,11 +106,11 @@ All notable changes to this project will be documented in this file. This projec
 ### Changes
 * Package engine requirement updated to Nodejs version 12+
   
-## v1.1.4 (2020-07-27)
+# v1.1.4 (2020-07-27)
 ### Break fixes
 * Configuration file fix for bypass feature 
 
-## v1.1.3 (2020-07-26)
+# v1.1.3 (2020-07-26)
 ### Enhancements
 * Added support for Bypassing fault zones
 * Added support for keypanel special function keys (e.g. Fire, Medical, Panic...etc)
@@ -124,7 +123,7 @@ All notable changes to this project will be documented in this file. This projec
 ### Break fixes
 * Error handling when connection was not present, cause module to terminate. 
   
-## v1.0.15 (2020-07-02)
+# v1.0.15 (2020-07-02)
 ### Changes
 * Re-factor of source code for easies of troubleshooting and future enhancements
   
@@ -132,16 +131,16 @@ All notable changes to this project will be documented in this file. This projec
 * Fix polling logic for sensors
   
 
-## v1.0.12 (2020-06-07)
+# v1.0.12 (2020-06-07)
 ### Changes
 * Added new configuration options for command timeout and sensor polling frequency
 
 
-## v1.0.8 (2020-06-05)
+# v1.0.8 (2020-06-05)
 ### Changes
 * Added easy config for Config UI X.
 * Change attribute for zones "type" attribute has been changed to "sensorType" this is to enabled the UX configuration manager.
 
 
-## v1.0.0 (2020-06-03)
+# v1.0.0 (2020-06-03)
 ### Release
