@@ -469,7 +469,7 @@ class EnvisalinkPlatform {
                         if ((alarm.isProcessingBypassqueue <= 0 ) && (alarm.isProcessingBypassqueue)) { 
                             alarm.isProcessingBypass = false; 
                             alarm.isProcessingBypassqueue = 0;
-                            this.log(`All queued Bypass completed.`)
+                            this.log(`All queued bypass/unbypass command(s) completed.`)
                         }
                     break;
 
