@@ -59,7 +59,7 @@ class EnvisalinkCustomAccessory {
                   .on('set', async (state, callback) => this.setByPass(state, callback));   
             this.zoneDevices = this.config.zoneDevices;
             this.quickbypass = this.config.quickbypass ? this.config.quickbypass : false;
-            this.commandTimeOut = this.config.commandTimeOut * 3;
+            this.commandTimeOut = this.config.commandTimeOut;
             this.byPassTimeOut = undefined;
             this.envisakitCurrentStatus = "READY";
           break;
@@ -163,14 +163,14 @@ class EnvisalinkCustomAccessory {
                         if (zoneinfo) {
                             // Only bypass zone that are open and has been enabled for bypass, default is false for all zone define in configuration file.
                             this.log.debug("setByPass: Reviewing zone - ", zoneinfo.name + ", " + zoneinfo.status + ", " + zoneinfo.bypassEnabled);
-                            if ((zoneinfo.status == "open") && (zoneinfo.bypassEnabled)) {
+                            if ((zoneinfo.envisakitCurrentStatus == "open") && (zoneinfo.bypassEnabled)) {
                                 this.log(`Requesting bypassing of ${zoneinfo.name} ...`);
                                 if (zonesToBypass.length > 1) zonesToBypass = zonesToBypass + ","; 
                                 // Require leading zero for zone numbers which are not two or three digit (128 Panel)
                                 if (this.deviceType == "128FBP") 
-                                    zonesToBypass = zonesToBypass + (("00" + zoneinfo.zone).slice(-3));
+                                    zonesToBypass = zonesToBypass + (("00" + zoneinfo.zoneNumber).slice(-3));
                                 else
-                                    zonesToBypass = zonesToBypass + (("0" + zoneinfo.zone).slice(-2));
+                                    zonesToBypass = zonesToBypass + (("0" + zoneinfo.zoneNumber).slice(-2));
                                 bypasscount = bypasscount + 1;
                             }
                         }
@@ -185,7 +185,7 @@ class EnvisalinkCustomAccessory {
                         await new Promise(r => setTimeout(r, 2000));
                         this.alarm.isProcessingBypassqueue == bypasscount;
                         bValue = true;
-                        this.log(`${bypasscount.toString()} zone(s) were queued for bypass.`);
+                        this.log(`${bypasscount.toString()} zone(s) queued for bypass.`);
                         this.byPassTimeOut = setTimeout(this.proccessBypassTimer.bind(this), this.commandTimeOut * 1000);
                     }
                 

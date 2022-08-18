@@ -56,7 +56,6 @@ class EnvisalinkZoneAccessory {
           montionService.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
           montionService.setCharacteristic(this.Characteristic.StatusTampered, this.Characteristic.StatusTampered.NOT_TAMPERED);
           this.service = montionService;
-
           this.bypassEnabled = this.config.bypassEnabled ? this.config.bypassEnabled : false;
           this.envisakitCurrentStatus = "close";
       break;

@@ -161,7 +161,7 @@ async setTargetState(homekitState, callback) {
               }
           break;
           default:
-              this.log.warn(`No alarm system mode command is supported for partition status ${currentState}. Please use alarm system keypad or bypass the open zones.`);
+              this.log.warn(`No alarm system mode command is supported for partition status ${l_envisalikCurrentStatus}. Please use alarm system keypad or bypass the open zones.`);
           break;
 
       }
