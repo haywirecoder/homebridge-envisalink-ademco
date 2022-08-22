@@ -5,7 +5,7 @@
 
 <b>*** WARNING **** </b> 
 
-When upgrading from any prior version of the plugin to version 2.0.0+, you may need to re-assigned room and rebuild existing automations. This is a one-time event and is not a bug. This is the result of upgrade to Homebridge modern dynamic platform.
+When upgrading from any prior version of the plugin to version 2.0.0+, you need to re-assign accessories to rooms and rebuild/correct existing automations which included these accessories. This is a one-time event and is not a bug. This is the result of upgrading to the Homebridge modern dynamic platform, which generated new unique internal ID. 
 
 ----------------------------------
 
