@@ -10,6 +10,7 @@ class EnvisalinkZoneAccessory {
     this.name = config.name;
     this.config = config;
     this.sensorType = config.sensorType;
+    this.accessoryType =  "sensor";
     this.zoneNumber = config.zoneNumber;
     this.pin = config.pin;
     this.uuid = UUIDGen.generate(this.config.serialNumber);

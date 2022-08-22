@@ -12,6 +12,7 @@ class EnvisalinkCustomAccessory {
     this.name = config.name;
     this.config = config;
     this.customType = config.customType;
+    this.accessoryType = "custom";
     this.pin = config.pin;
     this.uuid = UUIDGen.generate(this.config.serialNumber);
     this.alarm = alarm;

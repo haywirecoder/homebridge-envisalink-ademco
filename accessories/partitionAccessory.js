@@ -14,7 +14,7 @@ class EnvisalinkPartitionAccessory {
     this.accessoryType = "partition";
     this.partitionNumber = config.partitionNumber;
     this.pin = config.pin;
-    this.uuid = UUIDGen.generate('envisalink.' + this.accessoryType + this.partitionNumber);
+    this.uuid = UUIDGen.generate(this.config.serialNumber);
     this.alarm = alarm;
 
     this.ENVISA_TO_HOMEKIT_CURRENT = {
