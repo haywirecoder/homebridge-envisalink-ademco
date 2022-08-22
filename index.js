@@ -118,7 +118,7 @@ class EnvisalinkPlatform {
             partition.commandTimeOut = this.commandTimeOut;
             partition.batteryRunTime = this.batteryRunTime * 60 * 60;
             partition.changePartition = this.changePartition;
-            partition.serialNumber = "envisalink." + partitionNumber;
+            partition.serialNumber = "envisalink.partition." + partitionNumber;
             partition.partitionNumber = partitionNumber;
             var partitionAccessory = new partitionDevice(this.log, partition,Service, Characteristic, UUIDGen, alarm);
             // check the accessory was not restored from cache
