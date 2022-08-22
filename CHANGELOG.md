@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file. This projec
 * Envisalink TPI connection changed from General Fault to Tamper events in Homekit. This is now inline with other alarm errors from the panel. A configuration value in UX can now be used to surpress the event.
 
 ## Break fixes
-* Corrected issue with Bypass functional not working with multiple zone bypass
+* Corrected issue with Bypass functionality not working with multiple zone bypass
 
 # v1.2.2 (2022-04-05)
 ## Enhancements
