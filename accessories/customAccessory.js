@@ -229,7 +229,7 @@ class EnvisalinkCustomAccessory {
         // Replace token values with pin
         var l_alarmCommand = this.speedKeyCommand[swIdenity].replace("@pin",this.pin);
         this.log(`Sending panel command for speed key ${this.speedKeySubname[swIdenity]}`);       
-        //this.alarm.sendCommand(l_alarmCommand);
+        this.alarm.sendCommand(l_alarmCommand);
           // turn off after 2 sec
         setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,false)}.bind(this),2000);
     }

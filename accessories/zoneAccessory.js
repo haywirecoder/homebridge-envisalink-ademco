@@ -13,6 +13,7 @@ class EnvisalinkZoneAccessory {
     this.zoneNumber = config.zoneNumber;
     this.pin = config.pin;
     this.uuid = UUIDGen.generate(this.config.serialNumber);
+    
 
     this.ENVISA_TO_HOMEKIT_MOTION = {
       'open': true,
@@ -103,7 +104,7 @@ class EnvisalinkZoneAccessory {
       case "co":
            // Create Carbon Monoxide sensor
            var CarbonMonoxideSensorService = this.accessory.getService(this.Service.CarbonMonoxideSensor);
-           if(CarbonMonoxideSensorService == undefined) SmokeDetectedService = this.accessory.addService(this.Service.CarbonMonoxideSensor,this.name); 
+           if(CarbonMonoxideSensorService == undefined) CarbonMonoxideSensorService = this.accessory.addService(this.Service.CarbonMonoxideSensor,this.name); 
            CarbonMonoxideSensorService.getCharacteristic(this.Characteristic.CarbonMonoxideDetected)
            .on('get', async callback => this.getCOStatus(callback));
            CarbonMonoxideSensorService.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
