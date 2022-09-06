@@ -80,21 +80,21 @@
         "maxLength": 4
       },
       "changePartition": {
-        "title": "Multi-partition system, automaticly change partition(s)",
+        "title": "Multi-partition system, automatically change partition(s)",
         "type": "boolean",
         "default": false,
-        "description": "A partition refers to a sectioned-off portion of an alarm system that can be operated independently from the rest of the system.\n This option will automaticly change to the specific partition prior to executing an alarm command.\n <b>This is not needed for a non-partition system.</b> This option does slightly increase panel command execution time. "
+        "description": "A partition refers to a sectioned-off portion of an alarm system that can be operated independently from the rest of the system.\n This option will automatically change to the specific partition prior to executing an alarm command.\n <b>This is not needed for a non-partition system.</b> This option does slightly increase panel command execution time. "
       },
       "openZoneTimeout": {
-        "title": "Zone timeout value in second",
+        "title": "Zone timeout value in seconds",
         "type": "integer",
         "default": 30,
-        "description": "Lenght of time to wait before a zone is considered closed. Default: 30 seconds.",
+        "description": "Length of time to wait before a zone is considered closed. Default: 30 seconds.",
         "minimum": 5,
         "maximum": 120
       },
       "heartbeatInterval": {
-        "title": "Heartbeat value in second",
+        "title": "Heartbeat value in seconds",
         "type": "integer",
         "default": 30,
         "description": "Heartbeat interval to check for disconnected Envisalink session. Default: 30 seconds.",
@@ -102,10 +102,10 @@
         "maximum": 600
       },
       "commandTimeOut": {
-        "title": "Command timeout in second",
+        "title": "Command timeout in seconds",
         "type": "integer",
         "default": 10,
-        "description": "Lenght of time to wait for alarm command to return. ByPass command will automatic triple this value due lenght of those operations. Default: 10 seconds.",
+        "description": "Length of time to wait for alarm command to return. Bypass command will automatically triple this value due to length of those operations. Default: 10 seconds.",
         "minimum": 5,
         "maximum": 30
       },
@@ -142,7 +142,7 @@
 
       },
       "maintenanceMode": {
-        "title": "Disabled connection to Envisalink module for maintenance. <b>WARNING:</b> This will diasable all updates and operations.",
+        "title": "Disabled connection to Envisalink module for maintenance. <b>WARNING:</b> This will disable all updates and operations.",
         "type": "boolean",
         "default": false,
         "description": "Place the plug-in in maintenance mode, to allow testing and/or replacement of the Envisalink module without impacting previous automations or filling logs with error messages."
@@ -165,14 +165,14 @@
               "title": "Number",
               "required": false,
               "type": "string",
-              "description": "Direct managment of specific partition number. <b>Note:</b> Not needed for non-partition systems. "
+              "description": "Direct management of specific partition number. <b>Note:</b> Not needed for non-partition systems. "
             },
             "partitionPin": {
               "title": "Partition PIN/Code",
               "type": "string",
               "pattern": "^[0-9]+$",
               "required": false,
-              "description": "If arming with a non-global PIN. <b>Please Note:</b> The PIN must be 4 digits, 0–9. This value will override the global PIN value for this parttition.",
+              "description": "If arming with a non-global PIN. <b>Please Note:</b> The PIN must be 4 digits, 0–9. This value will override the global PIN value for this partition.",
               "minLength": 4,
               "maxLength": 4
             }

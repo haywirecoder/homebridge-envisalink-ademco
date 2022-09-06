@@ -116,24 +116,24 @@ async getTargetState(callback) {
   }
 
 // Timer triggered event if alarm is not process in an allocated time frame.
-proccessAlarmTimer() {
+processAlarmTimer() {
      // get security system
-     const securitySevice = this.accessory.getService(this.Service.SecuritySystem);
+     const securityService = this.accessory.getService(this.Service.SecuritySystem);
     if (this.processingAlarm) {
-        this.log.warn(`Alarm request did not return successfully in allocated time. Current alarm status is ${this.l_envisalikCurrentStatus}`);
+        this.log.warn(`Alarm request did not return successfully in allocated time. Current alarm status is ${this.l_envisalinkCurrentStatus}`);
         this.processingAlarm = false;
         this.armingTimeOut = undefined;
-        securitySevice.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus]);
-        securitySevice.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.ENVISA_TO_HOMEKIT_TARGET[this.envisakitCurrentStatus]);  
+        securityService.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus]);
+        securityService.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.ENVISA_TO_HOMEKIT_TARGET[this.envisakitCurrentStatus]);  
     } 
 }
 // Change smart water shutoff monitoring state.
 async setTargetState(homekitState, callback) {
-  var l_envisalikCurrentStatus = this.envisakitCurrentStatus;
+  var l_envisalinkCurrentStatus = this.envisakitCurrentStatus;
   var l_alarmCommand = null; // no command has been defined.
   this.log.debug("setTargetState: Homekit alarm requested set - ",homekitState);
   if (this.processingAlarm == false) {
-      switch (l_envisalikCurrentStatus) {
+      switch (l_envisalinkCurrentStatus) {
           case 'ALARM':   
           case 'ALARM_MEMORY':
           case 'ARMED_STAY':
@@ -161,7 +161,7 @@ async setTargetState(homekitState, callback) {
               }
           break;
           default:
-              this.log.warn(`No alarm system mode command is supported for partition status ${l_envisalikCurrentStatus}. Please use alarm system keypad or bypass the open zones.`);
+              this.log.warn(`No alarm system mode command is supported for partition status ${l_envisalinkCurrentStatus}. Please use alarm system keypad or bypass the open zones.`);
           break;
 
       }
@@ -176,16 +176,16 @@ async setTargetState(homekitState, callback) {
               await new Promise(r => setTimeout(r, 3000));
       }
       this.alarm.sendCommand(l_alarmCommand);
-      this.armingTimeOut = setTimeout(this.proccessAlarmTimer.bind(this), this.commandTimeOut * 1000);
+      this.armingTimeOut = setTimeout(this.processAlarmTimer.bind(this), this.commandTimeOut * 1000);
       callback(null, homekitState);
      
   } else {
       // Couldn't process alarm request returning to previous state
       callback(null,this.homekitLastTargetState);
       // get security system
-      const securitySevice = this.accessory.getService(this.Service.SecuritySystem);
-      securitySevice.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.homekitLastTargetState);
-      securitySevice.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.homekitLastTargetState);        
+      const securityService = this.accessory.getService(this.Service.SecuritySystem);
+      securityService.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.homekitLastTargetState);
+      securityService.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.homekitLastTargetState);        
   }
     
 }
@@ -200,7 +200,7 @@ async setTargetState(homekitState, callback) {
 
 async getPanelBatteryLevel(callback) {
   // Determine how much time has elapse and how much battery is remaining. 
-  // Only calculate if battery leve is not already zero and AC power is down.
+  // Only calculate if battery level is not already zero and AC power is down.
   if ((this.batteryLevel > 0) && (this.ChargingState == this.Characteristic.ChargingState.NOT_CHARGING) ){
       var current = new Date();
       var timeDiff = current - this.downTime; //in ms

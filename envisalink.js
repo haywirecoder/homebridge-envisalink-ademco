@@ -38,7 +38,7 @@ class EnvisaLink extends EventEmitter {
     else
       this.options.sessionwatcher = config.sessionWatcher;
 
-    // are we in maintanance mode?
+    // are we in maintenance mode?
     this.isMaintenanceMode = config.maintenanceMode ? config.maintenanceMode: false
 
     // Set interval for testing connection and how long should zone should be consider without any update.
@@ -87,7 +87,7 @@ class EnvisaLink extends EventEmitter {
         if (_this.shouldReconnect && (actual === undefined || actual.destroyed)) {
           _this.log.warn("Session closed unexpectedly. Re-establishing Session...");
           // Generate event to indicate there is issue with EVL module connection
-          //  Qualifier. 1 = Event, 3 = Restoral
+          //  Qualifier. 1 = Event, 3 = Restore
           if (!inTrouble)
           {
             _this.emit('envisalinkupdate', {
@@ -111,7 +111,7 @@ class EnvisaLink extends EventEmitter {
     actual.on('data', function (data) {
       var dataslice = data.toString().replace(/[\n\r]/g, '|').split('|');
       var source = "session_connect_status";
-      _this.lastmessage = new Date(); // Everytime a message comes in, reset the lastmessage timer
+      _this.lastmessage = new Date(); // Every time a message comes in, reset the lastmessage timer
       for (var i = 0; i < dataslice.length; i++) {
         var datapacket = dataslice[i];
         if (datapacket !== '') {
@@ -127,8 +127,8 @@ class EnvisaLink extends EventEmitter {
           } else if (datapacket.substring(0, 2) === 'OK') {
             // ignore, OK is good. or report successful connection.    
             _this.log.info(`Successful TPI session established.`);
-            // If connection had issue prior clear and generate restoral event
-            //  Qualifier. 1 = Event, 3 = Restoral
+            // If connection had issue prior clear and generate restore event
+            //  Qualifier. 1 = Event, 3 = Restore
             if (inTrouble)
             {
               _this.emit('envisalinkupdate', {
@@ -236,7 +236,7 @@ class EnvisaLink extends EventEmitter {
         var byte = parseInt(zone_bits.substr(i, 2), 16); // get the two character hex byte value into an int
 
 
-        // sinze it's a byte, increment position by 8 bits, but since we're incrementing i by 2. for a 1 byte hex. 
+        // since it's a byte, increment position by 8 bits, but since we're incrementing i by 2. for a 1 byte hex. 
         // we need to use a value of 4 to compensate. Then add 1, since we technically start counting our zones at 1, not zero. so but zero is zone 1.
         var position = (i * 4) + 1;
         // ( 64 - (14+2) * 4) + 1;
@@ -278,7 +278,7 @@ class EnvisaLink extends EventEmitter {
     }
 
     function updatePartition(tpi, data) {
-      // Unlike the code below, this Ademco pannel sends a array of bytes each one representing a partition and it's state. 
+      // Unlike the code below, this Ademco panel sends an array of bytes, each one representing a partition and its state. 
       // Example:
       // 0100010000000000
       // so in the example above out of 8 partitions, partitions 1 and 3 are in state READY. 
@@ -286,7 +286,7 @@ class EnvisaLink extends EventEmitter {
       // the different values possible for each byte.
       var partition_string = data[1];
 
-      for (var i = 0; i < partition_string.length; i = i + 2) { // Start at the begining, and move up two bytes at a time.
+      for (var i = 0; i < partition_string.length; i = i + 2) { // Start at the beginning, and move up two bytes at a time.
         var byte = parseInt(partition_string.substr(i, 2), 10); // convert hex (base 10) to int.
         var partition = (i / 2) + 1;
         var mode = modeToHumanReadable(byte);
@@ -545,7 +545,7 @@ class EnvisaLink extends EventEmitter {
       for (var i = 0; i < aHexStringInt.length; i = i + 4) { // work from left to right, one byte at a time.
           byte = aHexStringInt.substr(i, 4); // get the two character hex byte value into an int
           zonenum += 1; // Current zone number
-          // swapbits to get actual time
+          // swap bits to get actual time
           swappedBits = [];
           swappedBits = byte.substr(2, 4);
           swappedBits += byte.substr(0, 2);
@@ -597,13 +597,13 @@ class EnvisaLink extends EventEmitter {
       // commands as it is a binary coded decimal, not HEX.
       // QXXXPPZZZ0
       // Where:
-      // Q = Qualifier. 1 = Event, 3 = Restoral
+      // Q = Qualifier. 1 = Event, 3 = Restore
       // XXX = 3 digit CID code
       // PP = 2 digit Partition
       // ZZZ = Zone or User (depends on CID code) 0 = Always 0 (padding)
       // NOTE: The CID event Codes are ContactID codes. Lists of these codes are widely available but will not be reproduced here.
       // Example: 3441010020
-      // 3 = Restoral (Closing in this case) 441 = Armed in STAY mode
+      // 3 = Restore (Closing in this case) 441 = Armed in STAY mode
       // 01 = Partition 1
       // 002 = User 2 did it
       // 0 = Always 0
@@ -612,8 +612,8 @@ class EnvisaLink extends EventEmitter {
       var qualifier = cid.substr(0, 1);
       if (qualifier == 1) { // Event
         qualifier_description = "event";
-      } else if (qualifier == 3) { // Restoral
-        qualifier_description = "restoral";
+      } else if (qualifier == 3) { // Restore
+        qualifier_description = "restore";
       } else { // Unknown Qualifier!!
         this.log.error(`EnvisaLink: Unrecognized qualifier: ${qualifier} received from Panel!`);
         return undefined;
