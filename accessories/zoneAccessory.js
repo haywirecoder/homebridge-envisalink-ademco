@@ -51,13 +51,13 @@ class EnvisalinkZoneAccessory {
         case "motion":
         case "glass":
           // Create motion sensor service
-          var montionService = this.accessory.getService(this.Service.MotionSensor);
-          if(montionService == undefined) montionService = this.accessory.addService(this.Service.MotionSensor,this.name); 
-          montionService.getCharacteristic(this.Characteristic.MotionDetected)
+          var motionService = this.accessory.getService(this.Service.MotionSensor);
+          if(motionService == undefined) motionService = this.accessory.addService(this.Service.MotionSensor,this.name); 
+          motionService.getCharacteristic(this.Characteristic.MotionDetected)
           .on('get', async callback => this.getMotionStatus(callback));
-          montionService.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
-          montionService.setCharacteristic(this.Characteristic.StatusTampered, this.Characteristic.StatusTampered.NOT_TAMPERED);
-          this.service = montionService;
+          motionService.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+          motionService.setCharacteristic(this.Characteristic.StatusTampered, this.Characteristic.StatusTampered.NOT_TAMPERED);
+          this.service = motionService;
           this.bypassEnabled = this.config.bypassEnabled ? this.config.bypassEnabled : false;
           this.envisakitCurrentStatus = "close";
       break;

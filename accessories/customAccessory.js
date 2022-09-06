@@ -1,7 +1,7 @@
 "use strict";
 var tpidefs = require('./../tpi.js');
 
-const SPEED_KEY_PREXFIX = "SPEED_KEY_";
+const SPEED_KEY_PREFIX = "SPEED_KEY_";
 const ENVISALINK_MANUFACTURER = "Envisacor Technologies Inc."
 
 class EnvisalinkCustomAccessory {
@@ -70,8 +70,8 @@ class EnvisalinkCustomAccessory {
             var l_keylist = this.config.keyList;
             for (var index = 0; index < l_keylist.length; index++) {
 
-              var swServiceSpeedkey = this.accessory.getServiceById(this.Service.Switch,SPEED_KEY_PREXFIX+l_keylist[index].name);
-              if(swServiceSpeedkey == undefined) swServiceSpeedkey = this.accessory.addService(this.Service.Switch,l_keylist[index].name, SPEED_KEY_PREXFIX+l_keylist[index].name); 
+              var swServiceSpeedkey = this.accessory.getServiceById(this.Service.Switch,SPEED_KEY_PREFIX+l_keylist[index].name);
+              if(swServiceSpeedkey == undefined) swServiceSpeedkey = this.accessory.addService(this.Service.Switch,l_keylist[index].name, SPEED_KEY_PREFIX+l_keylist[index].name); 
               // bind index value to object for click events
               swServiceSpeedkey.getCharacteristic(this.Characteristic.On) 
                  .on('set', this.setSpeedKey.bind(this,index));
@@ -85,10 +85,10 @@ class EnvisalinkCustomAccessory {
              }
              // remove old switch services if they are no longer define as part of speedkey list
              if(this.accessory.context.swSubnames){
-              var oldSwichnamelist = this.accessory.context.swSubnames.filter(x =>  this.speedKeySubname.indexOf(x) === -1);
-              for (var indexOld= 0; indexOld < oldSwichnamelist.length; indexOld++) {
-                this.log.debug('setAccessory: speedkeys Removing switch - ', oldSwichnamelist[indexOld]);
-                var swOldServiceSpeedkey = this.accessory.getServiceById(this.Service.Switch,SPEED_KEY_PREXFIX+oldSwichnamelist[indexOld]);
+              var oldSwitchnamelist = this.accessory.context.swSubnames.filter(x =>  this.speedKeySubname.indexOf(x) === -1);
+              for (var indexOld= 0; indexOld < oldSwitchnamelist.length; indexOld++) {
+                this.log.debug('setAccessory: speedkeys Removing switch - ', oldSwitchnamelist[indexOld]);
+                var swOldServiceSpeedkey = this.accessory.getServiceById(this.Service.Switch,SPEED_KEY_PREFIX+oldSwitchnamelist[indexOld]);
                 if(swOldServiceSpeedkey != undefined) this.accessory.removeService(swOldServiceSpeedkey);
               }
              }
@@ -114,7 +114,7 @@ class EnvisalinkCustomAccessory {
     callback(null, this.ENVISA_BYPASS_TO_HOMEKIT[this.envisakitCurrentStatus]);
   }
 
-  proccessBypassTimer() {
+  processBypassTimer() {
     if (this.alarm.isProcessingBypass) {
         this.log.warn(`All Bypass request did not return successfully in the allocated time.`);
         this.alarm.isProcessingBypass = false;
@@ -187,7 +187,7 @@ class EnvisalinkCustomAccessory {
                         this.alarm.isProcessingBypassqueue == bypasscount;
                         bValue = true;
                         this.log(`${bypasscount.toString()} zone(s) queued for bypass.`);
-                        this.byPassTimeOut = setTimeout(this.proccessBypassTimer.bind(this), this.commandTimeOut * 1000);
+                        this.byPassTimeOut = setTimeout(this.processBypassTimer.bind(this), this.commandTimeOut * 1000);
                     }
                 
                 }
@@ -220,16 +220,16 @@ class EnvisalinkCustomAccessory {
         if (this.alarm.isProcessingBypassqueue == 0 ) this.alarm.isProcessingBypass = false;
     }
   }
-  async setSpeedKey(swIdenity,value,callback) {
+  async setSpeedKey(swIdentity,value,callback) {
 
-    this.log.debug('setSpeedKey:  Macro/speed keys set -', swIdenity,value,callback);
+    this.log.debug('setSpeedKey:  Macro/speed keys set -', swIdentity,value,callback);
   
     if (value) {
         // Get the button service and updated switch soon after set function is complete
-        var switchService = this.accessory.getServiceById(this.Service.Switch,SPEED_KEY_PREXFIX+this.speedKeySubname[swIdenity]);
+        var switchService = this.accessory.getServiceById(this.Service.Switch,SPEED_KEY_PREFIX+this.speedKeySubname[swIdentity]);
         // Replace token values with pin
-        var l_alarmCommand = this.speedKeyCommand[swIdenity].replace("@pin",this.pin);
-        this.log(`Sending panel command for speed key ${this.speedKeySubname[swIdenity]}`);       
+        var l_alarmCommand = this.speedKeyCommand[swIdentity].replace("@pin",this.pin);
+        this.log(`Sending panel command for speed key ${this.speedKeySubname[swIdentity]}`);       
         this.alarm.sendCommand(l_alarmCommand);
           // turn off after 2 sec
         setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,false)}.bind(this),2000);

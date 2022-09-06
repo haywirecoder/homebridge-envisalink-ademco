@@ -19,10 +19,10 @@ class EnvisalinkPlatform {
         this.api = api;
         this.config = config;
         this.accessories = [];
-        // Must define configuation file and IP address for Envisakit server
+        // Must define configuration file and IP address for Envisakit server
         if (!config || !config.host) {
             this.log.error("No configuration or host address defined for plug-in. Please configure the Envisakit Ademco plug-in.");
-            // terminate plug-in initization
+            // terminate plug-in initialization
             return;
 
         } else {
@@ -49,10 +49,10 @@ class EnvisalinkPlatform {
             // Option only valid if this is a multiple partitions system
             this.changePartition = config.changePartition ? config.changePartition: false;
           
-            // are we in maintanance mode?
+            // are we in maintenance mode?
             this.isMaintenanceMode = config.maintenanceMode ? config.maintenanceMode: false;
 
-            // surpress envisalink failure?
+            // suppress envisalink failure?
             this.isEnvisalinkFailureSuppress = config.envisalinkFailureSuppress ? config.envisalinkFailureSuppress: false;
 
              // When this event is fired it means Homebridge has restored all cached accessories from disk.
@@ -77,9 +77,9 @@ class EnvisalinkPlatform {
                 if (this.chime) this.log("Chime toggle accessory configured.")
                 
                 // Begin connection process and bind alarm events to local function.
-                // Should plug run in a disconnect mode. Allow maintaince without resulting in alot of log errors 
+                // Should plug-in run in a disconnect mode. Allow maintenance without resulting in a lot of log errors 
                 if (this.isMaintenanceMode == false){
-                    // Start connection to envisilink module
+                    // Start connection to Envisalink module
                     alarm.startSession();
                     // Bind event to local functions
                     alarm.on('keypadupdate', this.systemUpdate.bind(this));
@@ -89,7 +89,7 @@ class EnvisalinkPlatform {
                     
                     // Should module errors be suppress from homekit notification?
                     if (this.isEnvisalinkFailureSuppress == false) alarm.on('envisalinkupdate', this.envisalinkUpdate.bind(this));
-                    else this.log.warn("No alarm Tamper will be generated for Envisalink communication failure. Pleae refer to your Homebridge logs for commication failures.");
+                    else this.log.warn("No alarm Tamper will be generated for Envisalink communication failure. Please refer to your Homebridge logs for communication failures.");
                 }
                 else
                     this.log.warn("This plug-in is running in maintenance mode. All updates and operations are disabled!");
@@ -106,11 +106,11 @@ class EnvisalinkPlatform {
             partition.pin = partition.partitionPin ? partition.partitionPin: this.masterPin;
             if(isNaN(partition.pin)) {
                 this.log.error("Ademco Pin must be a number. Please update configuration for the Envisakit Ademco plug-in.");
-                // terminate plug-in initization
+                // terminate plug-in initialization
                 return;
             }
             if(partition.pin.length != 4) {
-                this.log.warn("Ademco PIN are normally lenght of 4 digits. The provided PIN lenght may result in unusual behaviour.");
+                this.log.warn("Ademco PIN are normally length of 4 digits. The provided PIN length may result in unusual behavior.");
             }
             partition.model = this.deviceDescription + " Keypad";
             partition.deviceType =  this.deviceType;
@@ -178,7 +178,7 @@ class EnvisalinkPlatform {
                 this.platformZoneAccessoryMap['z.' + zoneNum] = accessoryIndex;
                 this.log.debug("refreshAccessories: Zone number - ", zoneNum , " configured.");
             } else 
-                this.log.error("Misconfigured zone defination " + zone.name + ". Entry - " + i + " igoring.");
+                this.log.error("Misconfigured zone definition " + zone.name + ". Entry - " + i + " ignoring.");
          }
 
     }
@@ -194,7 +194,7 @@ class EnvisalinkPlatform {
             chimeswitch.name  = "Chime";
             chimeswitch.customType =  "chimemode";
             chimeswitch.serialNumber = "envisalink.chime.all";
-            // Create Chime Toogle button
+            // Create Chime Toggle button
             var customAccessory = new customDevices(this.log, chimeswitch, Service, Characteristic, UUIDGen, alarm);
             // check the accessory was not restored from cache
             var foundAccessory = this.accessories.find(accessory => accessory.UUID === customAccessory.uuid)
@@ -250,7 +250,7 @@ class EnvisalinkPlatform {
                 this.platformPartitionAccessoryMap['c.bypass'] = accessoryIndex;
             }
             else{
-                this.log.error("Misconfigured Alarm Zone Bypass switch defination " + bypassswitch.name + " igoring.");
+                this.log.error("Misconfigured Alarm Zone Bypass switch definition " + bypassswitch.name + " ignoring.");
             }
         }
 
@@ -409,7 +409,7 @@ class EnvisalinkPlatform {
             this.log.debug("Partition status change: Partition not monitored dismissing partition update. "); 
         }
     }
-    // Capture zone updates usually associated sensor going from open to close and vise vesa
+    // Capture zone updates usually associated sensor going from open to close and vice-versa
     zoneUpdate(data) {
         this.log.debug('zoneUpdate: Status change - ', data);
         for (var i = 0; i < data.zone.length; i++) {

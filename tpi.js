@@ -73,7 +73,7 @@ exports.applicationcommands = {
   },
   '033': {
     'name': 'Partition Arm Control - With Code',
-    'pre': 'Arming Parition',
+    'pre': 'Arming Partition',
     'bytes': 7,
     'post': 'with Code',
     'send': '500033',
@@ -129,7 +129,7 @@ exports.applicationcommands = {
   },
   '071': {
     'name': 'Send Keystroke String',
-    'pre': 'Paritition 1 keystroke string:',
+    'pre': 'Partition 1 keystroke string:',
     'bytes': '2-7',
     'post': 'requested',
     'send': '500071',
@@ -217,7 +217,7 @@ exports.virtual_keypad_beep = {
   '01' : 'beep 1 time',
   '02' : 'beep 2 times',
   '03' : 'beep 3 times',
-  '04' : 'continous fast beep',
+  '04' : 'continuous fast beep',
   '05' : 'continuous slow beep'	
 }
 

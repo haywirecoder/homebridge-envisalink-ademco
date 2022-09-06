@@ -78,7 +78,7 @@ exports.cid_events_def = {
     "type"  : "zone",
     },
     130 : {
-    "label" : "Burgalry in Progress",
+    "label" : "Burglary in Progress",
     "type"  : "zone",
     },
     131 : {
@@ -408,7 +408,7 @@ exports.cid_events_def = {
     "type"  : "user",
     },
     432 : {
-    "label" : "Access Relay/Triger Failure",
+    "label" : "Access Relay/Trigger Failure",
     "type"  : "zone",
     },
     433 : {
