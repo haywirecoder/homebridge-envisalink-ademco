@@ -1,5 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+
+# v2.0.1 (2022-09-10)
+## Changes
+* Spelling, grammar and whitespacing fixes. Thanks @reedloden.
+* Minor enhancement to config UX.
+
 # v2.0.0 (2022-08-21)
 ## Enhancements
 * Complete re-write/re-factoring to modern dynamic platform, remove deprecated code, updated depended libraries and optimization of code. Improved response time all around and lay the foundation for future release.
