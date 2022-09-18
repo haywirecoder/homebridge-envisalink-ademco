@@ -5,7 +5,7 @@
 
 <b>*** WARNING **** </b> 
 
-When upgrading from any prior version of the plugin to version 2.0.0+, you need to re-assign accessories to rooms and rebuild/correct existing automations which included these accessories. This is a one-time event and is not a bug. This is the result of upgrading to the Homebridge modern dynamic platform, which generated new unique internal ID. 
+When upgrading from any prior version of the plugin to version 2.0.0+, you need to re-assign accessories to rooms and rebuild/correct existing automation which included these accessories. This is a one-time event and is not a bug. This is the result of upgrading to the Homebridge modern dynamic platform, which generated new unique internal IDs. 
 
 ----------------------------------
 
@@ -13,7 +13,7 @@ This module was designed to work with Ademco Envisalink module with the Vista se
 
 Limits:
 
-* Ademco panels provide limited zone information to their peripherals. The panel only provide real-time information when a zone is faulted (opened) but not when it is restored (closed). However, the virtual key panel is continuously updated with zones information. This module auto set the faulted zone (opened) to restored (close) based the value set by *openZoneTimeout* attributes. Default configuration would result in zone closing 30 seconds after the virtual keypanel no longer reports a fault for the specific zone.
+* Ademco panels provide limited zone information to their peripherals. The panel only provide real-time information when a zone is faulted (opened) but not when it is restored (closed). However, the virtual key panel is continuously updated with zones information. This module auto set the faulted zone (opened) to restored (close) based the value set by *openZoneTimeout* attributes. Default configuration would result in zone closing 30 seconds after the virtual key-panel no longer reports a fault for the specific zone.
 
 * When system is "Armed" the panel no longer report the state of each zone. All zone will age out and be considered close once armed. Note: A bypass zone will automatically show as fault (open) once the alarm is disarmed.
 
@@ -41,7 +41,7 @@ Please Note: I recommended not using the master user or installer code in the co
 | autoReconnect     | *(optional)* Automatic reconnect to server if network channel is broken. Default is true.                                |
 | chimeToggle       | *(optional)* Create a switch to enable and disabled Chime bell. Panel only allow change bell status when alarm is not armed. Default is false.                         |
 | batteryRunTime    | *(optional)* User supplied run time of main system battery backup in hours. This value allows plug-in to estimate remaining time when system switch to backup battery. |  
-| maintenanceMode   | *(optional)* Disable communication with Envisakit module. **Note:** This will disable all updates.                      |
+| maintenanceMode   | *(optional)* Disable communication with envisakit module. **Note:** This will disable all updates.                      |
 | **zones**         | *(optional)* List of zones to appear and monitor in Homekit                                                              |
 | **bypass**        | *(optional)* Creates a bypass control (a switch) to bypass zones which are open (faulted)                                |
 |                   | By design the bypass switch can only bypass zone that are being monitored in Homekit and the zone entry "bypassenable" set to true.    |
