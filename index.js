@@ -3,8 +3,7 @@ var elink = require('./envisalink.js');
 const partitionDevice = require('./accessories/partitionAccessory');
 const zoneDevices = require('./accessories/zoneAccessory');
 const customDevices = require('./accessories/customAccessory');
-var tpidefs = require('./tpi.js');
-var Accessory, Service, Characteristic, UUIDGen;
+var Service, Characteristic, UUIDGen;
 var alarm;
 
 // Envisakit HomeBridge Plugin
@@ -464,12 +463,12 @@ class EnvisalinkPlatform {
                     // qualifier can be 1 = 'Event or Opening', 3 = 'Restore or Closing'
                     case 570:  // Bypass event
                         if(data.qualifier == 1) this.log(`${accessory.name} has been bypass.`);
-                        if(data.qualifier == 3) this.log(`${accessory.name} has been unbypass.`);
+                        if(data.qualifier == 3) this.log(`${accessory.name} has been un-bypass.`);
                         alarm.isProcessingBypassqueue = alarm.isProcessingBypassqueue - 1;
                         if ((alarm.isProcessingBypassqueue <= 0 ) && (alarm.isProcessingBypassqueue)) { 
                             alarm.isProcessingBypass = false; 
                             alarm.isProcessingBypassqueue = 0;
-                            this.log(`All queued bypass/unbypass command(s) completed.`)
+                            this.log(`All queued bypass/un-bypass command(s) completed.`)
                         }
                     break;
 

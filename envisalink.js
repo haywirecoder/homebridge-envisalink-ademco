@@ -57,7 +57,7 @@ class EnvisaLink extends EventEmitter {
 
   
   startSession() {
-    var _this = this;
+    var self = this;
     this.shouldReconnect = this.options.autoreconnect;
     this.IsConnected = false;
     this.lastmessage = new Date();
@@ -73,79 +73,79 @@ class EnvisaLink extends EventEmitter {
 
 
     actual.on('error', function (ex) {
-      _this.log.error("EnvisaLink: ", ex);
+      self.log.error("EnvisaLink: ", ex);
     });
 
     actual.on('close', function (hadError) {
-      _this.IsConnected = false;
+      self.IsConnected = false;
       var source = "session_connect_status";
-      if (_this.isConnectionIdleHandle !== undefined) 
+      if (self.isConnectionIdleHandle !== undefined) 
       {
-         clearTimeout(_this.isConnectionIdleHandle);
+         clearTimeout(self.isConnectionIdleHandle);
       }
       setTimeout(function () {
-        if (_this.shouldReconnect && (actual === undefined || actual.destroyed)) {
-          _this.log.warn("Session closed unexpectedly. Re-establishing Session...");
+        if (self.shouldReconnect && (actual === undefined || actual.destroyed)) {
+          self.log.warn("Session closed unexpectedly. Re-establishing Session...");
           // Generate event to indicate there is issue with EVL module connection
           //  Qualifier. 1 = Event, 3 = Restore
           if (!inTrouble)
           {
-            _this.emit('envisalinkupdate', {
+            self.emit('envisalinkupdate', {
               source: source,
               qualifier: 1
             });
             inTrouble = true;
           }
-          _this.startSession();
+          self.startSession();
         }
       }, 5000);
     });
 
     actual.on('end', function () {
-      _this.log.debug("Envisalink received end request, disconnecting");
-      _this.log.info('Disconnect TPI session');
-      clearTimeout(_this.isConnectionIdleHandle);
-      _this.IsConnected = false;
+      self.log.debug("Envisalink received end request, disconnecting");
+      self.log.info('Disconnect TPI session');
+      clearTimeout(self.isConnectionIdleHandle);
+      self.IsConnected = false;
     });
 
     actual.on('data', function (data) {
       var dataslice = data.toString().replace(/[\n\r]/g, '|').split('|');
       var source = "session_connect_status";
-      _this.lastmessage = new Date(); // Every time a message comes in, reset the lastmessage timer
+      self.lastmessage = new Date(); // Every time a message comes in, reset the lastmessage timer
       for (var i = 0; i < dataslice.length; i++) {
         var datapacket = dataslice[i];
         if (datapacket !== '') {
           
           if (datapacket.substring(0, 5) === 'Login') {
-            _this.log.debug("Login requested. Sending response " + _this.options.password)
-            _this.IsConnected = true;
-            _this.sendCommand(_this.options.password);
+            self.log.debug("Login requested. Sending response " + self.options.password)
+            self.IsConnected = true;
+            self.sendCommand(self.options.password);
           } else if ((datapacket.substring(0, 6) === 'FAILED') || (datapacket.substring(0, 9) === 'Timed Out')) {
-            _this.log.error("EnvisaLink: Login failed.");
+            self.log.error("EnvisaLink: Login failed.");
             // The session will be closed.
-            _this.IsConnected = false;
+            self.IsConnected = false;
           } else if (datapacket.substring(0, 2) === 'OK') {
             // ignore, OK is good. or report successful connection.    
-            _this.log.info(`Successful TPI session established.`);
+            self.log.info(`Successful TPI session established.`);
             // If connection had issue prior clear and generate restore event
             //  Qualifier. 1 = Event, 3 = Restore
             if (inTrouble)
             {
-              _this.emit('envisalinkupdate', {
+              self.emit('envisalinkupdate', {
                 source: source,
                 qualifier: 3
               });
               inTrouble = false;
             }
             // Determine if option to monitor connection is enabled.
-            if(_this.shouldReconnect && _this.options.sessionwatcher)
+            if(self.shouldReconnect && self.options.sessionwatcher)
             {
-              _this.log.info(`Checking for disconnected session every: ${_this.options.heartbeatInterval} seconds.`)
-              _this.isConnectionIdleHandle = setTimeout( isConnectionIdle, (_this.options.heartbeatInterval * 1000) ); // Check every idle seconds...
+              self.log.info(`Checking for disconnected session every: ${self.options.heartbeatInterval} seconds.`)
+              self.isConnectionIdleHandle = setTimeout( isConnectionIdle, (self.options.heartbeatInterval * 1000) ); // Check every idle seconds...
             }
             else  
             {
-             _this.log.warn("Warning: Session monitoring is disabled. Envisalink-Ademco will not watch for hung sessions.") 
+             self.log.warn("Warning: Session monitoring is disabled. Envisalink-Ademco will not watch for hung sessions.") 
             }
           } else {
             var tpi_str = datapacket.match(/^%(.+)\$/); // pull out everything between the % and $
@@ -153,12 +153,12 @@ class EnvisaLink extends EventEmitter {
               tpi_str = datapacket.match(/\^(.+)\$/); // module command string, could be result of previous command  pull out everything between the ^ sand $.
               if (tpi_str == null)
               {
-                _this.log.warn("Envisalink data steam format invalid! : '" + datapacket + "'");
+                self.log.warn("Envisalink data steam format invalid! : '" + datapacket + "'");
               }  
               else
               {
-                if(_this.lastsentcommand == tpi_str[1].split(',')[0]) 
-                  _this.log.info(`Envisakit module command return: ${tpidefs.command_response_codes[tpi_str[1].split(',')[1]]}`);
+                if(self.lastsentcommand == tpi_str[1].split(',')[0]) 
+                  self.log.info(`Envisakit module command return: ${tpidefs.command_response_codes[tpi_str[1].split(',')[1]]}`);
               }
 
             } else {
@@ -167,10 +167,10 @@ class EnvisaLink extends EventEmitter {
               var tpi = tpidefs.tpicommands[command];
               if (tpi) {
                 if (tpi.bytes === '' || tpi.bytes === 0) {
-                  _this.log.warn(tpi.pre + ' - ' + tpi.post);
+                  self.log.warn(tpi.pre + ' - ' + tpi.post);
                 } else {
-                  _this.log.debug(tpi.pre + ' | ' + tpi_str + ' | ' + tpi.post)
-                  _this.log.debug('Envisakit Operation: ' + tpi.action);
+                  self.log.debug(tpi.pre + ' | ' + tpi_str + ' | ' + tpi.post)
+                  self.log.debug('Envisakit Operation: ' + tpi.action);
                   switch (tpi.action) {
                     case 'updatezone':
                       updateZone(tpi, data_array);
@@ -201,21 +201,21 @@ class EnvisaLink extends EventEmitter {
     function isConnectionIdle() {
       // we didn't receive any messages for greater than heartbeatInterval seconds. Assume dropped and re-connect.
       // clear handle for interval checking of connection
-      clearTimeout(_this.isConnectionIdleHandle);
+      clearTimeout(self.isConnectionIdleHandle);
       var nowDate = new Date();
-      var deltaTime = Math.abs(nowDate.getTime() -_this.lastmessage.getTime()) / 1000;
+      var deltaTime = Math.abs(nowDate.getTime() -self.lastmessage.getTime()) / 1000;
 
       // Was there traffic in allocated timeframe?
-      _this.log.debug("Checking for Heartbeat...");
-     if (deltaTime > (_this.options.heartbeatInterval)) {
-        _this.log.warn("Missing Heartbeat - Time drift: ", deltaTime ,". Trying to re-connect session...");
-        _this.endSession();
+      self.log.debug("Checking for Heartbeat...");
+     if (deltaTime > (self.options.heartbeatInterval)) {
+        self.log.warn("Missing Heartbeat - Time drift: ", deltaTime ,". Trying to re-connect session...");
+        self.endSession();
        // Generate event to indicate there is issue with EVL module connection
-        setTimeout(function () {_this.startSession()}, 5000);
+        setTimeout(function () {self.startSession()}, 5000);
       } else {
         // Connection not idle. Check again connection idle time seconds...
-        _this.log.debug("Heartbeat successful. Last message time: " + _this.lastmessage)
-        _this.isConnectionIdleHandle = setTimeout(isConnectionIdle, (_this.options.heartbeatInterval * 1000)); 
+        self.log.debug("Heartbeat successful. Last message time: " + self.lastmessage)
+        self.isConnectionIdleHandle = setTimeout(isConnectionIdle, (self.options.heartbeatInterval * 1000)); 
       }
     }; 
 
@@ -230,7 +230,7 @@ class EnvisaLink extends EventEmitter {
       // then shift the remaining bits right 1, and increment your bit index count by one.
       // When you do all 8 bits, move onto the next byte until no bytes exist.
       // as it's little endian, you would start with the right most Byte. and move left.
-      // _this.log.debug("Starting zone_bits for loop zone_bits='" + zone_bits +"'");
+      // self.log.debug("Starting zone_bits for loop zone_bits='" + zone_bits +"'");
       var zone_array = []; // Define/initialize zone_array.
       for (var i = 0; i < zone_bits.length; i = i + 2) { // work from left to right, one byte at a time.
         var byte = parseInt(zone_bits.substr(i, 2), 16); // get the two character hex byte value into an int
@@ -249,7 +249,7 @@ class EnvisaLink extends EventEmitter {
         // ( 64 - 56 ) + 1;
         // ( 8 ) + 1;
         // 9
-        // _this.log.debug( "zone_bits for loop enter subloop position="+ position +" byte='"+ byte +"' byte-original='"+ zone_bits.substr(i, 2) +"' i="+ i);
+        // self.log.debug( "zone_bits for loop enter subloop position="+ position +" byte='"+ byte +"' byte-original='"+ zone_bits.substr(i, 2) +"' i="+ i);
         for (var n = byte; n > 0; n = n >> 1) {
           if ((n & 0x01) == 1) { // is the right most bit a 1?
             zone_array.push(position);
@@ -257,19 +257,19 @@ class EnvisaLink extends EventEmitter {
           position++;
         }
       }
-      _this.log.debug("Zone updated");
+      self.log.debug("Zone updated");
       var z_list = [];
 
       zone_array.forEach(function (z, i, a) {
         z_list.push(z);
-        _this.zones[z] = {
+        self.zones[z] = {
           send: tpi.send,
           name: tpi.name,
           code: z
         };
         zoneTimerOpen(tpi, z, "open");
       });
-      _this.emit('zoneupdate', {
+      self.emit('zoneupdate', {
         zone: z_list,
         code: data[0],
         status: tpi.name
@@ -290,7 +290,7 @@ class EnvisaLink extends EventEmitter {
         var byte = parseInt(partition_string.substr(i, 2), 10); // convert hex (base 10) to int.
         var partition = (i / 2) + 1;
         var mode = modeToHumanReadable(byte);
-        _this.emit('updatepartition', {
+        self.emit('updatepartition', {
           partition: partition,
           mode: mode,
           code: byte,
@@ -304,12 +304,12 @@ class EnvisaLink extends EventEmitter {
       // Find zone that was being previously track.
       for (var i = 0; i < zonelist.length; i++) {
         if (zone == zonelist[i].zone) {
-          _this.log.debug("Found zone - ", zone);
+          self.log.debug("Found zone - ", zone);
           return i;
         }
       }
       // return undefined if not found
-      _this.log.debug("Not Found zone - ", zone);
+      self.log.debug("Not Found zone - ", zone);
       return undefined;
     }
 
@@ -318,12 +318,12 @@ class EnvisaLink extends EventEmitter {
       var triggerZoneEvent = false;
       var zoneid = findZone(activezones, zone);
       if (Number.isInteger(zoneid)) {
-        _this.log.debug("Zone found in active zone list index - ", zoneid);
+        self.log.debug("Zone found in active zone list index - ", zoneid);
         activezones[zoneid].eventepoch = Math.floor(Date.now() / 1000);
       } else {
         if (mode == "open")
         {
-          _this.log.debug("Adding new zone - ", zone);
+          self.log.debug("Adding new zone - ", zone);
           activezones.push({
             zone: zone,
             eventepoch: Math.floor(Date.now() / 1000)
@@ -334,13 +334,13 @@ class EnvisaLink extends EventEmitter {
 
       if (activezones.length > 0) {
         if (activeZoneTimeOut == undefined) {
-          _this.log.debug("Activating zone timer");
-          activeZoneTimeOut = setTimeout(zoneTimerClose, _this.options.openZoneTimeout * 1000);
+          self.log.debug("Activating zone timer");
+          activeZoneTimeOut = setTimeout(zoneTimerClose, self.options.openZoneTimeout * 1000);
         }
       }
 
       if (triggerZoneEvent == true) {
-        _this.emit('zoneevent', {
+        self.emit('zoneevent', {
           zone: [parseInt(zone, 10)],
           mode: mode,
           source: tpi.name
@@ -352,7 +352,7 @@ class EnvisaLink extends EventEmitter {
       var mode = "close";
       var z_close = [];
       var z = activezones.length;
-      var l_zonetimeout = _this.options.openZoneTimeout;
+      var l_zonetimeout = self.options.openZoneTimeout;
       var minZoneTime = l_zonetimeout;
       var currZoneTime = l_zonetimeout;
 
@@ -372,7 +372,7 @@ class EnvisaLink extends EventEmitter {
       }
       if (z_close.length > 0) {
         // zones that are now closed
-        _this.emit('zoneevent', {
+        self.emit('zoneevent', {
           zone: z_close,
           mode: mode,
           source: "Zone Time Out"
@@ -503,7 +503,7 @@ class EnvisaLink extends EventEmitter {
         zoneTimerOpen(tpi, userOrZone, "open")  
       }
     
-      _this.emit('keypadupdate', {
+      self.emit('keypadupdate', {
         partition: partition,
         code: {
           icon: icon_array,
@@ -581,7 +581,7 @@ class EnvisaLink extends EventEmitter {
               });
             }
       }
-      _this.emit('zonetimerdump', {
+      self.emit('zonetimerdump', {
         zonedump: zone_time,
         status: tpi.name,
         zoneTimerStatus: zonesDumpData,
@@ -634,7 +634,7 @@ class EnvisaLink extends EventEmitter {
       };
       cidupdate_object[cid_obj.type] = zone_or_user;
       
-      _this.emit('cidupdate', cidupdate_object);
+      self.emit('cidupdate', cidupdate_object);
     }
   }
 
