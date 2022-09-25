@@ -28,15 +28,23 @@ class EnvisaLink extends EventEmitter {
       password: config.password ? config.password : "user",
     };
 
-    if (config.autoReconnect == undefined)
-      this.options.autoreconnect = true;
-    else
-      this.options.autoreconnect = config.autoReconnect;
+   
 
     if (config.sessionWatcher == undefined)
+    {  
+      // If session watcher is enable auto-reconnection is also enabled.
       this.options.sessionwatcher = true;
+      this.options.autoreconnect = true;
+    }
     else
-      this.options.sessionwatcher = config.sessionWatcher;
+     {
+       this.options.sessionwatcher = config.sessionWatcher;
+       // Only use autoReconnect if session watcher is not enabled, otherwise default to auto connect to true.
+       if ((config.autoReconnect == undefined) || (this.options.sessionwatcher))
+          this.options.autoreconnect = true;
+       else
+          this.options.autoreconnect = config.autoReconnect;
+     }
 
     // are we in maintenance mode?
     this.isMaintenanceMode = config.maintenanceMode ? config.maintenanceMode: false
@@ -73,7 +81,7 @@ class EnvisaLink extends EventEmitter {
 
 
     actual.on('error', function (ex) {
-      self.log.error("EnvisaLink: ", ex);
+      self.log.error("EnvisaLink Network Error: ", ex);
     });
 
     actual.on('close', function (hadError) {
@@ -102,9 +110,7 @@ class EnvisaLink extends EventEmitter {
     });
 
     actual.on('end', function () {
-      self.log.debug("Envisalink received end request, disconnecting");
-      self.log.info('Disconnect TPI session');
-      clearTimeout(self.isConnectionIdleHandle);
+      self.log.info('TPI session disconnected.');
       self.IsConnected = false;
     });
 
@@ -122,7 +128,7 @@ class EnvisaLink extends EventEmitter {
             self.sendCommand(self.options.password);
           } else if ((datapacket.substring(0, 6) === 'FAILED') || (datapacket.substring(0, 9) === 'Timed Out')) {
             self.log.error("EnvisaLink: Login failed.");
-            // The session will be closed.
+            // The session will be closed
             self.IsConnected = false;
           } else if (datapacket.substring(0, 2) === 'OK') {
             // ignore, OK is good. or report successful connection.    
@@ -205,7 +211,7 @@ class EnvisaLink extends EventEmitter {
       var nowDate = new Date();
       var deltaTime = Math.abs(nowDate.getTime() -self.lastmessage.getTime()) / 1000;
 
-      // Was there traffic in allocated timeframe?
+      // Was there traffic in allocated time frame?
       self.log.debug("Checking for Heartbeat...");
      if (deltaTime > (self.options.heartbeatInterval)) {
         self.log.warn("Missing Heartbeat - Time drift: ", deltaTime ,". Trying to re-connect session...");
@@ -642,22 +648,25 @@ class EnvisaLink extends EventEmitter {
     // Is connected terminate the connection.
     if (actual && !actual.destroyed && this.IsConnected) {
       actual.end();
-      return false;
-    } else {
       return true;
+    } else {
+      return false;
     }
   }
 
   sendCommand(command) {
     if (!this.isMaintenanceMode) {
       if (actual && !actual.destroyed && this.IsConnected) {
-        this.log.debug('!WARNING! PIN/CODE may appear in the clear TX >', command);
+        this.log.debug('!WARNING! PIN/CODE may appear in the clear TX > ', command);
         actual.write(command + '\r\n');
+        return true;
       } else {
-        this.log.error('Envisakit Module: Command not successful, no TPI session established.');
+        this.log.error('Command not successful. No TPI session establish.');
+        return false;
       }
     } else 
-      this.log.warn('This module running in maintenance mode, command not send.');
+      this.log.warn('This module running in maintenance mode, command not sent.');
+      return false;
   }
 
   dumpZoneTimers() {
@@ -674,7 +683,7 @@ class EnvisaLink extends EventEmitter {
       this.sendCommand(to_send);
     }
     else
-      this.log.error(`EnvisaLink: Invalid Partition Number ${partitionNumber} specified when trying to change partition, ignoring.`);
+      this.log.error(`Invalid Partition Number ${partitionNumber} specified when trying to change partition, ignoring.`);
   }
 
   sendCommandToPartition(partitionNumber,command) {
@@ -684,7 +693,7 @@ class EnvisaLink extends EventEmitter {
       this.sendCommand(to_send);
     }
     else
-      this.log.error(`EnvisaLink: Invalid Partition Number ${partitionNumber} specified when trying to change partition, ignoring.`);
+      this.log.error(`Invalid Partition Number ${partitionNumber} specified when trying to change partition, ignoring.`);
     
   }
 }
