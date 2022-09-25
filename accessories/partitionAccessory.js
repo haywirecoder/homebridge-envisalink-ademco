@@ -120,13 +120,26 @@ processAlarmTimer() {
      // get security system
      const securityService = this.accessory.getService(this.Service.SecuritySystem);
     if (this.processingAlarm) {
-        this.log.warn(`Alarm request did not return successfully in allocated time. Current alarm status is ${this.l_envisalinkCurrentStatus}`);
+        this.log.warn(`Alarm request did not return successfully in allocated time. Current alarm status is ${this.envisakitCurrentStatus}`);
+        setAlarmState();
         this.processingAlarm = false;
         this.armingTimeOut = undefined;
         securityService.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus]);
         securityService.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.ENVISA_TO_HOMEKIT_TARGET[this.envisakitCurrentStatus]);  
     } 
 }
+
+// Set the state of alarm system
+setAlarmState() {
+  // get security system
+  const securityService = this.accessory.getService(this.Service.SecuritySystem);
+  this.log.debug(`Setting Alarm state to ${this.envisakitCurrentStatus}`);
+  this.processingAlarm = false;
+  this.armingTimeOut = undefined;
+  securityService.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus]);
+  securityService.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.ENVISA_TO_HOMEKIT_TARGET[this.envisakitCurrentStatus]);  
+}
+
 // Change smart water shutoff monitoring state.
 async setTargetState(homekitState, callback) {
   var l_envisalinkCurrentStatus = this.envisakitCurrentStatus;
@@ -166,6 +179,9 @@ async setTargetState(homekitState, callback) {
 
       }
   } else this.log.warn("Alarm system is busy processing a previous alarm system mode command.");
+   // Assume alarm can't be process alarm request return to previous state. 
+   // This will get updated if alarm command is valid and successful.
+  var l_homekitState = this.homekitLastTargetState;
   // If valid alarm command was determine process request
   if (l_alarmCommand) {
       this.processingAlarm = true;
@@ -175,27 +191,26 @@ async setTargetState(homekitState, callback) {
               this.alarm.changePartition(this.partitionNumber);
               await new Promise(r => setTimeout(r, 3000));
       }
-      this.alarm.sendCommand(l_alarmCommand);
-      this.armingTimeOut = setTimeout(this.processAlarmTimer.bind(this), this.commandTimeOut * 1000);
-      callback(null, homekitState);
-     
-  } else {
-      // Couldn't process alarm request returning to previous state
-      callback(null,this.homekitLastTargetState);
-      // get security system
-      const securityService = this.accessory.getService(this.Service.SecuritySystem);
-      securityService.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.homekitLastTargetState);
-      securityService.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.homekitLastTargetState);        
-  }
-    
+      if (this.alarm.sendCommand(l_alarmCommand))
+      { 
+        this.armingTimeOut = setTimeout(this.processAlarmTimer.bind(this), this.commandTimeOut * 1000);
+        // Alarm was successful.
+        l_homekitState = homekitState;
+        return callback(null,l_homekitState);
+      }
+  } 
+  this.log.debug("setAlarmState: Command not sent returning home state ", l_homekitState);
+  setTimeout(this.setAlarmState.bind(this), 500);
+  return callback(null,l_homekitState);
 }
+
  // Battery status Low Battery status and Battery Level.
  async getPanelStatusLowBattery(callback) {
     // Assume battery level is normal.
     var l_batteryLevel = this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
     if (this.batteryLevel < 20) l_batteryLevel = this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW;
     this.log.debug("getPanelStatusLowBattery: Return Low Battery Status - ", l_batteryLevel);
-    callback(null, l_batteryLevel);
+    return callback(null, l_batteryLevel);
 }
 
 async getPanelBatteryLevel(callback) {
@@ -209,7 +224,7 @@ async getPanelBatteryLevel(callback) {
       this.batteryLevel = Math.max(0,(100-((timeDiff/this.batteryRunTime)*100).toFixed(1)));
   }
   this.log.debug("getPanelBatteryLevel: Return level - ", this.batteryLevel);
-  callback(null,this.batteryLevel);
+  return callback(null,this.batteryLevel);
 }
 
 async getPanelCharingState(callback) {
