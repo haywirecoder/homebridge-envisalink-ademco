@@ -1,5 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v2.0.2 (2022-10-01)
+## Changes
+* Documentation updates.
+* Enabling Session Watcher will always enable automatic reconnection this reduces possible confusion.
+
+## Enhancements
+* Control logic enhancement to assure arming/disarm always return to Homekit in a timely manner.
 
 # v2.0.1 (2022-09-10)
 ## Changes
