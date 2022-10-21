@@ -1,5 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v2.0.3 (2022-10-22)
+## Break fixes
+* Fix logic flow which resulted in error message when Bypass switch is disabled (issue #31)
+* Fix issue which cause plug-in to restart due connection errors.
+
 # v2.0.2 (2022-10-01)
 ## Changes
 * Documentation updates.

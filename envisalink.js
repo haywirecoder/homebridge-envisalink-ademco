@@ -216,7 +216,16 @@ class EnvisaLink extends EventEmitter {
      if (deltaTime > (self.options.heartbeatInterval)) {
         self.log.warn("Missing Heartbeat - Time drift: ", deltaTime ,". Trying to re-connect session...");
         self.endSession();
-       // Generate event to indicate there is issue with EVL module connection
+        var source = "session_connect_status";
+        // Generate event to indicate there is issue with EVL module connection
+        if (!inTrouble)
+        {
+          self.emit('envisalinkupdate', {
+                source: source,
+                qualifier: 1
+          });
+          inTrouble = true;
+        }
         setTimeout(function () {self.startSession()}, 5000);
       } else {
         // Connection not idle. Check again connection idle time seconds...

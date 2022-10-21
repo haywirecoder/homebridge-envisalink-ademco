@@ -218,16 +218,17 @@ class EnvisalinkPlatform {
 
          // Process bypass features (only one bypass button is created)
          if (this.bypass.length > 0) {
-            var bypassswitch = this.bypass[0];
-            bypassswitch.pin = this.masterPin;
-            bypassswitch.model = this.deviceDescription+ " Keypad";
-            bypassswitch.name  = "Zone Bypass";
-            bypassswitch.customType = "bypass";
-            bypassswitch.serialNumber = "envisalink.bypass.all";
-            bypassswitch.commandTimeOut = this.commandTimeOut;
-            bypassswitch.zoneDevices  = this.platformZoneAccessories;
 
             if (bypassswitch.enabledbyPass) {
+                var bypassswitch = this.bypass[0];
+                bypassswitch.pin = this.masterPin;
+                bypassswitch.model = this.deviceDescription+ " Keypad";
+                bypassswitch.name  = "Zone Bypass";
+                bypassswitch.customType = "bypass";
+                bypassswitch.serialNumber = "envisalink.bypass.all";
+                bypassswitch.commandTimeOut = this.commandTimeOut;
+                bypassswitch.zoneDevices  = this.platformZoneAccessories;
+            
                 // Create bypass switch
                 var customAccessory = new customDevices(this.log, bypassswitch, Service, Characteristic, UUIDGen, alarm);
                 // check the accessory was not restored from cache
@@ -247,9 +248,6 @@ class EnvisalinkPlatform {
                 this.activeAccessoryMap[customAccessory.uuid] = true;
                 var accessoryIndex = this.platformPartitionAccessories.push(customAccessory) - 1;
                 this.platformPartitionAccessoryMap['c.bypass'] = accessoryIndex;
-            }
-            else{
-                this.log.error("Misconfigured Alarm Zone Bypass switch definition " + bypassswitch.name + " ignoring.");
             }
         }
 
