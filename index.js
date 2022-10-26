@@ -71,7 +71,9 @@ class EnvisalinkPlatform {
                 // Provide status on configurations completed
                 this.log(`Partition configured: ${this.partitions.length}`);
                 if (this.zones.length > 0) this.log(`Zone accessories configured: ${this.zones.length}`);
-                if (this.bypass.length > 0) this.log("Bypass accessories configured.");
+                if (this.bypass.length > 0){
+                    if (this.bypass[0].enabledbyPass) this.log("Bypass accessories configured.");
+                }
                 if (this.speedKeys.length > 0) this.log("Speed keys accessories configured.");
                 if (this.chime) this.log("Chime toggle accessory configured.")
                 
@@ -218,8 +220,7 @@ class EnvisalinkPlatform {
 
          // Process bypass features (only one bypass button is created)
          if (this.bypass.length > 0) {
-
-            if (bypassswitch.enabledbyPass) {
+            if (this.bypass[0].enabledbyPass) {
                 var bypassswitch = this.bypass[0];
                 bypassswitch.pin = this.masterPin;
                 bypassswitch.model = this.deviceDescription+ " Keypad";
@@ -251,8 +252,8 @@ class EnvisalinkPlatform {
             }
         }
 
-         // Creating macro/speed keys 
-         if (this.speedKeys.length > 0) {
+        // Creating macro/speed keys 
+        if (this.speedKeys.length > 0) {
             var speedkey = [];
             speedkey.pin = this.masterPin;
             speedkey.model = this.deviceDescription + " Keypad";
