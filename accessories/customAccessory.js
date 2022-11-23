@@ -152,7 +152,7 @@ class EnvisalinkCustomAccessory {
                     // Reviewing zone that are being monitored and are bypass enabled (allowed to be bypass)
                     if (this.zoneDevices.length == 0) {
                         this.log.warn(`No zones were defined.`);
-                        setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,false)}.bind(this),500);
+                        setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,false)}.bind(this),2000);
                         break;
                     }
                     var bypasscount = 0;
@@ -190,7 +190,7 @@ class EnvisalinkCustomAccessory {
                     }
                 
                 }
-                setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,bValue)}.bind(this),500);
+                setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,bValue)}.bind(this),2000);
                 locSetValue = bValue;
             break;
             case "READY_BYPASS":
