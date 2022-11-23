@@ -111,7 +111,7 @@ class EnvisalinkCustomAccessory {
   }   
 
   async getByPass(callback) {
-    callback(null, this.ENVISA_BYPASS_TO_HOMEKIT[this.envisakitCurrentStatus]);
+    return callback(null, this.ENVISA_BYPASS_TO_HOMEKIT[this.envisakitCurrentStatus]);
   }
 
   processBypassTimer() {
@@ -126,10 +126,11 @@ class EnvisalinkCustomAccessory {
     // Determine if processing another bypass command.
     if (this.alarm.isProcessingBypass) {
         this.log("Already processing Bypass request. Command ignored.");
-        callback(null,this.ENVISA_BYPASS_TO_HOMEKIT[this.envisakitCurrentStatus]);
+        return callback(null,this.ENVISA_BYPASS_TO_HOMEKIT[this.envisakitCurrentStatus]);
     }
     else
     {
+        var locSetValue = value;
         // Set busy status on process Bypass
         this.alarm.isProcessingBypass = true;
         this.alarm.isProcessingBypassqueue = 0;
@@ -146,14 +147,12 @@ class EnvisalinkCustomAccessory {
                         this.log(`Quick Bypass configured. Quick bypass of fault zones.`);
                         l_alarmCommand = this.pin + tpidefs.alarmcommand.quickbypass;
                         this.alarm.sendCommand(l_alarmCommand);
-                        callback(null,value);
                         break;
                     }
                     // Reviewing zone that are being monitored and are bypass enabled (allowed to be bypass)
                     if (this.zoneDevices.length == 0) {
                         this.log.warn(`No zones were defined.`);
                         setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,false)}.bind(this),500);
-                        callback(null, false);
                         break;
                     }
                     var bypasscount = 0;
@@ -192,7 +191,7 @@ class EnvisalinkCustomAccessory {
                 
                 }
                 setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,bValue)}.bind(this),500);
-                callback(null, bValue);
+                locSetValue = bValue;
             break;
             case "READY_BYPASS":
             case "NOT_READY_BYPASS":
@@ -202,22 +201,23 @@ class EnvisalinkCustomAccessory {
                     var l_alarmCommand = this.pin + tpidefs.alarmcommand.disarm;
                     this.alarm.sendCommand(l_alarmCommand);
                 }
-                callback(null, false);
+                locSetValue = false;
             break;
             case 'READY':
                 this.log(`Alarm is ${this.envisakitCurrentStatus} no action required. Ignoring bypass request.`);
                 // Turn off switch, since no action was completed.
                 setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,false)}.bind(this),2000);
-                callback(null, false);
+                locSetValue = false;
             break;
             default:
                 // Nothing to process, return to previous state, 
                 setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,!value)}.bind(this),2000);
-                callback(null, !value);
+                locSetValue = !value;
             break;
         }
         // Is there anything in the queue being process?
         if (this.alarm.isProcessingBypassqueue == 0 ) this.alarm.isProcessingBypass = false;
+        return callback(null, locSetValue);
     }
   }
   async setSpeedKey(swIdentity,value,callback) {
@@ -234,7 +234,7 @@ class EnvisalinkCustomAccessory {
           // turn off after 2 sec
         setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,false)}.bind(this),2000);
     }
-    callback(null); 
+    return callback(null); 
   }
 
 }
