@@ -409,45 +409,43 @@ class EnvisalinkPlatform {
     }
     // Capture zone updates usually associated sensor going from open to close and vice-versa
     zoneUpdate(data) {
-        this.log.debug('zoneUpdate: Status change - ', data);
-        for (var i = 0; i < data.zone.length; i++) {
-            var accessoryIndex = this.platformZoneAccessoryMap['z.' + Number(data.zone[i])];
-            if (accessoryIndex !== undefined) {
-                var zoneaccessory = this.platformZoneAccessories[accessoryIndex];
-                if (zoneaccessory) {
-                    zoneaccessory.envisakitCurrentStatus = data.mode;
-                    this.log.debug("zoneUpdate: Accessory change - " + zoneaccessory.name + ' to ' + zoneaccessory.envisakitCurrentStatus);
-                    var accessoryService = zoneaccessory.service;
-                    switch(zoneaccessory.sensorType) {
-                        case "motion":
-                        case "glass":
-                            if (accessoryService) accessoryService.getCharacteristic(Characteristic.MotionDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_MOTION[data.mode]);  
-                        break;
+        this.log.info('zoneUpdate: Status change - ', data);
+        var accessoryIndex = this.platformZoneAccessoryMap['z.' + Number(data.zone)];
+        if (accessoryIndex !== undefined) {
+            var zoneaccessory = this.platformZoneAccessories[accessoryIndex];
+            if (zoneaccessory) {
+                zoneaccessory.envisakitCurrentStatus = data.mode;
+                this.log.debug("zoneUpdate: Accessory change - " + zoneaccessory.name + ' to ' + zoneaccessory.envisakitCurrentStatus);
+                var accessoryService = zoneaccessory.service;
+                switch(zoneaccessory.sensorType) {
+                    case "motion":
+                    case "glass":
+                        if (accessoryService) accessoryService.getCharacteristic(Characteristic.MotionDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_MOTION[data.mode]);  
+                    break;
 
-                        case "door":
-                        case "window":
-                            if (accessoryService) accessoryService.getCharacteristic(Characteristic.ContactSensorState).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_CONTACT[data.mode]);  
-                        break;
+                    case "door":
+                    case "window":
+                        if (accessoryService) accessoryService.getCharacteristic(Characteristic.ContactSensorState).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_CONTACT[data.mode]);  
+                    break;
 
-                        case "leak":
-                            if (accessoryService) accessoryService.getCharacteristic(Characteristic.LeakDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_LEAK[data.mode]);  
-                        break;
+                    case "leak":
+                        if (accessoryService) accessoryService.getCharacteristic(Characteristic.LeakDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_LEAK[data.mode]);  
+                    break;
 
-                        case "smoke":
-                            if (accessoryService) accessoryService.getCharacteristic(Characteristic.SmokeDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_SMOKE[data.mode]);  
-                        break;
+                    case "smoke":
+                        if (accessoryService) accessoryService.getCharacteristic(Characteristic.SmokeDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_SMOKE[data.mode]);  
+                    break;
 
-                        case "co":
-                            if (accessoryService) accessoryService.getCharacteristic(Characteristic.CarbonMonoxideDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_CO[data.mode]); 
-                        break;
-                    }
-                    
+                    case "co":
+                        if (accessoryService) accessoryService.getCharacteristic(Characteristic.CarbonMonoxideDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_CO[data.mode]); 
+                    break;
                 }
+                
             }
-        }
+        } 
     }
 
-    // Capture low level updates that are not generate from keypad events
+    // Capture low level updates that are not generate from keypad events, but sent to monitoring station.
     cidUpdate(data)
     {
         this.log.debug('cidUpdate: Status change - ', data);
@@ -457,7 +455,7 @@ class EnvisalinkPlatform {
             if (accessoryIndex !== undefined) {
                 var accessory = this.platformZoneAccessories[accessoryIndex];
                 var accessoryService = accessory.service;
-                this.log.debug(`cidUpdate: Accessory change - Event Zone: ${accessoryIndex} Name: ${accessory.name} Code: ${data.code} Qualifier: ${data.qualifier}.`);
+                this.log.debug(`cidUpdate: Accessory change - Zone: ${data.zone} Name: ${accessory.name} Code: ${data.code} Qualifier: ${data.qualifier}.`);
                 switch (Number(data.code)) { 
                     // qualifier can be 1 = 'Event or Opening', 3 = 'Restore or Closing'
                     case 570:  // Bypass event

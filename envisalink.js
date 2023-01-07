@@ -11,6 +11,8 @@ var activezones = [];
 var activeZoneTimeOut = undefined;
 var inTrouble = false;
 
+const RF_LOW_BATTERY = 384;
+
 
 
 class EnvisaLink extends EventEmitter {
@@ -95,7 +97,7 @@ class EnvisaLink extends EventEmitter {
         if (self.shouldReconnect && (actual === undefined || actual.destroyed)) {
           self.log.warn("Session closed unexpectedly. Re-establishing Session...");
           // Generate event to indicate there is issue with EVL module connection
-          //  Qualifier. 1 = Event, 3 = Restore
+          // Qualifier: 1 = Event, 3 = Restore
           if (!inTrouble)
           {
             self.emit('envisalinkupdate', {
@@ -134,7 +136,7 @@ class EnvisaLink extends EventEmitter {
             // ignore, OK is good. or report successful connection.    
             self.log.info(`Successful TPI session established.`);
             // If connection had issue prior clear and generate restore event
-            //  Qualifier. 1 = Event, 3 = Restore
+            // Qualifier: 1 = Event, 3 = Restore
             if (inTrouble)
             {
               self.emit('envisalinkupdate', {
@@ -218,6 +220,7 @@ class EnvisaLink extends EventEmitter {
         self.endSession();
         var source = "session_connect_status";
         // Generate event to indicate there is issue with EVL module connection
+        //  Qualifier: 1 = Event, 3 = Restore
         if (!inTrouble)
         {
           self.emit('envisalinkupdate', {
@@ -282,7 +285,7 @@ class EnvisaLink extends EventEmitter {
           name: tpi.name,
           code: z
         };
-        zoneTimerOpen(tpi, z, "open");
+        zoneTimerOpen(tpi, z);
       });
       self.emit('zoneupdate', {
         zone: z_list,
@@ -318,7 +321,7 @@ class EnvisaLink extends EventEmitter {
     function findZone(zonelist, zone) {
       // Find zone that was being previously track.
       for (var i = 0; i < zonelist.length; i++) {
-        if (zone == zonelist[i].zone) {
+        if (zone == zonelist[i].zonetimername) {
           self.log.debug("Found zone - ", zone);
           return i;
         }
@@ -328,23 +331,25 @@ class EnvisaLink extends EventEmitter {
       return undefined;
     }
 
-    function zoneTimerOpen(tpi, zone, mode) {
-      
+    function zoneTimerOpen(tpi, zone, eventtype ="fault.") {
       var triggerZoneEvent = false;
-      var zoneid = findZone(activezones, zone);
+      var triggerLowbatteryEvent = false;
+      var zoneid = findZone(activezones, eventtype+zone);
       if (Number.isInteger(zoneid)) {
         self.log.debug("Zone found in active zone list index - ", zoneid);
         activezones[zoneid].eventepoch = Math.floor(Date.now() / 1000);
       } else {
-        if (mode == "open")
-        {
           self.log.debug("Adding new zone - ", zone);
           activezones.push({
+            zonetimername: eventtype + zone,
             zone: zone,
-            eventepoch: Math.floor(Date.now() / 1000)
+            source: tpi.name,
+            eventepoch: Math.floor(Date.now() / 1000),
+            eventtype: eventtype
           });
-          triggerZoneEvent = true;
-        }
+          // What type of event is this low battery or a fault?
+          if(eventtype == "fault.") triggerZoneEvent = true;
+          if(eventtype == "lowbatt.") triggerLowbatteryEvent = true;
       }
 
       if (activezones.length > 0) {
@@ -353,19 +358,29 @@ class EnvisaLink extends EventEmitter {
           activeZoneTimeOut = setTimeout(zoneTimerClose, self.options.openZoneTimeout * 1000);
         }
       }
-
+      // Trigger update to fault the zone
       if (triggerZoneEvent == true) {
         self.emit('zoneevent', {
           zone: [parseInt(zone, 10)],
-          mode: mode,
-          source: tpi.name
+          mode: "open",
+          source: tpi.name + " Zone fault"
         });
+      }
+      // Trigger low battery using cid event.
+      if (triggerLowbatteryEvent == true) {
+        self.emit('cidupdate', {
+          type: "zone",
+          zone: [parseInt(zone, 10)],
+          code: RF_LOW_BATTERY,
+          name: tpi.name,
+          qualifier: 1,
+          source: tpi.name + " Low Batt"
+        });
+
       }
     }
 
     function zoneTimerClose() {
-      var mode = "close";
-      var z_close = [];
       var z = activezones.length;
       var l_zonetimeout = self.options.openZoneTimeout;
       var minZoneTime = l_zonetimeout;
@@ -376,7 +391,25 @@ class EnvisaLink extends EventEmitter {
         // determine if zone hasn't been reported for the allocated time in sec, if so mark as close
         currZoneTime = Math.floor(Date.now() / 1000) - activezones[z].eventepoch;
         if (currZoneTime >= l_zonetimeout) {
-          z_close.push(parseInt(activezones[z].zone));
+          // Is the zone event if related to a fault
+          if(activezones[z].eventtype == "fault."){
+              self.emit('zoneevent', {
+                zone: activezones[z].zone,
+                mode: "close",
+                source:  activezones[z].source + " Zone Time Out"
+            });
+          }
+          // Zone event is related to battery status
+          if(activezones[z].eventtype == "lowbatt."){
+            self.emit('cidupdate', {
+              type: "zone",
+              code: RF_LOW_BATTERY,
+              zone: activezones[z].zone,
+              name:  activezones[z].source,
+              qualifier: 3,
+              source:  activezones[z].source + " Low Batt Resolved."
+            });
+          }
           // remove from active list
           activezones.splice(z, 1);
         } else {
@@ -384,15 +417,6 @@ class EnvisaLink extends EventEmitter {
           currZoneTime = l_zonetimeout - currZoneTime;
           if (minZoneTime > currZoneTime) minZoneTime = currZoneTime;
         }
-      }
-      if (z_close.length > 0) {
-        // zones that are now closed
-        self.emit('zoneevent', {
-          zone: z_close,
-          mode: mode,
-          source: "Zone Time Out"
-        });
-
       }
       if (activezones.length == 0) {
         // Clean up 
@@ -515,9 +539,15 @@ class EnvisaLink extends EventEmitter {
       
       if ((mode == 'NOT_READY') && (keypad_txt.includes('FAULT')))
       {    
-        zoneTimerOpen(tpi, userOrZone, "open")  
+        zoneTimerOpen(tpi, userOrZone);
       }
-    
+      // Zone generate battery low event 
+      if((keypadledstatus.low_battery) && (keypad_txt.includes('LOBAT')))
+      {
+        zoneTimerOpen(tpi, userOrZone,"lowbatt.");
+      }
+
+      // Generate event to update to update status 
       self.emit('keypadupdate', {
         partition: partition,
         code: {
@@ -576,7 +606,7 @@ class EnvisaLink extends EventEmitter {
             });
 
             // Track of zone status
-            zoneTimerOpen(tpi, zonenum, "open");
+            zoneTimerOpen(tpi, zonenum);
           }
           if (swappedBits == "0000")
             {
