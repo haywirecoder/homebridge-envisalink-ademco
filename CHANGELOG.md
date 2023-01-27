@@ -1,9 +1,16 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v2.0.4 (2023-01-29)
+## Enhancements
+* Add additional method to obtain low battery and AC status using the virtual keypad. (issue #34)
+
+## Break fixes
+* Correct characteristic 'Security System Current State' error. (issue #36)
+
 # v2.0.3 (2022-10-22)
 ## Break fixes
-* Fix logic flow which resulted in error message when Bypass switch is disabled (issue #31)
-* Fix issue which cause plug-in to restart due connection errors.
+* Fix logic flow which resulted in error message when Bypass switch is disabled. (issue #31)
+* Fix issue which cause the plug-in to restart due to an undefined variable.
 
 # v2.0.2 (2022-10-01)
 ## Changes
@@ -76,7 +83,7 @@ All notable changes to this project will be documented in this file. This projec
 # v1.1.23 (2021-02-05)
 ## Enhancements
 * Add Support for Carbon Monoxide Detector (#11).
-* Add Support for Glassbreak Detector as a motion sensor.
+* Add Support for Glass break Detector as a motion sensor.
 
 # v1.1.22 (2020-12-17)
 ## Break fixes

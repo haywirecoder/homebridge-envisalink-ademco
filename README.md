@@ -9,7 +9,7 @@ When upgrading from any prior version of the plugin to version 2.0.0+, you need 
 
 ----------------------------------
 
-This module was designed to work with Ademco Envisalink module with the Vista series alarm panels. It supports alarm operations (e.g. Arm, disarm, night and stay), bypassing of zones, special function keys (e.g. Fire, Panic, Medical) and exposes the alarm system sensors to homebridge.
+This module was designed to work with Ademco Envisalink module with the Vista series alarm panels. It supports alarm operations (e.g. Arm, disarm, night and stay), bypassing of zones, special function keys (e.g. Fire, Panic, Medical) and exposes the alarm system sensors to homebridge. <b>Note:</b> This module uses the Envisalink Third Party Interface (TPI). Make sure TPI is enabled (i.e. "ONLINE" and Alert is checked) for your module.
 
 Limits:
 
@@ -17,9 +17,11 @@ Limits:
 
 * When system is "Armed" the panel no longer report the state of each zone. All zone will age out and be considered close once armed. Note: A bypass zone will automatically show as fault (open) once the alarm is disarmed.
 
-* Envisalink module only support one connection. Once this plug-in is connected, any other connections will result in an error. Vice-versa, if Envisalink is being used for other purpose this module will not be able to connect. Confirm you have a stable network connection to the Envisalink module prior to installing this plug-in. While the auto-reconnect logic option is available, it is designed for occasional network issues.
+* Envisalink TPI interface only support one connection. Once this plug-in is connected, any other connections will result in an error. Vice-versa, if Envisalink is being used for other purpose this module will not be able to connect. Confirm you have a stable network connection to the Envisalink module prior to installing this plug-in. While the auto-reconnect logic option is available, it is designed for occasional network issues.
 
 * This plug-in uses "Arm-Instant (Zero Delay-Stay)" as indicator of <i>NIGHT STAY</i>. Arms-Instant is similar to the STAY mode, but without the entry delay feature and usually associated with <i>NIGHT STAY</i>.
+
+* In order to receive updates for RF Low battery, AC failure, Low Panel Battery and Bypass reporting must be enabled in the Envisakit module. Refer to https://www.eyezon.com/EZMAIN/evl4honeywell.php section 4. 
 
 Please Note: I recommended not using the master user or installer code in the configure file. Create a separate alarm user with the proper access permissions (please refer to your panel guide).
   
@@ -35,10 +37,10 @@ Please Note: I recommended not using the master user or installer code in the co
 | pin               | Your local alarm PIN. Recommend creating a separate alarm user for this plug-in. Default pin is 1234                     |
 | **partitions**    | List of partition to monitor in Homekit.                                                                                 |
 | openZoneTimeout   | *(optional)* Time out value for zone provided in second. Default is 30 second.                                           |
-| sessionsWatcher   | *(optional)* Automatic disconnect and recreate a new session if module detect a hang session. This is done by periodically (i.e. heartbeatInterval) checking the last updates from the virtual keypad. autoReconnect value must also be set to true for this option to be valid. Default is true. |
-| heartbeatInterval | *(optional)* Heartbeat interval to determine if envisalink sessions has hang. Default is 30 second.                      |
+| sessionsWatcher   | *(optional)* Automatic disconnect and recreate a new session if module detect a hang session. This is done by periodically (i.e. heartbeatInterval) checking the last updates from the virtual keypad. Setting this value to true, will result in the "autoReconnect" setting being ignored in the configuration file and setting "autoReconnect" always to true. Default is true. |
+| heartbeatInterval | *(optional)* Heartbeat interval to determine if envisalink sessions has hang. <b>Please note:</b> Setting this value below 30 second may cause incorrect identification of hang state. Default is 30 second.                      |
 | commandTimeOut    | *(optional)* Time-out value for alarm command to return provided in second. Default is 10 second.                        |
-| autoReconnect     | *(optional)* Automatic reconnect to server if network channel is broken. Default is true.                                |
+| autoReconnect     | *(optional)* Automatic reconnect to server if network channel is broken. This value is automatically set to true if sessionWatcher is enabled. Default is true.                                |
 | chimeToggle       | *(optional)* Create a switch to enable and disabled Chime bell. Panel only allow change bell status when alarm is not armed. Default is false.                         |
 | batteryRunTime    | *(optional)* User supplied run time of main system battery backup in hours. This value allows plug-in to estimate remaining time when system switch to backup battery. |  
 | maintenanceMode   | *(optional)* Disable communication with envisakit module. **Note:** This will disable all updates.                      |
