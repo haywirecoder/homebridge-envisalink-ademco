@@ -14,12 +14,12 @@ var inTrouble = false;
 const RF_LOW_BATTERY = 384;
 
 
-
 class EnvisaLink extends EventEmitter {
 
   isProcessingBypass;
   isProcessingAlarm;
   isProcessingBypassqueue;
+  isConnected;
 
   constructor(log, config) {
     super();
@@ -69,7 +69,7 @@ class EnvisaLink extends EventEmitter {
   startSession() {
     var self = this;
     this.shouldReconnect = this.options.autoreconnect;
-    this.IsConnected = false;
+    this.isConnected = false;
     this.lastmessage = new Date();
     this.isConnectionIdleHandle = undefined;
 
@@ -87,7 +87,7 @@ class EnvisaLink extends EventEmitter {
     });
 
     actual.on('close', function (hadError) {
-      self.IsConnected = false;
+      self.isConnected = false;
       var source = "session_connect_status";
       if (self.isConnectionIdleHandle !== undefined) 
       {
@@ -113,7 +113,7 @@ class EnvisaLink extends EventEmitter {
 
     actual.on('end', function () {
       self.log.info('TPI session disconnected.');
-      self.IsConnected = false;
+      self.isConnected = false;
     });
 
     actual.on('data', function (data) {
@@ -126,12 +126,12 @@ class EnvisaLink extends EventEmitter {
           
           if (datapacket.substring(0, 5) === 'Login') {
             self.log.debug("Login requested. Sending response " + self.options.password)
-            self.IsConnected = true;
+            self.isConnected = true;
             self.sendCommand(self.options.password);
           } else if ((datapacket.substring(0, 6) === 'FAILED') || (datapacket.substring(0, 9) === 'Timed Out')) {
             self.log.error("EnvisaLink: Login failed.");
             // The session will be closed
-            self.IsConnected = false;
+            self.isConnected = false;
           } else if (datapacket.substring(0, 2) === 'OK') {
             // ignore, OK is good. or report successful connection.    
             self.log.info(`Successful TPI session established.`);
@@ -685,7 +685,7 @@ class EnvisaLink extends EventEmitter {
 
   endSession() {
     // Is connected terminate the connection.
-    if (actual && !actual.destroyed && this.IsConnected) {
+    if (actual && !actual.destroyed && this.isConnected) {
       actual.end();
       return true;
     } else {
@@ -695,7 +695,7 @@ class EnvisaLink extends EventEmitter {
 
   sendCommand(command) {
     if (!this.isMaintenanceMode) {
-      if (actual && !actual.destroyed && this.IsConnected) {
+      if (actual && !actual.destroyed && this.isConnected) {
         this.log.debug('!WARNING! PIN/CODE may appear in the clear TX > ', command);
         actual.write(command + '\r\n');
         return true;

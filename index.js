@@ -372,6 +372,15 @@ class EnvisalinkPlatform {
                 }
             }
         } 
+
+        // Check if panel is on battery power (loss power)
+        if(!data.keypadledstatus.ac_present){
+            if(partition.ChargingState == Characteristic.ChargingState.CHARGING) {
+                partition.ChargingState = Characteristic.ChargingState.NOT_CHARGING; 
+                partition.downTime = new Date(); 
+            }
+        } else partition.ChargingState = Characteristic.ChargingState.CHARGING;
+        
     }
 
     // Capture partition updates usually associated with arm, disarm events
@@ -409,7 +418,7 @@ class EnvisalinkPlatform {
     }
     // Capture zone updates usually associated sensor going from open to close and vice-versa
     zoneUpdate(data) {
-        this.log.info('zoneUpdate: Status change - ', data);
+        this.log.debug('zoneUpdate: Status change - ', data);
         var accessoryIndex = this.platformZoneAccessoryMap['z.' + Number(data.zone)];
         if (accessoryIndex !== undefined) {
             var zoneaccessory = this.platformZoneAccessories[accessoryIndex];
@@ -489,7 +498,7 @@ class EnvisalinkPlatform {
                 this.log.debug(`cidUpdate: Partition change - Partition: ${partitionIndex} Name: ${partition.name} Code: ${data.code} Qualifier: ${data.qualifier}.`);
                 switch (Number(data.code)) {
                     case 301: // Trouble-AC Power
-                        if(data.qualifier == 1) {
+                        if((data.qualifier == 1) && (partition.ChargingState == Characteristic.ChargingState.CHARGING)) {
                             partition.ChargingState = Characteristic.ChargingState.NOT_CHARGING; 
                             partition.downTime = new Date(); 
                         }
