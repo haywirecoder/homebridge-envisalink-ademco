@@ -30,7 +30,8 @@ class EnvisalinkPartitionAccessory {
       'ARMED_NIGHT': Characteristic.SecuritySystemCurrentState.NIGHT_ARM,
       'ARMED_NIGHT_BYPASS': Characteristic.SecuritySystemCurrentState.NIGHT_ARM,
       'ALARM': Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED,
-      'ALARM_MEMORY': Characteristic.SecuritySystemCurrentState.DISARMED
+      'ALARM_MEMORY': Characteristic.SecuritySystemCurrentState.DISARMED,
+      'EXIT_DELAY':  Characteristic.SecuritySystemCurrentState.DISARMED
     };
 
     this.ENVISA_TO_HOMEKIT_TARGET = {
@@ -45,7 +46,8 @@ class EnvisalinkPartitionAccessory {
         'ARMED_AWAY_BYPASS': Characteristic.SecuritySystemTargetState.AWAY_ARM,
         'ARMED_NIGHT': Characteristic.SecuritySystemTargetState.NIGHT_ARM,
         'ARMED_NIGHT_BYPASS': Characteristic.SecuritySystemTargetState.NIGHT_ARM,
-        'ALARM_MEMORY': Characteristic.SecuritySystemTargetState.DISARM
+        'ALARM_MEMORY': Characteristic.SecuritySystemTargetState.DISARM,
+        'EXIT_DELAY':  Characteristic.SecuritySystemTargetState.DISARM
       };
   }
 
@@ -125,7 +127,7 @@ processAlarmTimer() {
         this.processingAlarm = false;
         this.armingTimeOut = undefined;
         securityService.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus]);
-        securityService.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.ENVISA_TO_HOMEKIT_TARGET[this.envisakitCurrentStatus]);  
+        if(this.envisakitCurrentStatus != 'ALARM') securityService.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.ENVISA_TO_HOMEKIT_TARGET[this.envisakitCurrentStatus]);  
     } 
 }
 
@@ -137,7 +139,7 @@ setAlarmState() {
   this.processingAlarm = false;
   this.armingTimeOut = undefined;
   securityService.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus]);
-  securityService.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.ENVISA_TO_HOMEKIT_TARGET[this.envisakitCurrentStatus]);  
+  if(this.envisakitCurrentStatus != 'ALARM') securityService.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.ENVISA_TO_HOMEKIT_TARGET[this.envisakitCurrentStatus]);  
 }
 
 // Change smart water shutoff monitoring state.
