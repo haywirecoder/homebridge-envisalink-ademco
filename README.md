@@ -3,6 +3,12 @@
 [![NPM Version](https://img.shields.io/npm/v/homebridge-envisalink-ademco.svg)](https://www.npmjs.com/package/homebridge-envisalink-ademco)
 [![npm](https://img.shields.io/npm/dt/homebridge-envisalink-ademco.svg?style=flat-square)](https://www.npmjs.com/package/homebridge-envisalink-ademco)
 
+<p align="center">
+    <img src="https://github.com/homebridge/branding/raw/master/logos/homebridge-wordmark-logo-vertical.png" width="150">
+    <img src="https://github.com/haywirecoder/homebridge-envisalink-ademco/blob/master/img/EyezOn_logo_signature_size.png?raw=true" width="150">
+    
+</p>
+
 <b>*** WARNING **** </b> 
 
 When upgrading from any prior version of the plugin to version 2.0.0+, you need to re-assign accessories to rooms and rebuild/correct existing automation which included these accessories. This is a one-time event and is not a bug. This is the result of upgrading to the Homebridge modern dynamic platform, which generated new unique internal IDs. 
@@ -136,7 +142,6 @@ If your system has unused zones, simply include a *zoneNumber* integer property 
 Example:
 
 ```javascript
-
 ...
 
 "zones": [
@@ -170,3 +175,5 @@ Example:
 ]
 
 ...
+
+```
