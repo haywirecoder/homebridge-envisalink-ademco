@@ -27,7 +27,7 @@ Limits:
 
 * This plug-in uses "Arm-Instant (Zero Delay-Stay)" as indicator of <i>NIGHT STAY</i>. Arms-Instant is similar to the STAY mode, but without the entry delay feature and usually associated with <i>NIGHT STAY</i>.
 
-* In order to receive updates for RF Low battery, AC failure, Low Panel Battery and Bypass reporting must be enabled in the Envisakit module. Refer to https://www.eyezon.com/EZMAIN/evl4honeywell.php section 4. 
+* In order to receive updates for RF Low battery, AC failure, Low Panel Battery and Bypass reporting must be enabled in the Envisakit module. 
 
 Please Note: I recommended not using the master user or installer code in the configure file. Create a separate alarm user with the proper access permissions (please refer to your panel guide).
   
