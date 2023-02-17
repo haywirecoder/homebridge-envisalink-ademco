@@ -51,9 +51,7 @@ Please Note: I recommended not using the master user or installer code in the co
 | batteryRunTime    | *(optional)* User supplied run time of main system battery backup in hours. This value allows plug-in to estimate remaining time when system switch to backup battery. |  
 | maintenanceMode   | *(optional)* Disable communication with envisakit module. **Note:** This will disable all updates.                      |
 | **zones**         | *(optional)* List of zones to appear and monitor in Homekit                                                              |
-| **bypass**        | *(optional)* Creates a bypass control (a switch) to bypass zones which are open (faulted)                                |
-|                   | By design the bypass switch can only bypass zone that are being monitored in Homekit and the zone entry "bypassenable" set to true.    |
-|                   | "quickbypass" Can be used to bypass all fault zones. This feature must to be enabled in Ademco panel *(refer to panel guide)*.                               |
+| **bypass**        | *(optional)* Creates a bypass control (a switch) to bypass zones which are open (faulted)                                |                            |
 | **speedkeys**     | *(optional)* Create controls (switches) to replicate the special function keys on Ademco keypad                          |
 
 **partitions**
