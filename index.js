@@ -91,6 +91,10 @@ class EnvisalinkPlatform {
                     // Should module errors be suppress from homekit notification?
                     if (this.isEnvisalinkFailureSuppress == false) alarm.on('envisalinkupdate', this.envisalinkUpdate.bind(this));
                     else this.log.warn("No alarm Tamper will be generated for Envisalink communication failure. Please refer to your Homebridge logs for communication failures.");
+                
+                    // Generate bypassed zone event to update the bypass accessories
+                    setTimeout(function () {alarm.getBypassedZones(this.masterPin)}.bind(this),config.heartbeatInterval*1000);
+                   
                 }
                 else
                     this.log.warn("This plug-in is running in maintenance mode. All updates and operations are disabled!");
@@ -98,6 +102,9 @@ class EnvisalinkPlatform {
         }
     }
 
+    // ****************************************************
+    // * Homekit Accessories from envisalink module        *
+    // ****************************************************
     // Create associates in Homekit based on configuration file
     refreshPartitionsAccessories() {
         // Process partition data
@@ -157,8 +164,11 @@ class EnvisalinkPlatform {
                 }
                 zone.model = this.deviceDescription + " " + zone.sensorType.charAt(0).toUpperCase() + zone.sensorType.slice(1) + " sensor";
                 zone.serialNumber = "envisalink." + zone.sensorType + "."+ zone.partition + "." + zoneNum;
+                zone.masterBypass = this.bypass[0].enabledbyPass;
+                zone.pin = this.masterPin;
+                zone.commandTimeOut = this.commandTimeOut;
 
-                var zoneAccessory = new zoneDevices(this.log, zone, Service, Characteristic, UUIDGen);
+                var zoneAccessory = new zoneDevices(this.log, zone, Service, Characteristic, UUIDGen, alarm);
                 // check the accessory was not restored from cache
                 var foundAccessory = this.accessories.find(accessory => accessory.UUID === zoneAccessory.uuid)
                 if (!foundAccessory) {
@@ -282,9 +292,9 @@ class EnvisalinkPlatform {
         }
     }
 
-    // *****************************************
-    // * Event Processor from envisalink module
-    // *****************************************
+    // ****************************************************
+    // * Event Processor from envisalink module           *
+    // ****************************************************
     // The envisalink event represent issue related to low level layers which effect all partitions.
     envisalinkUpdate(data) {
         this.log.debug('envisalinkUpdate:  Status changed - ', data);
@@ -358,7 +368,7 @@ class EnvisalinkPlatform {
             }
         }
 
-        // if bypass enable update status
+        // if bypass switch enable update status
         if (accessorybypassIndex !== undefined) {
             var accessoryBypass = this.platformPartitionAccessories[accessorybypassIndex];
             if (accessoryBypass) {
@@ -468,10 +478,16 @@ class EnvisalinkPlatform {
                 switch (Number(data.code)) { 
                     // qualifier can be 1 = 'Event or Opening', 3 = 'Restore or Closing'
                     case 570:  // Bypass event
-                        if(data.qualifier == 1) this.log(`${accessory.name} has been bypass.`);
-                        if(data.qualifier == 3) this.log(`${accessory.name} has been un-bypass.`);
+                        if(data.qualifier == 1){ 
+                            this.log(`${accessory.name} has been bypass.`);
+                            accessory.bypassStatus = true;
+                        }
+                        if(data.qualifier == 3){
+                            this.log(`${accessory.name} has been un-bypass.`);
+                            accessory.bypassStatus = false;
+                        }
                         alarm.isProcessingBypassqueue = alarm.isProcessingBypassqueue - 1;
-                        if ((alarm.isProcessingBypassqueue <= 0 ) && (alarm.isProcessingBypassqueue)) { 
+                        if ((alarm.isProcessingBypassqueue <= 0 ) && (alarm.isProcessingBypass)) { 
                             alarm.isProcessingBypass = false; 
                             alarm.isProcessingBypassqueue = 0;
                             this.log(`All queued bypass/un-bypass command(s) completed.`)
@@ -490,7 +506,7 @@ class EnvisalinkPlatform {
                 }
             }
         }
-        // event is related to a partition
+        // Event is related to a partition
         if ((data.type == 'zone') && (Number(data.zone) == 0)) {
             var partitionIndex = this.platformPartitionAccessoryMap['p.' + Number(data.partition)];
             if (partitionIndex !== undefined ) {
@@ -551,7 +567,7 @@ class EnvisalinkPlatform {
         }
     }
 
-    //Add accessory to homekit dashboard
+    // Add accessory to homekit dashboard
     addAccessory(device) {
 
         this.log.debug('Adding accessory',device.accessory.displayName);
@@ -563,7 +579,7 @@ class EnvisalinkPlatform {
         }
     }
 
-    //Remove accessory to homekit dashboard
+    // Remove accessory to homekit dashboard
     removeAccessory(accessory, updateIndex) {
       this.log.debug('Envisalink Removing accessory:',accessory.displayName );
       if (accessory) {

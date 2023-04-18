@@ -12,6 +12,8 @@ var activeZoneTimeOut = undefined;
 var inTrouble = false;
 
 const RF_LOW_BATTERY = 384;
+const ZONE_BYPASS = 570;
+const SESSION_TIMEOUT = 5000;
 
 
 class EnvisaLink extends EventEmitter {
@@ -20,6 +22,7 @@ class EnvisaLink extends EventEmitter {
   isProcessingAlarm;
   isProcessingBypassqueue;
   isConnected;
+  alarmSystemMode;
 
   constructor(log, config) {
     super();
@@ -61,7 +64,7 @@ class EnvisaLink extends EventEmitter {
     this.isProcessingBypass = false;
     this.isProcessingAlarm = false;
     this.isProcessingBypassqueue = 0;
-
+    this.alarmSystemMode = 'READY';
 
   }
 
@@ -108,7 +111,7 @@ class EnvisaLink extends EventEmitter {
           }
           self.startSession();
         }
-      }, 5000);
+      }, SESSION_TIMEOUT);
     });
 
     actual.on('end', function () {
@@ -215,7 +218,7 @@ class EnvisaLink extends EventEmitter {
 
       // Was there traffic in allocated time frame?
       self.log.debug("Checking for Heartbeat...");
-     if (deltaTime > (self.options.heartbeatInterval)) {
+      if (deltaTime > (self.options.heartbeatInterval)) {
         self.log.warn("Missing Heartbeat - Time drift: ", deltaTime ,". Trying to re-connect session...");
         self.endSession();
         var source = "session_connect_status";
@@ -229,7 +232,7 @@ class EnvisaLink extends EventEmitter {
           });
           inTrouble = true;
         }
-        setTimeout(function () {self.startSession()}, 5000);
+        setTimeout(function () {self.startSession()}, SESSION_TIMEOUT);
       } else {
         // Connection not idle. Check again connection idle time seconds...
         self.log.debug("Heartbeat successful. Last message time: " + self.lastmessage)
@@ -334,6 +337,7 @@ class EnvisaLink extends EventEmitter {
     function zoneTimerOpen(tpi, zone, eventtype ="fault.") {
       var triggerZoneEvent = false;
       var triggerLowbatteryEvent = false;
+      var triggerBypassedEvent = false;
       var zoneid = findZone(activezones, eventtype+zone);
       if (Number.isInteger(zoneid)) {
         self.log.debug("Zone found in active zone list index - ", zoneid);
@@ -350,6 +354,7 @@ class EnvisaLink extends EventEmitter {
           // What type of event is this low battery or a fault?
           if(eventtype == "fault.") triggerZoneEvent = true;
           if(eventtype == "lowbatt.") triggerLowbatteryEvent = true;
+          if(eventtype == "bypassed.") triggerBypassedEvent = true;
       }
 
       if (activezones.length > 0) {
@@ -376,7 +381,17 @@ class EnvisaLink extends EventEmitter {
           qualifier: 1,
           source: tpi.name + " Low Batt"
         });
-
+      }
+      // Trigger a bypassed event
+      if (triggerBypassedEvent == true) {
+        self.emit('cidupdate', {
+          type: "zone",
+          zone: [parseInt(zone, 10)],
+          code: ZONE_BYPASS,
+          name: tpi.name,
+          qualifier: 1,
+          source: tpi.name + " Bypassed"
+        });
       }
     }
 
@@ -533,6 +548,7 @@ class EnvisaLink extends EventEmitter {
         position++;
       }
 
+      self.alarmSystemMode = mode;
       // Update zone information timer. 
       // Depending on the state of the update it will either represent a zone, or a user.
       // module makes assumption, if system is not-ready and panel text display "FAULT" assume zone is in fault.
@@ -541,10 +557,16 @@ class EnvisaLink extends EventEmitter {
       {    
         zoneTimerOpen(tpi, userOrZone);
       }
-      // Zone generate battery low event 
+      // System generate battery low event 
       if((keypadledstatus.low_battery) && (keypad_txt.includes('LOBAT')))
       {
-        zoneTimerOpen(tpi, userOrZone,"lowbatt.");
+        zoneTimerOpen(tpi, userOrZone, "lowbatt.");
+      }
+
+      // bypass event reported to keypad
+      if((keypad_txt.substring(0, 5) == 'BYPAS') && (!keypadledstatus.not_used2) && ((mode == 'NOT_READY_BYPASS') || (mode == 'READY_BYPASS'))) 
+      {
+        zoneTimerOpen(tpi, userOrZone, "bypassed.");
       }
 
       // Generate event to update to update status 
@@ -708,10 +730,19 @@ class EnvisaLink extends EventEmitter {
       return false;
   }
 
-  dumpZoneTimers() {
+  getZonesTimers() {
     var to_send = '^02,$';
     this.lastsentcommand = "02";
     this.sendCommand(to_send);
+  }
+
+  getBypassedZones(pin) {
+    // Request panel to list all bypass panel. Check to see if any zone is bypass, if so request panel to output using virtual keypad.
+    if((this.alarmSystemMode == 'NOT_READY_BYPASS') || (this.alarmSystemMode == 'READY_BYPASS')) {
+      var to_send = pin + '6';
+      this.lastsentcommand = "6";
+      this.sendCommand(to_send);
+    }
   }
 
   changePartition(partitionNumber) {
@@ -733,7 +764,7 @@ class EnvisaLink extends EventEmitter {
     }
     else
       this.log.error(`Invalid Partition Number ${partitionNumber} specified when trying to change partition, ignoring.`);
-    
   }
+
 }
 module.exports = EnvisaLink
