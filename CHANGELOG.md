@@ -1,5 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v2.0.5 (2023-04-30)
+## Enhancements
+* Add functionality to allow bypassing a specific zone that is fault and/or normal. (issue #38)
+
 # v2.0.4 (2023-01-29)
 ## Enhancements
 * Add additional method to obtain low battery and AC status using the virtual keypad. (issue #34)

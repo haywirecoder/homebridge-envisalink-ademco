@@ -3,12 +3,6 @@
 [![NPM Version](https://img.shields.io/npm/v/homebridge-envisalink-ademco.svg)](https://www.npmjs.com/package/homebridge-envisalink-ademco)
 [![npm](https://img.shields.io/npm/dt/homebridge-envisalink-ademco.svg?style=flat-square)](https://www.npmjs.com/package/homebridge-envisalink-ademco)
 
-<p align="center">
-    <img src="https://github.com/homebridge/branding/raw/master/logos/homebridge-wordmark-logo-vertical.png" width="150">
-    <img src="https://github.com/haywirecoder/homebridge-envisalink-ademco/blob/master/img/EyezOn_logo_signature_size.png?raw=true" width="150">
-    
-</p>
-
 <b>*** WARNING **** </b> 
 
 When upgrading from any prior version of the plugin to version 2.0.0+, you need to re-assign accessories to rooms and rebuild/correct existing automation which included these accessories. This is a one-time event and is not a bug. This is the result of upgrading to the Homebridge modern dynamic platform, which generated new unique internal IDs. 
@@ -27,7 +21,7 @@ Limits:
 
 * This plug-in uses "Arm-Instant (Zero Delay-Stay)" as indicator of <i>NIGHT STAY</i>. Arms-Instant is similar to the STAY mode, but without the entry delay feature and usually associated with <i>NIGHT STAY</i>.
 
-* In order to receive updates for RF Low battery, AC failure, Low Panel Battery and Bypass reporting must be enabled in the Envisakit module. 
+* In order to receive updates for RF Low battery, AC failure, Low Panel Battery and Bypass reporting must be enabled in the Envisakit module. Refer to https://www.eyezon.com/EZMAIN/evl4honeywell.php section 4. 
 
 Please Note: I recommended not using the master user or installer code in the configure file. Create a separate alarm user with the proper access permissions (please refer to your panel guide).
   
@@ -51,7 +45,9 @@ Please Note: I recommended not using the master user or installer code in the co
 | batteryRunTime    | *(optional)* User supplied run time of main system battery backup in hours. This value allows plug-in to estimate remaining time when system switch to backup battery. |  
 | maintenanceMode   | *(optional)* Disable communication with envisakit module. **Note:** This will disable all updates.                      |
 | **zones**         | *(optional)* List of zones to appear and monitor in Homekit                                                              |
-| **bypass**        | *(optional)* Creates a bypass control (a switch) to bypass zones which are open (faulted)                                |                            |
+| **bypass**        | *(optional)* Creates a bypass control (a switch) to bypass zones which are open (faulted)                                |
+|                   | By design the bypass switch can only bypass zone that are being monitored in Homekit and the zone entry "bypassenable" set to true.    |
+|                   | "quickbypass" Can be used to bypass all fault zones. This feature must to be enabled in Ademco panel *(refer to panel guide)*.                               |
 | **speedkeys**     | *(optional)* Create controls (switches) to replicate the special function keys on Ademco keypad                          |
 
 **partitions**
@@ -66,11 +62,11 @@ Please Note: I recommended not using the master user or installer code in the co
 > - sensorType : co | door | glass | leak | motion | smoke | window - *This is a required value for each entry*
 > - partition : sensor partition number. - *This is a required value for each entry*
 > - zoneNumber : panel zone number for sensor. - The presence of this attribute triggers consecutive zone numbering or non-consecutive zone numbering (see example). *This attribute is required if your system has unused zones, using non-consecutive zone numbering or wanting to selectively show zones within homekit*
-> - bypassEnabled :  true | false - A true value allows zones to be bypass when open (faulted). This setting works in concert with the bypass control option (below). *This is optional element and default to false*
+> - bypassEnabled :  true | false - A true value allows zones to be bypass. This setting works in concert with the bypass control option (below). *This is optional element and default to false. The alarm system will not allow fire or emergency zones to be bypassed.*
 
 **bypass** *(Optional section)*
 
-> - enabledbyPass: true | false   - Create bypass switch in homekit
+> - enabledbyPass: true | false   - A true value creates a global bypass switch in homekit to bypass faulted zones with bypassEnabled set to true. A false value (default) allows for the creation of a zone specific switch associated with each zone with bypassEnabled. The direct zone bypass switch can bypass zone which are fault and/or normal. Un-bypassing one zone will unbypass all zone; this is a limitation of the alarm panel. *Note: Once your system is disarmed, the bypass zones will have to be bypass again in order to arm your system again.* 
 > - quickbypass : true | false   - Must be pre-configure on alarm panel (please refer to your alarm panel programming guide). If programmed, "Quick Bypass" allows you to easily bypass all open (faulted) zones without having to configure zone individually and perform operation quicker. *This is a required value for this section*
 
 **speedkeys** *(Optional section)*
@@ -140,6 +136,7 @@ If your system has unused zones, simply include a *zoneNumber* integer property 
 Example:
 
 ```javascript
+
 ...
 
 "zones": [
@@ -173,5 +170,3 @@ Example:
 ]
 
 ...
-
-```
