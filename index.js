@@ -164,7 +164,10 @@ class EnvisalinkPlatform {
                 }
                 zone.model = this.deviceDescription + " " + zone.sensorType.charAt(0).toUpperCase() + zone.sensorType.slice(1) + " sensor";
                 zone.serialNumber = "envisalink." + zone.sensorType + "."+ zone.partition + "." + zoneNum;
-                zone.masterBypass = this.bypass[0].enabledbyPass;
+                if (this.bypass.length > 0) 
+                    zone.masterBypass = this.bypass[0].enabledbyPass; 
+                else    
+                    zone.masterBypass = false;
                 zone.pin = this.masterPin;
                 zone.commandTimeOut = this.commandTimeOut;
 

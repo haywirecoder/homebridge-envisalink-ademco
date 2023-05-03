@@ -1,5 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v2.0.6 (2023-05-02)
+## Break fixes
+* Bypass switch default not properly set and cause error if configuration is missing
+
 # v2.0.5 (2023-04-30)
 ## Enhancements
 * Add functionality to allow bypassing a specific zone that is fault and/or normal. (issue #38)
