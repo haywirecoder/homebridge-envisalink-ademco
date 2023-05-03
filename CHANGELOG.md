@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
 # v2.0.6 (2023-05-02)
 ## Break fixes
-* Bypass switch default not properly set and cause error if configuration is missing
+* Fix the problem associated with the bypass switch not defaulting to false if missing.
 
 # v2.0.5 (2023-04-30)
 ## Enhancements
