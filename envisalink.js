@@ -338,20 +338,23 @@ class EnvisaLink extends EventEmitter {
       var triggerZoneEvent = false;
       var triggerLowbatteryEvent = false;
       var triggerBypassedEvent = false;
-      var zoneid = findZone(activezones, eventtype+zone);
+      // remove leading zero from zone information
+      var numZone = parseInt(zone, 10);
+
+      var zoneid = findZone(activezones, eventtype + numZone);
       if (Number.isInteger(zoneid)) {
         self.log.debug("Zone found in active zone list index - ", zoneid);
         activezones[zoneid].eventepoch = Math.floor(Date.now() / 1000);
       } else {
-          self.log.debug("Adding new zone - ", zone);
+          self.log.debug("Adding new zone - ", numZone);
           activezones.push({
-            zonetimername: eventtype + zone,
-            zone: zone,
+            zonetimername: eventtype + numZone,
+            zone: numZone,
             source: tpi.name,
             eventepoch: Math.floor(Date.now() / 1000),
             eventtype: eventtype
           });
-          // What type of event is this low battery or a fault?
+          // What type of event is this fault or something else?
           if(eventtype == "fault.") triggerZoneEvent = true;
           if(eventtype == "lowbatt.") triggerLowbatteryEvent = true;
           if(eventtype == "bypassed.") triggerBypassedEvent = true;
@@ -366,7 +369,7 @@ class EnvisaLink extends EventEmitter {
       // Trigger update to fault the zone
       if (triggerZoneEvent == true) {
         self.emit('zoneevent', {
-          zone: [parseInt(zone, 10)],
+          zone: numZone,
           mode: "open",
           source: tpi.name + " Zone fault"
         });
@@ -375,7 +378,7 @@ class EnvisaLink extends EventEmitter {
       if (triggerLowbatteryEvent == true) {
         self.emit('cidupdate', {
           type: "zone",
-          zone: [parseInt(zone, 10)],
+          zone: numZone,
           code: RF_LOW_BATTERY,
           name: tpi.name,
           qualifier: 1,
@@ -386,7 +389,7 @@ class EnvisaLink extends EventEmitter {
       if (triggerBypassedEvent == true) {
         self.emit('cidupdate', {
           type: "zone",
-          zone: [parseInt(zone, 10)],
+          zone: numZone,
           code: ZONE_BYPASS,
           name: tpi.name,
           qualifier: 1,
