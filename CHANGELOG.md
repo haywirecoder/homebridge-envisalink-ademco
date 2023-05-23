@@ -1,5 +1,13 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v2.0.8 (2023-06-04)
+## Break fixes
+* Fix issue when sone zones were bypass non-bypass zone were showing as close. 
+
+# v2.0.7 (2023-05-16)
+## Break fixes
+* Fix the problem with zone 0-9 random closures  (issue #39).
+
 # v2.0.6 (2023-05-02)
 ## Break fixes
 * Fix the problem associated with the bypass switch not defaulting to false if missing.

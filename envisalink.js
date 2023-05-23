@@ -556,7 +556,7 @@ class EnvisaLink extends EventEmitter {
       // Depending on the state of the update it will either represent a zone, or a user.
       // module makes assumption, if system is not-ready and panel text display "FAULT" assume zone is in fault.
       
-      if ((mode == 'NOT_READY') && (keypad_txt.includes('FAULT')))
+      if ((mode.substring(0, 9) == 'NOT_READY') && (keypad_txt.includes('FAULT')))
       {    
         zoneTimerOpen(tpi, userOrZone);
       }
