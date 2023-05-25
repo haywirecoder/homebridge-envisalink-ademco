@@ -1,7 +1,8 @@
 {
   "pluginAlias": "Envisalink-Ademco",
   "pluginType": "platform",
-  "singular": false,
+  "singular": true,
+  "headerDisplay": "<p align='center'><img width='100px'src='https://raw.githubusercontent.com/homebridge/branding/6ef3a1685e79f79a2ecdcc83824e53775ec0475d/logos/homebridge-color-round-stylized.svg'><img width='100px'src='https://raw.githubusercontent.com/haywirecoder/homebridge-envisalink-ademco/master/img/EyezOn_logo_signature_size.png'></p>",
   "footerDisplay": "Envisalink Ademco Panel Configuration",
   "schema": {
     "type": "object",
@@ -98,7 +99,7 @@
         "type": "integer",
         "default": 30,
         "description": "Heartbeat interval to check for disconnected Envisalink session. Default: 30 seconds.",
-        "minimum": 10,
+        "minimum": 15,
         "maximum": 600
       },
       "commandTimeOut": {
@@ -363,7 +364,7 @@
       "type": "section",
       "title": "Partition Information",
       "expandable": true,
-      "expanded": true,
+      "expanded": false,
       "items": [{
         "key": "partitions",
         "type": "array",
