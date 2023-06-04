@@ -186,7 +186,7 @@ async setTargetState(homekitState, callback) {
           case 'NOT_READY': 
           case 'NOT_READY_TROUBLE': 
           case 'NOT_READY_BYPASS':
-            this.log.warn(`The alarm system was not ready, and a zone fault was detected. The request for state change of ${homekitState} is ignored, review the alarm system keypad for more information.`); 
+            this.log.warn(`The alarm system was not ready, and a zone fault was detected. The request for state change of ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]} is ignored, review the alarm system keypad for more information.`); 
           break;
           default:
             this.log.warn(`The alarm system mode command is supported for partition with status of ${l_envisalinkCurrentStatus}. Please use alarm system keypad for more information.`);
