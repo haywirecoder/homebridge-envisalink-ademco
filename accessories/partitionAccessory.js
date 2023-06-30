@@ -14,6 +14,9 @@ class EnvisalinkPartitionAccessory {
     this.accessoryType = "partition";
     this.partitionNumber = config.partitionNumber;
     this.pin = config.pin;
+    this.commandTimeOut = config.commandTimeOut;
+    this.batteryRunTime = config.batteryRunTime;
+    this.changePartition = config.changePartition;
     this.uuid = UUIDGen.generate(this.config.serialNumber);
     this.alarm = alarm;
 
@@ -51,10 +54,10 @@ class EnvisalinkPartitionAccessory {
       };
 
       this.TARGET_HOMEKIT_TO_ENVISA = {
-        [Characteristic.SecuritySystemTargetState.DISARMED]: 'disarm',
-        [Characteristic.SecuritySystemTargetState.STAY_ARM]: 'home',
-        [Characteristic.SecuritySystemTargetState.NIGHT_ARM]: 'night',
-        [Characteristic.SecuritySystemTargetState.AWAY_ARM]: 'away',
+        DISARM: 'disarm',
+        STAY_ARM: 'home',
+        NIGHT_ARM: 'night',
+        AWAY_ARM: 'away',
 
       };
   }
@@ -62,6 +65,17 @@ class EnvisalinkPartitionAccessory {
 
   setAccessory(accessory)  {
     this.accessory = accessory;
+
+    // Set default for security service
+    this.ChargingState = this.Characteristic.ChargingState.CHARGING;
+    this.envisakitCurrentStatus = "READY";
+    this.downTime = undefined;
+    this.homekitLastTargetState = this.Characteristic.SecuritySystemTargetState.DISARM;
+    this.systemfault = this.Characteristic.StatusFault.NO_FAULT;
+    this.processingAlarm = false;
+    this.armingTimeOut = undefined;
+
+
     this.accessory.getService(this.Service.AccessoryInformation)
         .setCharacteristic(this.Characteristic.Manufacturer, ENVISALINK_MANUFACTURER)
         .setCharacteristic(this.Characteristic.Model, this.config.model)
@@ -100,18 +114,6 @@ class EnvisalinkPartitionAccessory {
 
     // link battery service to partition
     securityService.addLinkedService(batteryService);
-
-    // Set default for security service
-    this.ChargingState = this.Characteristic.ChargingState.CHARGING;
-    this.envisakitCurrentStatus = "READY";
-    this.downTime = null;
-    this.homekitLastTargetState = this.Characteristic.SecuritySystemCurrentState.DISARMED;
-    this.commandTimeOut = this.config.commandTimeOut;
-    this.batteryRunTime = this.config.batteryRunTime;
-    this.changePartition = this.config.changePartition;
-    this.systemfault = this.Characteristic.StatusFault.NO_FAULT;
-    this.processingAlarm = false;
-    this.armingTimeOut = undefined;
 
   }
 
@@ -186,10 +188,10 @@ async setTargetState(homekitState, callback) {
           case 'NOT_READY': 
           case 'NOT_READY_TROUBLE': 
           case 'NOT_READY_BYPASS':
-            this.log.warn(`The alarm system was not ready, and a zone fault was detected. The request for state change of ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]} is ignored, review the alarm system keypad for more information.`); 
+            this.log.warn(`The alarm system was not ready, and a zone fault was detected. The request for state change of ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]} is ignored, see the alarm system keypad for more information.`); 
           break;
           default:
-            this.log.warn(`The alarm system mode command is supported for partition with status of ${l_envisalinkCurrentStatus}. Please use alarm system keypad for more information.`);
+            this.log.warn(`The alarm system mode command is not supported for partition with status of ${l_envisalinkCurrentStatus}. Please see alarm system keypad for more information.`);
           break;
 
       }
@@ -233,10 +235,13 @@ async getPanelBatteryLevel(callback) {
   // Only calculate if battery level is not already zero and AC power is down.
   if ((this.batteryLevel > 0) && (this.ChargingState == this.Characteristic.ChargingState.NOT_CHARGING) ){
       var current = new Date();
-      var timeDiff = current - this.downTime; //in ms
-      // strip the ms
-      timeDiff /= 1000;
-      this.batteryLevel = Math.max(0,(100-((timeDiff/this.batteryRunTime)*100).toFixed(1)));
+      if (this.downTime) 
+      {
+        var timeDiff = current - this.downTime; //in ms
+        // strip the ms
+        timeDiff /= 1000;
+        this.batteryLevel = Math.max(0,(100-((timeDiff/this.batteryRunTime)*100).toFixed(1))); 
+    }
   }
   this.log.debug("getPanelBatteryLevel: Return level - ", this.batteryLevel);
   return callback(null,this.batteryLevel);

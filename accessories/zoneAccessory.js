@@ -60,6 +60,7 @@ class EnvisalinkZoneAccessory {
           .on('get', async callback => this.getMotionStatus(callback));
           motionService.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
           motionService.setCharacteristic(this.Characteristic.StatusTampered, this.Characteristic.StatusTampered.NOT_TAMPERED);
+          motionService.setCharacteristic(this.Characteristic.StatusFault, this.Characteristic.StatusFault.NO_FAULT);
           this.service = motionService;
           this.bypassEnabled = this.config.bypassEnabled ? this.config.bypassEnabled : false;
           this.commandTimeOut = this.config.commandTimeOut;
@@ -88,6 +89,7 @@ class EnvisalinkZoneAccessory {
           .on('get', async callback => this.getContactSensorStatus(callback));
           contactService.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
           contactService.setCharacteristic(this.Characteristic.StatusTampered, this.Characteristic.StatusTampered.NOT_TAMPERED);
+          contactService.setCharacteristic(this.Characteristic.StatusFault, this.Characteristic.StatusFault.NO_FAULT);
           this.service = contactService;
           this.bypassEnabled = this.config.bypassEnabled ? this.config.bypassEnabled : false;
           this.commandTimeOut = this.config.commandTimeOut;
@@ -115,6 +117,7 @@ class EnvisalinkZoneAccessory {
           .on('get', async callback => this.getLeakStatus(callback));
           leakService.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
           leakService.setCharacteristic(this.Characteristic.StatusTampered, this.Characteristic.StatusTampered.NOT_TAMPERED);
+          leakService.setCharacteristic(this.Characteristic.StatusFault, this.Characteristic.StatusFault.NO_FAULT);
           this.service = leakService;
           this.bypassEnabled = this.config.bypassEnabled ? this.config.bypassEnabled : false;
           this.envisakitCurrentStatus = "close";
@@ -141,6 +144,7 @@ class EnvisalinkZoneAccessory {
           .on('get', async callback => this.getSmokeStatus(callback));
           SmokeSensorService.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
           SmokeSensorService.setCharacteristic(this.Characteristic.StatusTampered, this.Characteristic.StatusTampered.NOT_TAMPERED);
+          SmokeSensorService.setCharacteristic(this.Characteristic.StatusFault, this.Characteristic.StatusFault.NO_FAULT);
           this.service = SmokeSensorService;
           this.bypassEnabled = this.config.bypassEnabled ? this.config.bypassEnabled : false;
           this.envisakitCurrentStatus = "close";
@@ -155,6 +159,7 @@ class EnvisalinkZoneAccessory {
            .on('get', async callback => this.getCOStatus(callback));
            CarbonMonoxideSensorService.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
            CarbonMonoxideSensorService.setCharacteristic(this.Characteristic.StatusTampered, this.Characteristic.StatusTampered.NOT_TAMPERED);
+           CarbonMonoxideSensorService.setCharacteristic(this.Characteristic.StatusFault, this.Characteristic.StatusFault.NO_FAULT);
            this.service = CarbonMonoxideSensorService;
            this.bypassEnabled = this.config.bypassEnabled ? this.config.bypassEnabled : false;
            this.envisakitCurrentStatus = "close";
