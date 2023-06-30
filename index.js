@@ -341,9 +341,12 @@ class EnvisalinkPlatform {
                         if (partitionService) {
                             if (partition.homekitLastTargetState != partition.ENVISA_TO_HOMEKIT_TARGET[data.mode])
                                 {
+                                    
                                     partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,partition.ENVISA_TO_HOMEKIT_CURRENT[data.mode]);
-                                    if(data.mode != 'ALARM') partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,partition.ENVISA_TO_HOMEKIT_TARGET[data.mode]);  
-                                    partition.homekitLastTargetState = partition.ENVISA_TO_HOMEKIT_TARGET[data.mode];
+                                    if(data.mode != 'ALARM') {
+                                        partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,partition.ENVISA_TO_HOMEKIT_TARGET[data.mode]);  
+                                        partition.homekitLastTargetState = partition.ENVISA_TO_HOMEKIT_TARGET[data.mode];
+                                    }
                                 }       
                             // if system is not ready set general fault
                             if (partition.envisakitCurrentStatus.includes('NOT_READY') || partition.envisakitCurrentStatus.includes('ALARM_MEMORY')) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT); 
@@ -410,8 +413,10 @@ class EnvisalinkPlatform {
                     if (partition.homekitLastTargetState != partition.ENVISA_TO_HOMEKIT_TARGET[data.mode])
                         {
                             partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,partition.ENVISA_TO_HOMEKIT_CURRENT[data.mode]);
-                            if(data.mode != 'ALARM') partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,partition.ENVISA_TO_HOMEKIT_TARGET[data.mode]);  
-                            partition.homekitLastTargetState = partition.ENVISA_TO_HOMEKIT_TARGET[data.mode];
+                            if(data.mode != 'ALARM') {
+                                partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,partition.ENVISA_TO_HOMEKIT_TARGET[data.mode]);  
+                                partition.homekitLastTargetState = partition.ENVISA_TO_HOMEKIT_TARGET[data.mode];
+                            }
                         }       
                     // if system is not ready set general fault
                     if (partition.envisakitCurrentStatus.includes('NOT_READY') || partition.envisakitCurrentStatus.includes('ALARM_MEMORY')) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT); 
@@ -479,6 +484,22 @@ class EnvisalinkPlatform {
                 var accessoryService = accessory.service;
                 this.log.debug(`cidUpdate: Accessory change - Zone: ${data.zone} Name: ${accessory.name} Code: ${data.code} Qualifier: ${data.qualifier}.`);
                 switch (Number(data.code)) { 
+
+                    case 150: //Alarm, 24-Hour Auxiliar
+                        if(data.qualifier == 1) accessoryService.updateCharacteristic(Characteristic.StatusFault, Characteristic.StatusFault.GENERAL_FAULT);
+                        if(data.qualifier == 3)  accessoryService.updateCharacteristic(Characteristic.StatusFault, Characteristic.StatusFault.NO_FAULT);
+                    break;
+
+                    case 384: // RF LOW BATTERY
+                        if(data.qualifier == 1) accessoryService.updateCharacteristic(Characteristic.StatusLowBattery, Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                        if(data.qualifier == 3)  accessoryService.updateCharacteristic(Characteristic.StatusLowBattery, Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+                    break;
+
+                    case 383: // SENSOR TAMPER
+                        if(data.qualifier == 1) accessoryService.updateCharacteristic(Characteristic.StatusTampered, Characteristic.StatusTampered.TAMPERED);
+                        if(data.qualifier == 3)  accessoryService.updateCharacteristic(Characteristic.StatusTampered, Characteristic.StatusTampered.NOT_TAMPERED);
+                    break;
+
                     // qualifier can be 1 = 'Event or Opening', 3 = 'Restore or Closing'
                     case 570:  // Bypass event
                         if(data.qualifier == 1){ 
@@ -497,20 +518,12 @@ class EnvisalinkPlatform {
                         }
                     break;
 
-                    case 384: // RF LOW BATTERY
-                        if(data.qualifier == 1) accessoryService.updateCharacteristic(Characteristic.StatusLowBattery, Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
-                        if(data.qualifier == 3)  accessoryService.updateCharacteristic(Characteristic.StatusLowBattery, Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
-                    break;
-
-                    case 383: // SENSOR TAMPER
-                        if(data.qualifier == 1) accessoryService.updateCharacteristic(Characteristic.StatusTampered, Characteristic.StatusTampered.TAMPERED);
-                        if(data.qualifier == 3)  accessoryService.updateCharacteristic(Characteristic.StatusTampered, Characteristic.StatusTampered.NOT_TAMPERED);
-                    break;
+                    
                 }
             }
         }
         // Event is related to a partition
-        if ((data.type == 'zone') && (Number(data.zone) == 0)) {
+        if (Number(data.partition) > 0) {
             var partitionIndex = this.platformPartitionAccessoryMap['p.' + Number(data.partition)];
             if (partitionIndex !== undefined ) {
                 var partition = this.platformPartitionAccessories[partitionIndex];

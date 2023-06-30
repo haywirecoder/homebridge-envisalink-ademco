@@ -560,6 +560,11 @@ class EnvisaLink extends EventEmitter {
       {    
         zoneTimerOpen(tpi, userOrZone);
       }
+      // Check for a monitored zone
+      if ((mode.substring(0, 9) == 'NOT_READY') && (keypad_txt.includes('CHECK')))
+      {    
+        zoneTimerOpen(tpi, userOrZone);
+      }
       // System generate battery low event 
       if((keypadledstatus.low_battery) && (keypad_txt.includes('LOBAT')))
       {
@@ -685,7 +690,7 @@ class EnvisaLink extends EventEmitter {
       } else if (qualifier == 3) { // Restore
         qualifier_description = "restore";
       } else { // Unknown Qualifier!!
-        this.log.error(`EnvisaLink: Unrecognized qualifier: ${qualifier} received from Panel!`);
+        self.log.error(`EnvisaLink: Unrecognized qualifier: ${qualifier} received from Panel!`);
         return undefined;
       }
       var code = cid.substr(1, 3);
@@ -703,7 +708,6 @@ class EnvisaLink extends EventEmitter {
         status: tpi.name
       };
       cidupdate_object[cid_obj.type] = zone_or_user;
-      
       self.emit('cidupdate', cidupdate_object);
     }
   }
