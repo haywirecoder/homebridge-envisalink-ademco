@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file. This projec
 ## Break fixes
 * Fix the issue when some zones were bypassed non-bypass zone were showing as close.
 
+## Enhancements
+* Enhance warning message when the alarm system failed to complete the requested activity.
+
 # v2.0.7 (2023-05-16)
 ## Break fixes
 * Fix the problem with zone 0-9 random closures  (issue #39).
