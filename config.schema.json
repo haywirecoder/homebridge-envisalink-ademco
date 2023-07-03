@@ -90,8 +90,8 @@
         "title": "Zone timeout value in seconds",
         "type": "integer",
         "default": 30,
-        "description": "Length of time to wait before a zone is considered closed. Default: 30 seconds.",
-        "minimum": 5,
+        "description": "Length of time to wait before a zone is considered closed. Default: 30 seconds. <b>Warning:</b> Setting this value too low can cause zones to clear and fault unexpectedly.",
+        "minimum": 15,
         "maximum": 120
       },
       "heartbeatInterval": {
@@ -107,7 +107,7 @@
         "type": "integer",
         "default": 10,
         "description": "Length of time to wait for alarm command to return. Bypass command will automatically triple this value due to length of those operations. Default: 10 seconds.",
-        "minimum": 5,
+        "minimum": 15,
         "maximum": 30
       },
       "autoReconnect": {

@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
 # v2.0.8 (2023-06-04)
 ## Break fixes
+* Fix 'Security System Target State: characteristic undefined' error during an alarm state.
+* Correct various typo and undefine value.
+
+## Enhancements
+* Add support for dynamic monitor of a zone fault/trouble (not alarm) also know as Type 12 - Monitor Zone. Zone will show as open and generate a homekit fault for the zone.
+
+# v2.0.8 (2023-06-04)
+## Break fixes
 * Fix the issue when some zones were bypassed non-bypass zone were showing as close.
 
 ## Enhancements
