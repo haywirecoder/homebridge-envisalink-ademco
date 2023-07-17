@@ -50,6 +50,9 @@ class EnvisalinkCustomAccessory {
               .on('get', async callback => this.getChime(callback))
               .on('set', async (state, callback) => this.setChime(state, callback));
             this.envisakitCurrentStatus = false;
+            this.commandTimeOut = this.config.commandTimeOut;
+            this.isProcessingChimeOnOff = false;
+            this.chimeOnOffTimeOut = undefined;
           break;
           case "bypass":
             var swServiceBypass = this.accessory.getService(this.Service.Switch);
@@ -104,11 +107,27 @@ class EnvisalinkCustomAccessory {
 
   async setChime(value,callback) {
     this.log.debug('setChime: Chime set - ', value );
-    var l_alarmCommand = this.pin + tpidefs.alarmcommand.togglechime
-    this.alarm.sendCommand(l_alarmCommand);    
-    this.envisakitCurrentStatus = !this.envisakitCurrentStatus;              
-    return callback(null);
+     // Determine if chime command is in process
+    if (this.isProcessingChimeOnOff){
+      this.log("Already processing a Chime toggle request. Command ignored.");
+    }
+    else
+    {
+      var l_alarmCommand = this.pin + tpidefs.alarmcommand.togglechime
+      if(this.alarm.sendCommand(l_alarmCommand)) {
+        this.envisakitCurrentStatus = value;     
+        this.isProcessingChimeOnOff = true;
+        this.chimeOnOffTimeOut = setTimeout(this.processChimeOffTimer.bind(this), this.commandTimeOut * 1000);
+      }          
+    }
+    return callback(null,this.envisakitCurrentStatus);
   }   
+  processChimeOffTimer() {
+    if (this.isProcessingChimeOnOff) {
+        this.log.warn(`Chime toggle request did not return successfully in the allocated time.`);
+        this.isProcessingChimeOnOff = false;
+    } 
+  }
 
   async getByPass(callback) {
     return callback(null, this.ENVISA_BYPASS_TO_HOMEKIT[this.envisakitCurrentStatus]);
