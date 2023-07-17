@@ -107,19 +107,22 @@ class EnvisalinkCustomAccessory {
 
   async setChime(value,callback) {
     this.log.debug('setChime: Chime set - ', value );
-     // Determine if chime command is in process
+
+    // Determine if chime command is in process
     if (this.isProcessingChimeOnOff){
-      this.log("Already processing a Chime toggle request. Command ignored.");
+      this.log('Already processing a Chime toggle request. Command ignored.');
     }
-    else
-    {
+    else if (this.envisakitCurrentStatus !== value) {
       var l_alarmCommand = this.pin + tpidefs.alarmcommand.togglechime
       if(this.alarm.sendCommand(l_alarmCommand)) {
         this.envisakitCurrentStatus = value;     
         this.isProcessingChimeOnOff = true;
         this.chimeOnOffTimeOut = setTimeout(this.processChimeOffTimer.bind(this), this.commandTimeOut * 1000);
       }          
+    } else {
+      this.log('Chime already in requested state. Command ignored.');
     }
+    
     return callback(null,this.envisakitCurrentStatus);
   }   
   processChimeOffTimer() {
