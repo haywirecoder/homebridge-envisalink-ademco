@@ -208,6 +208,7 @@ class EnvisalinkPlatform {
             chimeswitch.name  = "Chime";
             chimeswitch.customType =  "chimemode";
             chimeswitch.serialNumber = "envisalink.chime.all";
+            chimeswitch.commandTimeOut = this.commandTimeOut;
             // Create Chime Toggle button
             var customAccessory = new customDevices(this.log, chimeswitch, Service, Characteristic, UUIDGen, alarm);
             // check the accessory was not restored from cache
@@ -363,13 +364,17 @@ class EnvisalinkPlatform {
         if (accessoryChimeIndex !== undefined) {
             var accessoryChime = this.platformPartitionAccessories[accessoryChimeIndex];
             if (accessoryChime) {
-                if (accessoryChime.envisakitCurrentStatus != data.keypadledstatus.chime) {
+                if ((accessoryChime.envisakitCurrentStatus != data.keypadledstatus.chime) && (accessoryChime.isProcessingChimeOnOff == false)) {
                     accessoryChime.envisakitCurrentStatus = data.keypadledstatus.chime;
-                    this.log.debug("systemUpdate: Accessory chime change - " + accessoryChime.name + ' to ' +  accessoryChime.envisakitCurrentStatus);
+                    this.log("systemUpdate: Accessory chime change - " + accessoryChime.name + ' to ' +  accessoryChime.envisakitCurrentStatus);
                     if (accessoryChime.customType == "chimemode") {
                         var accessoryService = accessoryChime.accessory.getService(Service.Switch);
                         accessoryService.updateCharacteristic(Characteristic.On,data.keypadledstatus.chime);
                     }
+                }
+                // Is system an event? Has condition been met that processing flag can be cleared?
+                if((accessoryChime.envisakitCurrentStatus == data.keypadledstatus.chime) && (accessoryChime.isProcessingChimeOnOff == true)){
+                    accessoryChime.isProcessingChimeOnOff = false;
                 }
             }
         }
@@ -378,7 +383,7 @@ class EnvisalinkPlatform {
         if (accessorybypassIndex !== undefined) {
             var accessoryBypass = this.platformPartitionAccessories[accessorybypassIndex];
             if (accessoryBypass) {
-                if (accessoryBypass.envisakitCurrentStatus !=  data.mode) {
+                if (accessoryBypass.envisakitCurrentStatus !=  data.mode){
                     accessoryBypass.envisakitCurrentStatus = data.mode;
                     this.log.debug("systemUpdate: Accessory bypass change - " + accessoryBypass.name + ' to ' + accessoryBypass.envisakitCurrentStatus);
                     if (accessoryBypass.customType == "bypass") {
