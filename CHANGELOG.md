@@ -1,5 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v2.0.10 (2023-07-20)
+## Break fixes
+* Turn off debug logging for chime button.
+
 # v2.0.9 (2023-07-18)
 ## Break fixes
 * Fix 'Security System Target State: characteristic undefined' error during an alarm state.
