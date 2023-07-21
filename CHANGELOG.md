@@ -4,9 +4,10 @@ All notable changes to this project will be documented in this file. This projec
 ## Break fixes
 * Fix 'Security System Target State: characteristic undefined' error during an alarm state.
 * Correct various typo and undefine value.
+* Fix various issue with Chime button state (issue #43)
 
 ## Enhancements
-* Add support for dynamic monitor of a zone fault/trouble (not alarm) also know as Type 12 - Monitor Zone. Zone will show as open and generate a homekit fault for the zone.
+* Add support for dynamic monitor of a zone Type 12 - Monitor Zone. Zone will show as open and generate a homekit fault for the zone.
 
 # v2.0.8 (2023-06-04)
 ## Break fixes
