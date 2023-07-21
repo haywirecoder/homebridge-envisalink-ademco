@@ -366,7 +366,7 @@ class EnvisalinkPlatform {
             if (accessoryChime) {
                 if ((accessoryChime.envisakitCurrentStatus != data.keypadledstatus.chime) && (accessoryChime.isProcessingChimeOnOff == false)) {
                     accessoryChime.envisakitCurrentStatus = data.keypadledstatus.chime;
-                    this.log("systemUpdate: Accessory chime change - " + accessoryChime.name + ' to ' +  accessoryChime.envisakitCurrentStatus);
+                    this.log.debug("systemUpdate: Accessory chime change - " + accessoryChime.name + ' to ' +  accessoryChime.envisakitCurrentStatus);
                     if (accessoryChime.customType == "chimemode") {
                         var accessoryService = accessoryChime.accessory.getService(Service.Switch);
                         accessoryService.updateCharacteristic(Characteristic.On,data.keypadledstatus.chime);
