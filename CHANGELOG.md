@@ -1,6 +1,6 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
-# v2.0.8 (2023-06-04)
+# v2.0.9 (2023-07-18)
 ## Break fixes
 * Fix 'Security System Target State: characteristic undefined' error during an alarm state.
 * Correct various typo and undefine value.
