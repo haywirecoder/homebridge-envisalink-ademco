@@ -54,11 +54,10 @@ class EnvisalinkPartitionAccessory {
       };
 
       this.TARGET_HOMEKIT_TO_ENVISA = {
-        DISARM: 'disarm',
-        STAY_ARM: 'home',
-        NIGHT_ARM: 'night',
-        AWAY_ARM: 'away',
-
+        0: 'home',
+        1: 'away',
+        2: 'night',
+        3: 'disarm'
       };
   }
 
@@ -145,7 +144,7 @@ processAlarmTimer() {
 setAlarmState() {
   // get security system
   const securityService = this.accessory.getService(this.Service.SecuritySystem);
-  this.log.debug(`Setting Alarm state to ${this.envisakitCurrentStatus}`);
+  this.log.debug("Setting Alarm state to", this.envisakitCurrentStatus);
   this.processingAlarm = false;
   this.armingTimeOut = undefined;
   securityService.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus]);
@@ -157,6 +156,7 @@ async setTargetState(homekitState, callback) {
   var l_envisalinkCurrentStatus = this.envisakitCurrentStatus;
   var l_alarmCommand = null; // no command has been defined.
   this.log.debug("setTargetState: Homekit alarm requested set - ",homekitState);
+  this.log.debug("setTargetState: Current alarm state is - ",l_envisalinkCurrentStatus);
   if (this.processingAlarm == false) {
       switch (l_envisalinkCurrentStatus) {
           case 'ALARM':   
@@ -170,7 +170,7 @@ async setTargetState(homekitState, callback) {
               if (homekitState == this.Characteristic.SecuritySystemCurrentState.DISARMED) {
                   this.log(`Disarming the alarm system with PIN, [Partition ${this.partitionNumber}].`);
                   l_alarmCommand = this.pin + tpidefs.alarmcommand.disarm;
-              } else this.log.warn("Disarming the alarm is required prior to changing alarm system mode.");
+              } else this.log("Disarming the alarm is required prior to changing alarm system mode.");
           break;
           case 'READY':
           case 'READY_BYPASS':
@@ -188,7 +188,8 @@ async setTargetState(homekitState, callback) {
           case 'NOT_READY': 
           case 'NOT_READY_TROUBLE': 
           case 'NOT_READY_BYPASS':
-            this.log.warn(`The alarm system was not ready, and a zone fault was detected. The request for state change of ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]} is ignored, see the alarm system keypad for more information.`); 
+            if (homekitState != this.Characteristic.SecuritySystemCurrentState.DISARMED) 
+              this.log(`The alarm system is not READY or been ByPass. The request for ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]} is ignored. See the alarm system keypad for more information.`); 
           break;
           default:
             this.log.warn(`The alarm system mode command is not supported for partition with status of ${l_envisalinkCurrentStatus}. Please see alarm system keypad for more information.`);
