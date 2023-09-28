@@ -54,10 +54,10 @@ class EnvisalinkPartitionAccessory {
       };
 
       this.TARGET_HOMEKIT_TO_ENVISA = {
-        0: 'home',
-        1: 'away',
-        2: 'night',
-        3: 'disarm'
+        0: 'Home',
+        1: 'Away',
+        2: 'Night',
+        3: 'Disarm'
       };
   }
 
@@ -158,44 +158,47 @@ async setTargetState(homekitState, callback) {
   this.log.debug("setTargetState: Homekit alarm requested set - ",homekitState);
   this.log.debug("setTargetState: Current alarm state is - ",l_envisalinkCurrentStatus);
   if (this.processingAlarm == false) {
-      switch (l_envisalinkCurrentStatus) {
-          case 'ALARM':   
-          case 'ALARM_MEMORY':
-          case 'ARMED_STAY':
-          case 'ARMED_STAY_BYPASS':
-          case 'ARMED_NIGHT':
-          case 'ARMED_NIGHT_BYPASS':    
-          case 'ARMED_AWAY':
-          case 'ARMED_AWAY_BYPASS':
-              if (homekitState == this.Characteristic.SecuritySystemCurrentState.DISARMED) {
-                  this.log(`Disarming the alarm system with PIN, [Partition ${this.partitionNumber}].`);
-                  l_alarmCommand = this.pin + tpidefs.alarmcommand.disarm;
-              } else this.log("Disarming the alarm is required prior to changing alarm system mode.");
-          break;
-          case 'READY':
-          case 'READY_BYPASS':
-              if (homekitState == this.Characteristic.SecuritySystemCurrentState.STAY_ARM) {
-                  this.log(`Arming the alarm system to Stay (Home), [Partition ${this.partitionNumber}].`);
-                  l_alarmCommand = this.pin + tpidefs.alarmcommand.stay;
-              } else if (homekitState == this.Characteristic.SecuritySystemCurrentState.NIGHT_ARM) {
-                  this.log(`Arming the alarm system to Night, [Partition ${this.partitionNumber}].`);
-                  l_alarmCommand = this.pin + tpidefs.alarmcommand.night;
-              } else if (homekitState == this.Characteristic.SecuritySystemCurrentState.AWAY_ARM) {
-                  this.log(`Arming the alarm system to Away, [Partition ${this.partitionNumber}].`);
-                  l_alarmCommand = this.pin + tpidefs.alarmcommand.away;
-              }
-          break;
-          case 'NOT_READY': 
-          case 'NOT_READY_TROUBLE': 
-          case 'NOT_READY_BYPASS':
-            if (homekitState != this.Characteristic.SecuritySystemCurrentState.DISARMED) 
-              this.log(`The alarm system is not READY or been ByPass. The request for ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]} is ignored. See the alarm system keypad for more information.`); 
-          break;
-          default:
-            this.log.warn(`The alarm system mode command is not supported for partition with status of ${l_envisalinkCurrentStatus}. Please see alarm system keypad for more information.`);
-          break;
-
+      // Is alarm system already in current requested state? If yes, ignore the request.
+      if (this.ENVISA_TO_HOMEKIT_CURRENT[l_envisalinkCurrentStatus] != homekitState)
+      {
+          switch (l_envisalinkCurrentStatus) {
+            case 'ALARM':   
+            case 'ALARM_MEMORY':
+            case 'ARMED_STAY':
+            case 'ARMED_STAY_BYPASS':
+            case 'ARMED_NIGHT':
+            case 'ARMED_NIGHT_BYPASS':    
+            case 'ARMED_AWAY':
+            case 'ARMED_AWAY_BYPASS':
+                if (homekitState == this.Characteristic.SecuritySystemCurrentState.DISARMED) {
+                    this.log(`Disarming the alarm system with PIN, [Partition ${this.partitionNumber}].`);
+                    l_alarmCommand = this.pin + tpidefs.alarmcommand.disarm;
+                } else this.log("Disarming the alarm system is required prior to changing alarm system state, request is ignored.");
+            break;
+            case 'READY':
+            case 'READY_BYPASS':
+                if (homekitState == this.Characteristic.SecuritySystemCurrentState.STAY_ARM) {
+                    this.log(`Arming the alarm system to Stay (Home), [Partition ${this.partitionNumber}].`);
+                    l_alarmCommand = this.pin + tpidefs.alarmcommand.stay;
+                } else if (homekitState == this.Characteristic.SecuritySystemCurrentState.NIGHT_ARM) {
+                    this.log(`Arming the alarm system to Night, [Partition ${this.partitionNumber}].`);
+                    l_alarmCommand = this.pin + tpidefs.alarmcommand.night;
+                } else if (homekitState == this.Characteristic.SecuritySystemCurrentState.AWAY_ARM) {
+                    this.log(`Arming the alarm system to Away, [Partition ${this.partitionNumber}].`);
+                    l_alarmCommand = this.pin + tpidefs.alarmcommand.away;
+                }
+            break;
+            case 'NOT_READY': 
+            case 'NOT_READY_TROUBLE': 
+            case 'NOT_READY_BYPASS': 
+              this.log(`The alarm system is not READY. The request for ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]} is ignored. See the alarm system keypad for more information.`); 
+            break;
+            default:
+              this.log.warn(`The alarm system mode command is not supported for partition with status of ${l_envisalinkCurrentStatus}. Please see alarm system keypad for more information.`);
+            break;
+        }
       }
+      else this.log(`Alarm system state is already ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]}, ignoring request.`); 
   } else this.log.warn("Alarm system is busy processing a previous alarm system mode command.");
    // Assume alarm can't be process alarm request return to previous state. 
    // This will get updated if alarm command is valid and successful.
