@@ -644,7 +644,7 @@ class EnvisaLink extends EventEmitter {
                     zone: zonenum,
                     zonestatus: 'close',
                     ClosedTimeCount: MAXINT,
-                    zone_txt: 'Last Closed longer ago than I can remember'
+                    zone_txt: 'Last Closed longer than I can remember'
                 });
             }
             else {

@@ -1,5 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v2.0.11 (2023-12-03) 
+## Enhancements
+* More automation friendly. Warning message for duplicated activities (e.g Arming when system is already Armed...etc).
+* Dependency updates
+
+
 # v2.0.10 (2023-07-20)
 ## Break fixes
 * Turn off debug logging for chime button.
