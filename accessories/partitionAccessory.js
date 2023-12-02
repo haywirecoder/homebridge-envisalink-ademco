@@ -128,15 +128,9 @@ async getTargetState(callback) {
 
 // Timer triggered event if alarm is not process in an allocated time frame.
 processAlarmTimer() {
-     // get security system
-     const securityService = this.accessory.getService(this.Service.SecuritySystem);
     if (this.processingAlarm) {
         this.log.warn(`Alarm request did not return successfully in allocated time. Current alarm status is ${this.envisakitCurrentStatus}`);
         setAlarmState();
-        this.processingAlarm = false;
-        this.armingTimeOut = undefined;
-        securityService.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus]);
-        if(this.envisakitCurrentStatus != 'ALARM') securityService.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.ENVISA_TO_HOMEKIT_TARGET[this.envisakitCurrentStatus]);  
     } 
 }
 
@@ -144,7 +138,7 @@ processAlarmTimer() {
 setAlarmState() {
   // get security system
   const securityService = this.accessory.getService(this.Service.SecuritySystem);
-  this.log.debug("Setting Alarm state to", this.envisakitCurrentStatus);
+  this.log.debug("setAlarmState: Setting Alarm state to", this.envisakitCurrentStatus);
   this.processingAlarm = false;
   this.armingTimeOut = undefined;
   securityService.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus]);
@@ -191,37 +185,39 @@ async setTargetState(homekitState, callback) {
             case 'NOT_READY': 
             case 'NOT_READY_TROUBLE': 
             case 'NOT_READY_BYPASS': 
-              this.log(`The alarm system is not READY. The request for ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]} is ignored. See the alarm system keypad for more information.`); 
+              this.log(`The alarm system is not READY. The request for ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]} is ignored.`); 
             break;
             default:
               this.log.warn(`The alarm system mode command is not supported for partition with status of ${l_envisalinkCurrentStatus}. Please see alarm system keypad for more information.`);
             break;
         }
       }
-      else this.log(`Alarm system state is already ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]}, ignoring request.`); 
-  } else this.log.warn("Alarm system is busy processing a previous alarm system mode command.");
+      else this.log.debug(`setTargetState: Alarm system state is already ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]}, ignoring request.`); 
+  } else this.log("Ignoring request, alarm system is busy processing a previous alarm system mode command(s).");
    // Assume alarm can't be process alarm request return to previous state. 
    // This will get updated if alarm command is valid and successful.
   var l_homekitState = this.homekitLastTargetState;
   // If valid alarm command was determine process request
   if (l_alarmCommand) {
       this.processingAlarm = true;
-      this.log.debug("setAlarmState: Partition state command issued.");
+      this.log.debug("setTargetState: Sending command(s).");
       if (this.changePartition) {
               this.log(`Changing Partition to ${this.partitionNumber}`);
               this.alarm.changePartition(this.partitionNumber);
               await new Promise(r => setTimeout(r, 3000));
       }
       if (this.alarm.sendCommand(l_alarmCommand))
-      { 
+      {
+        this.log.debug("setTargetState: Command(s) sent successfully.");
         this.armingTimeOut = setTimeout(this.processAlarmTimer.bind(this), this.commandTimeOut * 1000);
-        // Alarm was successful.
+        // Alarm was successful
         l_homekitState = homekitState;
+        this.homekitLastTargetState = homekitState;
         return callback(null,l_homekitState);
       }
   } 
-  this.log.debug("setAlarmState: Command not sent returning home state ", l_homekitState);
-  setTimeout(this.setAlarmState.bind(this), 500);
+  this.log.debug("setTargetState: Command unsuccessful, returning to homekit previous state - ", l_homekitState);
+  this.armingTimeOut = setTimeout(this.setAlarmState.bind(this),1000);
   return callback(null,l_homekitState);
 }
 

@@ -107,7 +107,6 @@ class EnvisalinkCustomAccessory {
 
   async setChime(value,callback) {
     this.log.debug('setChime: Chime set - ', value );
-
     // Determine if chime command is in process
     if (this.isProcessingChimeOnOff){
       this.log('Already processing a Chime toggle request. Command ignored.');
@@ -119,12 +118,20 @@ class EnvisalinkCustomAccessory {
         this.isProcessingChimeOnOff = true;
         this.chimeOnOffTimeOut = setTimeout(this.processChimeOffTimer.bind(this), this.commandTimeOut * 1000);
       }          
-    } else {
-      this.log('Chime already in requested state. Command ignored.');
-    }
-    
+      } 
+      else {
+        this.log('Chime already in requested state. Command ignored.');
+      }
     return callback(null,this.envisakitCurrentStatus);
   }   
+
+  processChimeOffTimer() {
+    if (this.isProcessingChimeOnOff) {
+        this.log.warn(`Chime toggle request did not return successfully in the allocated time.`);
+        this.isProcessingChimeOnOff = false;
+    } 
+  }
+
   processChimeOffTimer() {
     if (this.isProcessingChimeOnOff) {
         this.log.warn(`Chime toggle request did not return successfully in the allocated time.`);
@@ -173,7 +180,7 @@ class EnvisalinkCustomAccessory {
                     }
                     // Reviewing zone that are being monitored and are bypass enabled (allowed to be bypass)
                     if (this.zoneDevices.length == 0) {
-                        this.log.warn(`No zones were defined.`);
+                        this.log(`Nothing to bypass. There are no zones defined.`);
                         setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,false)}.bind(this),2000);
                         break;
                     }
