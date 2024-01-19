@@ -130,7 +130,7 @@ async getTargetState(callback) {
 processAlarmTimer() {
     if (this.processingAlarm) {
         this.log.warn(`Alarm request did not return successfully in allocated time. Current alarm status is ${this.envisakitCurrentStatus}`);
-        setAlarmState();
+        this.setAlarmState();
     } 
 }
 
