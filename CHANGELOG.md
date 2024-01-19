@@ -1,10 +1,13 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v2.0.12 (2024-01-21) 
+## Break fixes
+* Partition issue cause restart when alarm times out when arming/disarmed
+
 # v2.0.11 (2023-12-03) 
 ## Enhancements
 * More automation friendly. Warning message for duplicated activities (e.g Arming when system is already Armed...etc) issue #45. Are now gone, plug-in ignored request that would result in same alarm state.
 * Dependency updates.
-
 
 # v2.0.10 (2023-07-20)
 ## Break fixes
