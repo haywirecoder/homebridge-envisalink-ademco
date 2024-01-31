@@ -49,10 +49,10 @@ Please Note: It is recommended not to use the master user or installer code in t
 | autoReconnect     | *(optional)* Automatic reconnect to server if network channel is broken. This value is automatically set to true if sessionWatcher is enabled. The default is true.                                |
 | chimeToggle       | *(optional)* Create a switch to enable and disable the Chime bell. The panel only allows a change in bell status when the alarm is not armed. The default is false.                         |
 | batteryRunTime    | *(optional)* User-supplied run time of main system battery backup in hours. This value allows the plug-in to estimate the remaining time when the system switches to a backup battery. |  
-| maintenanceMode   | *(optional)* Disable communication with envisakit module. **Note:** This will disable all updates.                      |
+| maintenanceMode   | *(optional)* Disable communication with envisakit module. The default is false. **Note:** This will disable all updates.                      |
 | **zones**         | *(optional)* List of zones to appear and monitor in Homekit                                                              |
 | **bypass**        | *(optional)* Creates a bypass control (a switch) to bypass zones that are open (faulted)                                |
-|                   | By design the bypass switch can only bypass the zone that is being monitored in Homekit and the zone entry "bypassenable" set to true.    |
+|                   | If "quickbypass" is not enabled, the bypass switch can only bypass the zone that is being monitored in Homekit, and the zone entry "bypassenable" attribute is set to true.    |
 |                   | "quickbypass" Can be used to bypass all fault zones. This feature must be enabled in Ademco panel *(refer to panel guide)*.                               |
 | **speedkeys**     | *(optional)* Create controls (switches) to replicate the special function keys on the Ademco keypad                          |
 
