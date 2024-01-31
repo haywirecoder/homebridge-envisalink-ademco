@@ -19,9 +19,9 @@ This module was designed to work with Ademco Envisalink module with the Vista se
 
 Limits:
 
-* Ademco panels provide limited zone information to their peripherals. The panel only provides real-time information when a zone is faulted (open) but not when it is restored (close). However, the virtual key panel is continuously updated with zone information. This module auto-sets the faulted zone (open) to restored (close) based on the value set by the *openZoneTimeout* attributes. Default configuration would result in the zone closing 30 seconds after the virtual key panel no longer reports a fault for the specific zone.
+* Ademco panels provide limited zone information to their peripherals. The panel only provides real-time information when a zone is faulted (open) but not when it is restored (close). However, the virtual key panel is continuously updated with zone information. This module auto-sets the faulted zone (open) to restored (close) based on the value set by the *openZoneTimeout* attribute. Default configuration would result in the zone closing 30 seconds after the virtual key panel no longer reports a fault for the specific zone.
 
-* When the system is "Armed" the panel no longer reports the state of each zone. All zones will age out and be considered closed once armed. Note: A bypass zone will automatically show as fault (open) once the alarm is disarmed.
+* When the system is "Armed" the panel no longer reports the state of each zone. All zones will age out and be considered restored once armed. Note: A bypass zone will automatically show as fault (open) once the alarm is disarmed.
 
 * Envisalink TPI interface only supports one connection. Once this plug-in is connected, any other connections will result in an error. Vice-versa, if Envisalink is being used for another purpose this module will not be able to connect. Confirm you have a stable network connection to the Envisalink module before installing this plug-in. While the auto-reconnect logic option is available, it is designed for occasional network issues.
 
@@ -29,7 +29,7 @@ Limits:
 
 * To receive updates for RF Low battery, AC failure, Low Panel Battery and Bypass reporting must be enabled for the Envisakit module. Refer to https://www.eyezon.com/EZMAIN/evl4honeywell.php section "Panel Programming Options". 
 
-Please Note: I recommended not using the master user or installer code in the configure file. Create a separate alarm user with the proper access permissions (please refer to your panel guide).
+Please Note: It is recommended not to use the master user or installer code in the configure file. Create a separate alarm user with the proper access permissions (please refer to your panel guide).
   
 
 ## Configuration options
