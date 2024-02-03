@@ -1,8 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
-# v2.0.12 (2024-01-21) 
+# v2.0.12 (2024-02-01) 
+## Enhancements
+* Minor updates to readme and references
+
 ## Break fixes
-* Partition issue cause restart when alarm times out when arming/disarmed
+* Partition issue cause restart when alarm times out was reached in arming/disarmed process
 
 # v2.0.11 (2023-12-03) 
 ## Enhancements
