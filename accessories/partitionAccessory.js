@@ -24,7 +24,7 @@ class EnvisalinkPartitionAccessory {
         'NOT_READY': Characteristic.SecuritySystemCurrentState.DISARMED,
         'NOT_READY_TROUBLE': Characteristic.SecuritySystemCurrentState.DISARMED,
         'NOT_READY_BYPASS': Characteristic.SecuritySystemCurrentState.DISARMED,
-        'FIRE' : Characteristic.SecuritySystemCurrentState.DISARMED,
+        'FIRE_TROUBLE' : Characteristic.SecuritySystemCurrentState.DISARMED,
         'READY': Characteristic.SecuritySystemCurrentState.DISARMED,
         'READY_BYPASS': Characteristic.SecuritySystemCurrentState.DISARMED,
         'ARMED_STAY': Characteristic.SecuritySystemCurrentState.STAY_ARM,
@@ -42,7 +42,7 @@ class EnvisalinkPartitionAccessory {
           'NOT_READY': Characteristic.SecuritySystemTargetState.DISARM,
           'NOT_READY_TROUBLE': Characteristic.SecuritySystemTargetState.DISARM,
           'NOT_READY_BYPASS': Characteristic.SecuritySystemTargetState.DISARM,
-          'FIRE' : Characteristic.SecuritySystemTargetState.DISARM,
+          'FIRE_TROUBLE' : Characteristic.SecuritySystemTargetState.DISARM,
           'READY': Characteristic.SecuritySystemTargetState.DISARM,
           'READY_BYPASS': Characteristic.SecuritySystemTargetState.DISARM,
           'ARMED_STAY': Characteristic.SecuritySystemTargetState.STAY_ARM,
@@ -186,7 +186,7 @@ class EnvisalinkPartitionAccessory {
               case 'NOT_READY': 
               case 'NOT_READY_TROUBLE': 
               case 'NOT_READY_BYPASS': 
-              case 'FIRE': 
+              case 'FIRE_TROUBLE': 
                 this.log(`The alarm system is not READY. The request for ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]} is ignored.`); 
               break;
               default:
