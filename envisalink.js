@@ -490,7 +490,7 @@ class EnvisaLink extends EventEmitter {
       if (mode.alarm || mode.alarm_fire_zone) {
         readableCode = 'ALARM';
       } else if (mode.fire) {
-        readableCode = 'FIRE';
+        readableCode = 'FIRE_TROUBLE';
       } else if (mode.alarm_in_memory) {
         readableCode = 'ALARM_MEMORY';
       } else if (mode.system_trouble) {
