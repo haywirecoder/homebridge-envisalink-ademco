@@ -341,6 +341,12 @@ class EnvisaLink extends EventEmitter {
       // remove leading zero from zone information
       var numZone = parseInt(zone, 10);
 
+      // Zone event is not a number, returning
+      if (isNaN(numZone)) return
+
+      // Check if this zone is present add update time if present,
+      // if not add to list
+
       var zoneid = findZone(activezones, eventtype + numZone);
       if (Number.isInteger(zoneid)) {
         self.log.debug("Zone found in active zone list index - ", zoneid);
@@ -481,8 +487,10 @@ class EnvisaLink extends EventEmitter {
 
     function keyPadToHumanReadable(mode) {
       var readableCode = 'NOT_READY';
-      if (mode.alarm || mode.alarm_fire_zone || mode.fire) {
+      if (mode.alarm || mode.alarm_fire_zone) {
         readableCode = 'ALARM';
+      } else if (mode.fire) {
+        readableCode = 'FIRE';
       } else if (mode.alarm_in_memory) {
         readableCode = 'ALARM_MEMORY';
       } else if (mode.system_trouble) {
