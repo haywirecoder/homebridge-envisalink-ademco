@@ -42,7 +42,7 @@ class EnvisalinkPartitionAccessory {
           'NOT_READY': Characteristic.SecuritySystemTargetState.DISARM,
           'NOT_READY_TROUBLE': Characteristic.SecuritySystemTargetState.DISARM,
           'NOT_READY_BYPASS': Characteristic.SecuritySystemTargetState.DISARM,
-          'FIRE' : Characteristic.SecuritySystemCurrentState.DISARM,
+          'FIRE' : Characteristic.SecuritySystemTargetState.DISARM,
           'READY': Characteristic.SecuritySystemTargetState.DISARM,
           'READY_BYPASS': Characteristic.SecuritySystemTargetState.DISARM,
           'ARMED_STAY': Characteristic.SecuritySystemTargetState.STAY_ARM,
