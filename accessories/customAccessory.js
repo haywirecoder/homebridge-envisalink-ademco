@@ -42,7 +42,7 @@ class EnvisalinkCustomAccessory {
         .setCharacteristic(this.Characteristic.SerialNumber, this.config.serialNumber);
     
     switch (this.customType) {
-          case "chimemode":
+          case 'chimemode':
             var swServiceChime = this.accessory.getService(this.Service.Switch);
             if(swServiceChime == undefined) swServiceChime = this.accessory.addService(this.Service.Switch); 
             swServiceChime.setCharacteristic(this.Characteristic.On, false);
@@ -54,7 +54,7 @@ class EnvisalinkCustomAccessory {
             this.isProcessingChimeOnOff = false;
             this.chimeOnOffTimeOut = undefined;
           break;
-          case "bypass":
+          case 'bypass':
             var swServiceBypass = this.accessory.getService(this.Service.Switch);
             if(swServiceBypass == undefined) swServiceBypass = this.accessory.addService(this.Service.Switch); 
             swServiceBypass.setCharacteristic(this.Characteristic.On, false);
@@ -67,7 +67,7 @@ class EnvisalinkCustomAccessory {
             this.byPassTimeOut = undefined;
             this.envisakitCurrentStatus = "READY";
           break;
-          case "speedkeys":
+          case 'speedkeys':
             this.speedKeyCommand = [];
             this.speedKeySubname = [];
             var l_keylist = this.config.keyList;
@@ -167,7 +167,7 @@ class EnvisalinkCustomAccessory {
         var switchService = this.accessory.getService(this.Service.Switch);
         // Determine alarm status and execute bypass on status
         switch (this.envisakitCurrentStatus) {
-            case "NOT_READY":
+            case 'NOT_READY':
                 // System not ready, review candidate for zone bypass 
                 if (value) {
                     this.log(`Reviewing fault zones for bypassing...`);
@@ -222,8 +222,8 @@ class EnvisalinkCustomAccessory {
                 setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,bValue)}.bind(this),2000);
                 locSetValue = bValue;
             break;
-            case "READY_BYPASS":
-            case "NOT_READY_BYPASS":
+            case 'READY_BYPASS':
+            case 'NOT_READY_BYPASS':
                 // Clear bypass zones
                 if (value == false) {
                     this.log(`Clearing bypass zones...`)

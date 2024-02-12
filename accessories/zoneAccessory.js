@@ -51,8 +51,8 @@ class EnvisalinkZoneAccessory {
         .setCharacteristic(this.Characteristic.SerialNumber, this.config.serialNumber);
 
     switch (this.sensorType) {
-        case "motion":
-        case "glass":
+        case 'motion':
+        case 'glass':
           // Create motion sensor service
           var motionService = this.accessory.getService(this.Service.MotionSensor);
           if(motionService == undefined) motionService = this.accessory.addService(this.Service.MotionSensor,this.name); 
@@ -80,8 +80,8 @@ class EnvisalinkZoneAccessory {
 
       break;
   
-      case "door":
-      case "window":
+      case 'door':
+      case 'window':
           // Create contact sensor service
           var contactService = this.accessory.getService(this.Service.ContactSensor);
           if(contactService == undefined) contactService = this.accessory.addService(this.Service.ContactSensor,this.name); 
@@ -109,7 +109,7 @@ class EnvisalinkZoneAccessory {
          
       break;
   
-      case "leak":
+      case 'leak':
           // Create leak sensor
           var leakService = this.accessory.getService(this.Service.LeakSensor);
           if(leakService == undefined) leakService = this.accessory.addService(this.Service.LeakSensor,this.name); 
@@ -136,7 +136,7 @@ class EnvisalinkZoneAccessory {
 
       break;
   
-      case "smoke":
+      case 'smoke':
           // Create Smoke Detected sensor
           var SmokeSensorService = this.accessory.getService(this.Service.SmokeSensor);
           if(SmokeSensorService == undefined) SmokeSensorService = this.accessory.addService(this.Service.SmokeSensor,this.name); 
@@ -151,7 +151,7 @@ class EnvisalinkZoneAccessory {
 
       break;
   
-      case "co":
+      case 'co':
            // Create Carbon Monoxide sensor
            var CarbonMonoxideSensorService = this.accessory.getService(this.Service.CarbonMonoxideSensor);
            if(CarbonMonoxideSensorService == undefined) CarbonMonoxideSensorService = this.accessory.addService(this.Service.CarbonMonoxideSensor,this.name); 
