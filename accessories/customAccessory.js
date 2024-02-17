@@ -21,6 +21,8 @@ class EnvisalinkCustomAccessory {
       'NOT_READY': false,
       'NOT_READY_TROUBLE': false,
       'NOT_READY_BYPASS': true,
+      'READY_FIRE_TROUBLE': false,
+      'READY_SYSTEM_TROUBLE': false,
       'READY': false,
       'READY_BYPASS': true,
       'ARMED_STAY': false,
@@ -233,7 +235,7 @@ class EnvisalinkCustomAccessory {
                 locSetValue = false;
             break;
             case 'READY':
-                this.log(`Alarm is ${this.envisakitCurrentStatus} no action required. Ignoring bypass request.`);
+                if (value) this.log(`Alarm is ${this.envisakitCurrentStatus} no action required. Ignoring bypass request.`);
                 // Turn off switch, since no action was completed.
                 setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,false)}.bind(this),2000);
                 locSetValue = false;

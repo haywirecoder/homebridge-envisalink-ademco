@@ -18,13 +18,16 @@ class EnvisalinkPartitionAccessory {
       this.batteryRunTime = config.batteryRunTime;
       this.changePartition = config.changePartition;
       this.uuid = UUIDGen.generate(this.config.serialNumber);
+      this.ignoreFireTrouble =  config.ignoreFireTrouble;
+      this.ignoreSystemTrouble = config.ignoreSystemTrouble;
       this.alarm = alarm;
 
       this.ENVISA_TO_HOMEKIT_CURRENT = {
         'NOT_READY': Characteristic.SecuritySystemCurrentState.DISARMED,
         'NOT_READY_TROUBLE': Characteristic.SecuritySystemCurrentState.DISARMED,
         'NOT_READY_BYPASS': Characteristic.SecuritySystemCurrentState.DISARMED,
-        'FIRE_TROUBLE' : Characteristic.SecuritySystemCurrentState.DISARMED,
+        'READY_FIRE_TROUBLE' : Characteristic.SecuritySystemCurrentState.DISARMED,
+        'READY_SYSTEM_TROUBLE' : Characteristic.SecuritySystemCurrentState.DISARMED,
         'READY': Characteristic.SecuritySystemCurrentState.DISARMED,
         'READY_BYPASS': Characteristic.SecuritySystemCurrentState.DISARMED,
         'ARMED_STAY': Characteristic.SecuritySystemCurrentState.STAY_ARM,
@@ -42,7 +45,8 @@ class EnvisalinkPartitionAccessory {
           'NOT_READY': Characteristic.SecuritySystemTargetState.DISARM,
           'NOT_READY_TROUBLE': Characteristic.SecuritySystemTargetState.DISARM,
           'NOT_READY_BYPASS': Characteristic.SecuritySystemTargetState.DISARM,
-          'FIRE_TROUBLE' : Characteristic.SecuritySystemTargetState.DISARM,
+          'READY_FIRE_TROUBLE' : Characteristic.SecuritySystemTargetState.DISARM,
+          'READY_SYSTEM_TROUBLE' : Characteristic.SecuritySystemTargetState.DISARM,
           'READY': Characteristic.SecuritySystemTargetState.DISARM,
           'READY_BYPASS': Characteristic.SecuritySystemTargetState.DISARM,
           'ARMED_STAY': Characteristic.SecuritySystemTargetState.STAY_ARM,
@@ -157,6 +161,7 @@ class EnvisalinkPartitionAccessory {
         if (this.ENVISA_TO_HOMEKIT_CURRENT[l_envisalinkCurrentStatus] != homekitState)
         {
             switch (l_envisalinkCurrentStatus) {
+              // Disarm state
               case 'ALARM':   
               case 'ALARM_MEMORY':
               case 'ARMED_STAY':
@@ -170,6 +175,26 @@ class EnvisalinkPartitionAccessory {
                       l_alarmCommand = this.pin + tpidefs.alarmcommand.disarm;
                   } else this.log("Disarming the alarm system is required prior to changing alarm system state, request is ignored.");
               break;
+
+              // Arming state
+              case 'READY_FIRE_TROUBLE': 
+                  if (this.ignoreFireTrouble) {
+                    this.log.warn(`Arming Partition [${this.partitionNumber}] in Fire Trouble status.`);
+                    // Don't break, fall through arming sequence
+                  }
+                  else {
+                    this.log.warn(`Partition [${this.partitionNumber}] in Fire trouble status. Arming request failed.`);
+                    break;
+                  }
+              case 'READY_SYSTEM_TROUBLE':
+                if (this.ignoreSystemTrouble) {
+                  this.log.warn(`Arming Partition [${this.partitionNumber}] in System Trouble status.`);
+                   // Don't break, fall through arming sequence
+                }
+                else {
+                  this.log.warn(`Partition [${this.partitionNumber}] in System trouble status. Arming request failed.`);
+                  break;
+                }
               case 'READY':
               case 'READY_BYPASS':
                   if (homekitState == this.Characteristic.SecuritySystemCurrentState.STAY_ARM) {
@@ -183,10 +208,11 @@ class EnvisalinkPartitionAccessory {
                       l_alarmCommand = this.pin + tpidefs.alarmcommand.away;
                   }
               break;
+
+              // Trouble states
               case 'NOT_READY': 
               case 'NOT_READY_TROUBLE': 
               case 'NOT_READY_BYPASS': 
-              case 'FIRE_TROUBLE': 
                 this.log(`The alarm system is not READY. The request for ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]} is ignored.`); 
               break;
               default:
