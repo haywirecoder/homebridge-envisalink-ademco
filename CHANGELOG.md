@@ -1,11 +1,14 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
-# v2.0.12 (2024-02-01) 
+# v2.0.12 (2024-02-18) 
 ## Enhancements
-* Minor updates to readme and references
+*  Updates to readme and references
+*  Fire and System trouble raise general fault in homekit. 
+*  Fire and System trouble can now be set to not block the setting of the Alarm. Note: Prior to 2.0.12, this was always set to block the activation of the Alarm.
 
 ## Break fixes
-* Partition issue cause restart when alarm times out was reached in arming/disarmed process
+* Partition issue cause restart when alarm times out was reached in arming/disarmed process.
+* Fire trouble generating Alarms in Homekit.
 
 # v2.0.11 (2023-12-03) 
 ## Enhancements
