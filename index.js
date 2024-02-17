@@ -47,7 +47,13 @@ class EnvisalinkPlatform {
             // Should partition be changed when executing command? 
             // Option only valid if this is a multiple partitions system
             this.changePartition = config.changePartition ? config.changePartition: false;
-          
+
+            // Allow alarm to be enable to be set with fire trouble
+            this.ignoreFireTrouble = config.ignoreFireTrouble ? config.ignoreFireTrouble: false;
+
+            // Allow alarm to be enable with system trouble
+            this.ignoreSystemTrouble = config.ignoreSystemTrouble ? config.ignoreSystemTrouble: false;
+
             // are we in maintenance mode?
             this.isMaintenanceMode = config.maintenanceMode ? config.maintenanceMode: false;
 
@@ -128,7 +134,12 @@ class EnvisalinkPlatform {
             partition.changePartition = this.changePartition;
             partition.serialNumber = "envisalink.partition." + partitionNumber;
             partition.partitionNumber = partitionNumber;
-            var partitionAccessory = new partitionDevice(this.log, partition,Service, Characteristic, UUIDGen, alarm);
+             // Allow alarm to be enable to be set with fire trouble
+             partition.ignoreFireTrouble =  this.ignoreFireTrouble;
+             // Allow alarm to be enable with system trouble
+             partition.ignoreSystemTrouble = this.ignoreSystemTrouble;
+
+            var partitionAccessory = new partitionDevice(this.log, partition, Service, Characteristic, UUIDGen, alarm);
             // check the accessory was not restored from cache
              var foundAccessory = this.accessories.find(accessory => accessory.UUID === partitionAccessory.uuid)
             if (!foundAccessory) {
@@ -349,8 +360,8 @@ class EnvisalinkPlatform {
                                         partition.homekitLastTargetState = partition.ENVISA_TO_HOMEKIT_TARGET[data.mode];
                                     }
                                 }       
-                            // if system is not ready set general fault
-                            if (partition.envisakitCurrentStatus.includes('NOT_READY') || partition.envisakitCurrentStatus.includes('ALARM_MEMORY')) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT); 
+                            // if system is not ready or has a fault set general fault
+                            if (partition.envisakitCurrentStatus.includes('NOT_READY') || partition.envisakitCurrentStatus.includes('ALARM_MEMORY') || partition.envisakitCurrentStatus.includes('READY_FIRE_TROUBLE') || partition.envisakitCurrentStatus.includes('READY_SYSTEM_TROUBLE')) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT); 
                             else partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.NO_FAULT);
                         }
                     }                 

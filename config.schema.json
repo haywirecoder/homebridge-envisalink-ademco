@@ -142,6 +142,18 @@
         "description": "Turn off alarm Tamper events associated with Envisalink module communication error. <b>Note:</b> It will still be logged in Homebridge." 
 
       },
+      "ignoreFireTrouble" : {
+        "title": "Allow alarm arming when in Fire trouble state.",
+        "type": "boolean",
+        "default": false,
+        "description": "When the virtual keypad send a fire trouble, treat it as a warning and allow the arming" 
+      },
+      "ignoreSystemTrouble" : {
+        "title": "Allow alarm arming when in system trouble state. ",
+        "type": "boolean",
+        "default": false,
+        "description": "When the virtual keypad send a system trouble, treat it as a warning and allow the arming" 
+      },
       "maintenanceMode": {
         "title": "Disabled connection to Envisalink module for maintenance. <b>WARNING:</b> This will disable all updates and operations.",
         "type": "boolean",
@@ -440,6 +452,8 @@
         "heartbeatInterval",
         "commandTimeOut",
         "autoReconnect",
+        "ignoreFireTrouble",
+        "ignoreSystemTrouble",
         "batteryRunTime",
         "envisalinkFailureSuppress",
         "maintenanceMode"

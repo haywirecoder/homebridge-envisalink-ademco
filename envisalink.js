@@ -33,7 +33,6 @@ class EnvisaLink extends EventEmitter {
       password: config.password ? config.password : "user",
     };
 
-   
 
     if (config.sessionWatcher == undefined)
     {  
@@ -70,6 +69,7 @@ class EnvisaLink extends EventEmitter {
 
   
   startSession() {
+
     var self = this;
     this.shouldReconnect = this.options.autoreconnect;
     this.isConnected = false;
@@ -207,7 +207,6 @@ class EnvisaLink extends EventEmitter {
         }
       }
     });
-
 
     function isConnectionIdle() {
       // we didn't receive any messages for greater than heartbeatInterval seconds. Assume dropped and re-connect.
@@ -477,6 +476,7 @@ class EnvisaLink extends EventEmitter {
     }
 
     function getKeyPadLedStatus(keypadled) {
+
       var mode = {};
       var modeInt = parseInt(keypadled, 16);
       for (var key in tpidefs.led_status) {
@@ -486,15 +486,16 @@ class EnvisaLink extends EventEmitter {
     }
 
     function keyPadToHumanReadable(mode) {
+
       var readableCode = 'NOT_READY';
       if (mode.alarm || mode.alarm_fire_zone) {
         readableCode = 'ALARM';
-      } else if (mode.fire) {
-        readableCode = 'FIRE_TROUBLE';
       } else if (mode.alarm_in_memory) {
         readableCode = 'ALARM_MEMORY';
-      } else if (mode.system_trouble) {
-        readableCode = 'NOT_READY_TROUBLE';
+      } else if (mode.fire && mode.ready) {
+        readableCode = 'READY_FIRE_TROUBLE';
+      } else if (mode.system_trouble && mode.ready) {
+        readableCode = 'READY_SYSTEM_TROUBLE';
       } else if (mode.bypass && mode.armed_stay) {
         readableCode = 'ARMED_STAY_BYPASS';
       } else if (mode.bypass && mode.armed_away) {
@@ -520,7 +521,6 @@ class EnvisaLink extends EventEmitter {
     }
 
     function updateKeypad(tpi, data) {
-
       var partition = data[1]; // one byte field indicating which partition the update applies to.
       // ICON bit field is as follows:
       // 15: ARMED STAY
@@ -547,8 +547,6 @@ class EnvisaLink extends EventEmitter {
       var keypad_txt = data[5]; // 32 byte ascii string, a concat of 16 byte top and 16 byte bottom of display
       var icon_array = [];
       var position = 0; // Start at the right most position, Little endian 0.
-
-
 
       // This loop, take a two byte hex string, and for every bit set to one in the HEX string
       // adds an element to an array indicating the position of the bit set to one... LittleEndian.
@@ -672,8 +670,6 @@ class EnvisaLink extends EventEmitter {
       });
     }
 
-
-   
     function cidEvent(tpi, data) {
       // When a system event happens that is signaled to either the Envisalerts servers or the central monitoring station, 
       // it is also presented through this command. The CID event differs from other TPI 
