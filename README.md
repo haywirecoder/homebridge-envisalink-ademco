@@ -49,6 +49,8 @@ Please Note: It is recommended not to use the master user or installer code in t
 | autoReconnect     | *(optional)* Automatic reconnect to server if network channel is broken. This value is automatically set to true if sessionWatcher is enabled. The default is true.                                |
 | chimeToggle       | *(optional)* Create a switch to enable and disable the Chime bell. The panel only allows a change in bell status when the alarm is not armed. The default is false.                         |
 | batteryRunTime    | *(optional)* User-supplied run time of main system battery backup in hours. This value allows the plug-in to estimate the remaining time when the system switches to a backup battery. |  
+| ignoreFireTrouble   | *(optional)* When the virtual keypad send a fire trouble, treat it as a warning and allow the system arm the alarm. The default is false. |
+| ignoreSystemTrouble   | *(optional)* When the virtual keypad send a system trouble, treat it as a warning and allow the system arm the alarm. The default is false. |
 | maintenanceMode   | *(optional)* Disable communication with envisakit module. The default is false. **Note:** This will disable all updates.                      |
 | **zones**         | *(optional)* List of zones to appear and monitor in Homekit                                                              |
 | **bypass**        | *(optional)* Creates a bypass control (a switch) to bypass zones that are open (faulted)                                |
