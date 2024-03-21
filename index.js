@@ -428,15 +428,16 @@ class EnvisalinkPlatform {
                 if (partitionService) {
                     var targetState = partition.ENVISA_TO_HOMEKIT_CURRENT[data.mode];
 
-                    if(
-                        targetState === Characteristic.SecuritySystemTargetState.STAY_ARM &&
-                        partition.homekitLastTargetState === Characteristic.SecuritySystemTargetState.NIGHT_ARM
-                    ) {
-                        targetState = partition.homekitLastTargetState;
-                    }
-
-                    // if (partition.homekitLastTargetState != targetState) // XXX: temporarily removed the condition to resolve issue when disarming via Home app.
+                    if (partition.homekitLastTargetState != targetState)
                         {
+                            if (
+                                targetState === Characteristic.SecuritySystemTargetState.STAY_ARM &&
+                                partitionService.getCharacteristic(Characteristic.SecuritySystemTargetState).value === Characteristic.SecuritySystemTargetState.NIGHT_ARM
+                            ) {
+                                targetState = Characteristic.SecuritySystemTargetState.NIGHT_ARM;
+                            }
+
+
                             partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,targetState);
                             if(data.mode != 'ALARM') {
                                 partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,targetState);

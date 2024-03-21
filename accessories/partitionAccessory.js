@@ -4,7 +4,7 @@ var tpidefs = require('./../tpi.js');
 const ENVISALINK_MANUFACTURER = "Envisacor Technologies Inc."
 
 class EnvisalinkPartitionAccessory {
- 
+
   constructor(log, config, Service, Characteristic, UUIDGen, alarm) {
       this.Characteristic = Characteristic;
       this.Service = Service;
@@ -99,21 +99,21 @@ class EnvisalinkPartitionAccessory {
     // Set initial battery level
     this.batteryLevel = 100;
     var batteryService = this.accessory.getService(this.Service.Battery)
-    if(batteryService == undefined) batteryService = this.accessory.addService(this.Service.Battery,this.name + " Backup Battery");    
+    if(batteryService == undefined) batteryService = this.accessory.addService(this.Service.Battery,this.name + " Backup Battery");
     batteryService
             .getCharacteristic(this.Characteristic.StatusLowBattery)
             .on('get', async callback => this.getPanelStatusLowBattery(callback));
     batteryService.setCharacteristic(this.Characteristic.BatteryLevel,this.batteryLevel);
-    
+
     if (this.config.batteryRunTime > 0) {
         // Only show battery level if user has provided a battery run time.
         batteryService
             .getCharacteristic(this.Characteristic.BatteryLevel)
-            .on('get',  async callback => this.getPanelBatteryLevel(callback)); 
+            .on('get',  async callback => this.getPanelBatteryLevel(callback));
         batteryService
             .getCharacteristic(this.Characteristic.ChargingState)
-            .on('get', async callback => this.getPanelCharingState(callback));     
-       
+            .on('get', async callback => this.getPanelCharingState(callback));
+
     }
 
     // link battery service to partition
@@ -136,7 +136,7 @@ class EnvisalinkPartitionAccessory {
       if (this.processingAlarm) {
           this.log.warn(`Alarm request did not return successfully in allocated time. Current alarm status is ${this.envisakitCurrentStatus}`);
           this.setAlarmState();
-      } 
+      }
   }
 
   // Set the state of alarm system
@@ -147,7 +147,7 @@ class EnvisalinkPartitionAccessory {
     this.processingAlarm = false;
     this.armingTimeOut = undefined;
     securityService.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus]);
-    if(this.envisakitCurrentStatus != 'ALARM') securityService.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.ENVISA_TO_HOMEKIT_TARGET[this.envisakitCurrentStatus]);  
+    if(this.envisakitCurrentStatus != 'ALARM') securityService.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.ENVISA_TO_HOMEKIT_TARGET[this.envisakitCurrentStatus]);
   }
 
   // Change smart water shutoff monitoring state.
@@ -162,12 +162,12 @@ class EnvisalinkPartitionAccessory {
         {
             switch (l_envisalinkCurrentStatus) {
               // Disarm state
-              case 'ALARM':   
+              case 'ALARM':
               case 'ALARM_MEMORY':
               case 'ARMED_STAY':
               case 'ARMED_STAY_BYPASS':
               case 'ARMED_NIGHT':
-              case 'ARMED_NIGHT_BYPASS':    
+              case 'ARMED_NIGHT_BYPASS':
               case 'ARMED_AWAY':
               case 'ARMED_AWAY_BYPASS':
                   if (homekitState == this.Characteristic.SecuritySystemCurrentState.DISARMED) {
@@ -177,7 +177,7 @@ class EnvisalinkPartitionAccessory {
               break;
 
               // Arming state
-              case 'READY_FIRE_TROUBLE': 
+              case 'READY_FIRE_TROUBLE':
                   if (this.ignoreFireTrouble) {
                     this.log.warn(`Arming Partition [${this.partitionNumber}] in Fire Trouble status.`);
                     // Don't break, fall through arming sequence
@@ -210,23 +210,27 @@ class EnvisalinkPartitionAccessory {
               break;
 
               // Trouble states
-              case 'NOT_READY': 
-              case 'NOT_READY_TROUBLE': 
-              case 'NOT_READY_BYPASS': 
-                this.log(`The alarm system is not READY. The request for ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]} is ignored.`); 
+              case 'NOT_READY':
+              case 'NOT_READY_TROUBLE':
+              case 'NOT_READY_BYPASS':
+                this.log(`The alarm system is not READY. The request for ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]} is ignored.`);
               break;
               default:
                 this.log.warn(`The alarm system mode command is not supported for partition with status of ${l_envisalinkCurrentStatus}. Please see alarm system keypad for more information.`);
               break;
           }
         }
-        else this.log.debug(`setTargetState: Alarm system state is already ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]}, ignoring request.`); 
+        else this.log.debug(`setTargetState: Alarm system state is already ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]}, ignoring request.`);
     } else this.log("Ignoring request, alarm system is busy processing a previous alarm system mode command(s).");
-    // Assume alarm can't be process alarm request return to previous state. 
+    // Assume alarm can't be process alarm request return to previous state.
     // This will get updated if alarm command is valid and successful.
     var l_homekitState = this.homekitLastTargetState;
     // If valid alarm command was determine process request
     if (l_alarmCommand) {
+        // set target state
+        var securityService = this.accessory.getService(this.Service.SecuritySystem);
+        securityService.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,homekitState);
+
         this.processingAlarm = true;
         this.log.debug("setTargetState: Sending command(s).");
         if (this.changePartition) {
@@ -239,14 +243,12 @@ class EnvisalinkPartitionAccessory {
           this.log.debug("setTargetState: Command(s) sent successfully.");
           this.armingTimeOut = setTimeout(this.processAlarmTimer.bind(this), this.commandTimeOut * 1000);
           // Alarm was successful
-          l_homekitState = homekitState;
-          this.homekitLastTargetState = homekitState;
-          return callback(null,l_homekitState);
+          return callback(null);
         }
-    } 
+    }
     this.log.debug("setTargetState: Command unsuccessful, returning to homekit previous state - ", l_homekitState);
     this.armingTimeOut = setTimeout(this.setAlarmState.bind(this),1000);
-    return callback(null,l_homekitState);
+    return callback(null);
   }
 
   // Battery status Low Battery status and Battery Level.
@@ -259,16 +261,16 @@ class EnvisalinkPartitionAccessory {
   }
 
   async getPanelBatteryLevel(callback) {
-    // Determine how much time has elapse and how much battery is remaining. 
+    // Determine how much time has elapse and how much battery is remaining.
     // Only calculate if battery level is not already zero and AC power is down.
     if ((this.batteryLevel > 0) && (this.ChargingState == this.Characteristic.ChargingState.NOT_CHARGING) ){
         var current = new Date();
-        if (this.downTime) 
+        if (this.downTime)
         {
           var timeDiff = current - this.downTime; //in ms
           // strip the ms
           timeDiff /= 1000;
-          this.batteryLevel = Math.max(0,(100-((timeDiff/this.batteryRunTime)*100).toFixed(1))); 
+          this.batteryLevel = Math.max(0,(100-((timeDiff/this.batteryRunTime)*100).toFixed(1)));
       }
     }
     this.log.debug("getPanelBatteryLevel: Return level - ", this.batteryLevel);
