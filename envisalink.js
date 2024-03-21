@@ -35,7 +35,7 @@ class EnvisaLink extends EventEmitter {
 
 
     if (config.sessionWatcher == undefined)
-    {  
+    {
       // If session watcher is enable auto-reconnection is also enabled.
       this.options.sessionwatcher = true;
       this.options.autoreconnect = true;
@@ -54,9 +54,9 @@ class EnvisaLink extends EventEmitter {
     this.isMaintenanceMode = config.maintenanceMode ? config.maintenanceMode: false
 
     // Set interval for testing connection and how long should zone should be consider without any update.
-    this.options.heartbeatInterval = Math.min(600,Math.max(10,config.heartbeatInterval));  
-    this.options.openZoneTimeout = Math.min(120,Math.max(5,config.openZoneTimeout));  
-    
+    this.options.heartbeatInterval = Math.min(600,Math.max(10,config.heartbeatInterval));
+    this.options.openZoneTimeout = Math.min(120,Math.max(5,config.openZoneTimeout));
+
     this.zones = {};
     this.lastmessage = new Date();
     this.lastsentcommand = "";
@@ -67,7 +67,7 @@ class EnvisaLink extends EventEmitter {
 
   }
 
-  
+
   startSession() {
 
     var self = this;
@@ -78,7 +78,7 @@ class EnvisaLink extends EventEmitter {
 
     // Display starting of connection.
     this.log.info(`Starting connection to envisalink module at: ${this.options.host}, port: ${this.options.port}`);
-   
+
     actual = net.createConnection({
       port: this.options.port,
       host: this.options.host
@@ -92,7 +92,7 @@ class EnvisaLink extends EventEmitter {
     actual.on('close', function (hadError) {
       self.isConnected = false;
       var source = "session_connect_status";
-      if (self.isConnectionIdleHandle !== undefined) 
+      if (self.isConnectionIdleHandle !== undefined)
       {
          clearTimeout(self.isConnectionIdleHandle);
       }
@@ -126,7 +126,7 @@ class EnvisaLink extends EventEmitter {
       for (var i = 0; i < dataslice.length; i++) {
         var datapacket = dataslice[i];
         if (datapacket !== '') {
-          
+
           if (datapacket.substring(0, 5) === 'Login') {
             self.log.debug("Login requested. Sending response " + self.options.password)
             self.isConnected = true;
@@ -136,7 +136,7 @@ class EnvisaLink extends EventEmitter {
             // The session will be closed
             self.isConnected = false;
           } else if (datapacket.substring(0, 2) === 'OK') {
-            // ignore, OK is good. or report successful connection.    
+            // ignore, OK is good. or report successful connection.
             self.log.info(`Successful TPI session established.`);
             // If connection had issue prior clear and generate restore event
             // Qualifier: 1 = Event, 3 = Restore
@@ -154,9 +154,9 @@ class EnvisaLink extends EventEmitter {
               self.log.info(`Checking for disconnected session every: ${self.options.heartbeatInterval} seconds.`)
               self.isConnectionIdleHandle = setTimeout( isConnectionIdle, (self.options.heartbeatInterval * 1000) ); // Check every idle seconds...
             }
-            else  
+            else
             {
-             self.log.warn("Warning: Session monitoring is disabled. Envisalink-Ademco will not watch for hung sessions.") 
+             self.log.warn("Warning: Session monitoring is disabled. Envisalink-Ademco will not watch for hung sessions.")
             }
           } else {
             var tpi_str = datapacket.match(/^%(.+)\$/); // pull out everything between the % and $
@@ -165,10 +165,10 @@ class EnvisaLink extends EventEmitter {
               if (tpi_str == null)
               {
                 self.log.warn("Envisalink data steam format invalid! : '" + datapacket + "'");
-              }  
+              }
               else
               {
-                if(self.lastsentcommand == tpi_str[1].split(',')[0]) 
+                if(self.lastsentcommand == tpi_str[1].split(',')[0])
                   self.log.info(`Envisakit module command return: ${tpidefs.command_response_codes[tpi_str[1].split(',')[1]]}`);
               }
 
@@ -235,16 +235,16 @@ class EnvisaLink extends EventEmitter {
       } else {
         // Connection not idle. Check again connection idle time seconds...
         self.log.debug("Heartbeat successful. Last message time: " + self.lastmessage)
-        self.isConnectionIdleHandle = setTimeout(isConnectionIdle, (self.options.heartbeatInterval * 1000)); 
+        self.isConnectionIdleHandle = setTimeout(isConnectionIdle, (self.options.heartbeatInterval * 1000));
       }
-    }; 
+    };
 
     function updateZone(tpi, data) {
       // now, what I need to do here is parse the data packet for parameters, in this case it's one parameter an
       // 8 byte HEX string little endian each bit represents a zone. If 1 the zone is active, 0 means not active.
       var zone_bits = data[1];
       // now, zone_bits should be a hex string, little_endian of zones represented by bits.
-      // need to loop through, byte by byte, figure out whats Bits are set and 
+      // need to loop through, byte by byte, figure out whats Bits are set and
       // return an array of active zones.
       // suggest finding the bits by taking a byte if it's not zero, do a modulo 2 on it, if the remainder is non-zero you have a bit
       // then shift the remaining bits right 1, and increment your bit index count by one.
@@ -256,7 +256,7 @@ class EnvisaLink extends EventEmitter {
         var byte = parseInt(zone_bits.substr(i, 2), 16); // get the two character hex byte value into an int
 
 
-        // since it's a byte, increment position by 8 bits, but since we're incrementing i by 2. for a 1 byte hex. 
+        // since it's a byte, increment position by 8 bits, but since we're incrementing i by 2. for a 1 byte hex.
         // we need to use a value of 4 to compensate. Then add 1, since we technically start counting our zones at 1, not zero. so but zero is zone 1.
         var position = (i * 4) + 1;
         // ( 64 - (14+2) * 4) + 1;
@@ -298,10 +298,10 @@ class EnvisaLink extends EventEmitter {
     }
 
     function updatePartition(tpi, data) {
-      // Unlike the code below, this Ademco panel sends an array of bytes, each one representing a partition and its state. 
+      // Unlike the code below, this Ademco panel sends an array of bytes, each one representing a partition and its state.
       // Example:
       // 0100010000000000
-      // so in the example above out of 8 partitions, partitions 1 and 3 are in state READY. 
+      // so in the example above out of 8 partitions, partitions 1 and 3 are in state READY.
       // There is a table you can refer to in section 3.4 of EnvisaLink  Vista TPI programmer's document that lists
       // the different values possible for each byte.
       var partition_string = data[1];
@@ -316,7 +316,7 @@ class EnvisaLink extends EventEmitter {
           code: byte,
           status: tpi.name
         });
-        
+
       }
     }
 
@@ -442,7 +442,7 @@ class EnvisaLink extends EventEmitter {
         }
       }
       if (activezones.length == 0) {
-        // Clean up 
+        // Clean up
         activeZoneTimeOut = undefined;
       } else {
         // Zones are still being track, set timer to review when next zone is scheduled to expire.
@@ -485,8 +485,8 @@ class EnvisaLink extends EventEmitter {
       return mode;
     }
 
-    function keyPadToHumanReadable(mode) {
-
+    function keyPadToHumanReadable(mode, keypad_txt) {
+      var is_night = keypad_txt.includes('NIGHT');
       var readableCode = 'NOT_READY';
       if (mode.alarm || mode.alarm_fire_zone) {
         readableCode = 'ALARM';
@@ -497,7 +497,7 @@ class EnvisaLink extends EventEmitter {
       } else if (mode.system_trouble && mode.ready) {
         readableCode = 'READY_SYSTEM_TROUBLE';
       } else if (mode.bypass && mode.armed_stay) {
-        readableCode = 'ARMED_STAY_BYPASS';
+        readableCode = is_night ? 'ARMED_NIGHT_BYPASS' : 'ARMED_STAY_BYPASS';
       } else if (mode.bypass && mode.armed_away) {
         readableCode = 'ARMED_AWAY_BYPASS';
       } else if (mode.bypass && mode.armed_zero_entry_delay) {
@@ -507,7 +507,7 @@ class EnvisaLink extends EventEmitter {
       } else if (mode.ready) {
         readableCode = 'READY';
       } else if (mode.armed_stay) {
-        readableCode = 'ARMED_STAY';
+        readableCode = is_night ? 'ARMED_NIGHT' : 'ARMED_STAY';
       } else if (mode.armed_away) {
         readableCode = 'ARMED_AWAY';
       } else if (mode.armed_zero_entry_delay) {
@@ -541,10 +541,10 @@ class EnvisaLink extends EventEmitter {
       // 00: ALARM (System is in Alarm)
       var ICON = data[2]; //two byte, HEX, representation of the bitfield.
       var keypadledstatus = getKeyPadLedStatus(data[2]);
-      var mode = keyPadToHumanReadable(keypadledstatus);
       var userOrZone = data[3]; // one byte field, representing extra info, either the user or the zone.
       var beep = tpidefs.virtual_keypad_beep[data[4]]; // information for the keypad on how to beep.
       var keypad_txt = data[5]; // 32 byte ascii string, a concat of 16 byte top and 16 byte bottom of display
+      var mode = keyPadToHumanReadable(keypadledstatus, keypad_txt);
       var icon_array = [];
       var position = 0; // Start at the right most position, Little endian 0.
 
@@ -558,32 +558,32 @@ class EnvisaLink extends EventEmitter {
       }
 
       self.alarmSystemMode = mode;
-      // Update zone information timer. 
+      // Update zone information timer.
       // Depending on the state of the update it will either represent a zone, or a user.
       // module makes assumption, if system is not-ready and panel text display "FAULT" assume zone is in fault.
-      
+
       if ((mode.substring(0, 9) == 'NOT_READY') && (keypad_txt.includes('FAULT')))
-      {    
+      {
         zoneTimerOpen(tpi, userOrZone);
       }
       // Check for a monitored zone
       if ((mode.substring(0, 9) == 'NOT_READY') && (keypad_txt.includes('CHECK')))
-      {    
+      {
         zoneTimerOpen(tpi, userOrZone);
       }
-      // System generate battery low event 
+      // System generate battery low event
       if((keypadledstatus.low_battery) && (keypad_txt.includes('LOBAT')))
       {
         zoneTimerOpen(tpi, userOrZone, "lowbatt.");
       }
 
       // bypass event reported to keypad
-      if((keypad_txt.substring(0, 5) == 'BYPAS') && (!keypadledstatus.not_used2) && ((mode == 'NOT_READY_BYPASS') || (mode == 'READY_BYPASS'))) 
+      if((keypad_txt.substring(0, 5) == 'BYPAS') && (!keypadledstatus.not_used2) && ((mode == 'NOT_READY_BYPASS') || (mode == 'READY_BYPASS')))
       {
         zoneTimerOpen(tpi, userOrZone, "bypassed.");
       }
 
-      // Generate event to update to update status 
+      // Generate event to update to update status
       self.emit('keypadupdate', {
         partition: partition,
         code: {
@@ -596,21 +596,21 @@ class EnvisaLink extends EventEmitter {
         keypadledstatus: keypadledstatus,
         mode: mode
       });
-      
+
     }
 
     function zoneTimeToHumanReadable(duration) {
       var hours = Math.floor(duration / 60 / 60);
       var minutes = Math.floor(duration / 60) - (hours * 60);
-      var seconds = duration % 60; 
+      var seconds = duration % 60;
       return hours.toString().padStart(2, '0') + 'h:' + minutes.toString().padStart(2, '0') + 'm:' + seconds.toString().padStart(2, '0') +'s';
     }
 
     function zoneTimerDump(tpi, data) {
       // Raw zone timers used inside the Envisalink.
       // The dump is a 256 character packed HEX string representing 64 UINT16
-      // (little endian) zone timers. Zone timers count down from 0xFFFF (zone is open) 
-      // to 0x0000 (zone is closed too long ago to remember). Each “tick” of he zone time 
+      // (little endian) zone timers. Zone timers count down from 0xFFFF (zone is open)
+      // to 0x0000 (zone is closed too long ago to remember). Each “tick” of he zone time
       // is actually 5 seconds so a zone timer of 0xFFFE means “5
       // seconds ago”. Remember, the zone timers are LITTLE ENDIAN so the
       // above example would be transmitted as FEFF.
@@ -631,7 +631,7 @@ class EnvisaLink extends EventEmitter {
           swappedBits = byte.substr(2, 4);
           swappedBits += byte.substr(0, 2);
           leZoneTimerDumpHexStr += swappedBits;
-          zoneClosedTimeCountDown = (MAXINT - parseInt(swappedBits.toString(),16)) * 5; 
+          zoneClosedTimeCountDown = (MAXINT - parseInt(swappedBits.toString(),16)) * 5;
           if (swappedBits == "FFFF")
           {
             zonesDumpData.push({
@@ -671,8 +671,8 @@ class EnvisaLink extends EventEmitter {
     }
 
     function cidEvent(tpi, data) {
-      // When a system event happens that is signaled to either the Envisalerts servers or the central monitoring station, 
-      // it is also presented through this command. The CID event differs from other TPI 
+      // When a system event happens that is signaled to either the Envisalerts servers or the central monitoring station,
+      // it is also presented through this command. The CID event differs from other TPI
       // commands as it is a binary coded decimal, not HEX.
       // QXXXPPZZZ0
       // Where:
@@ -701,7 +701,7 @@ class EnvisaLink extends EventEmitter {
       var partition = cid.substr(4, 2);
       var zone_or_user = cid.substr(6, 3);
       var cid_obj = ciddefs.cid_events_def[code];
-      
+
       var cidupdate_object = {
         partition: partition,
         qualifier: qualifier,
@@ -736,7 +736,7 @@ class EnvisaLink extends EventEmitter {
         this.log.error('Command not successful. No TPI session establish.');
         return false;
       }
-    } else 
+    } else
       this.log.warn('This module running in maintenance mode, command not sent.');
       return false;
   }

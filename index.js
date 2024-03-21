@@ -43,8 +43,8 @@ class EnvisalinkPlatform {
             this.activeAccessoryMap = {};
             this.chime = config.chimeToggle ? config.chimeToggle: false;
             this.batteryRunTime = config.batteryRunTime ? config.batteryRunTime: 0;
-            this.commandTimeOut = Math.min(30,Math.max(1,config.commandTimeOut));  
-            // Should partition be changed when executing command? 
+            this.commandTimeOut = Math.min(30,Math.max(1,config.commandTimeOut));
+            // Should partition be changed when executing command?
             // Option only valid if this is a multiple partitions system
             this.changePartition = config.changePartition ? config.changePartition: false;
 
@@ -65,7 +65,7 @@ class EnvisalinkPlatform {
             // in order to ensure they weren't added to homebridge already. This event can also be used
              // to start discovery of new accessories.
             api.on('didFinishLaunching', () => {
-                // Create connection object 
+                // Create connection object
                 alarm = new elink(log, config);
                 // Build device list
                 this.log("Configuring", this.deviceDescription, "for Homekit...");
@@ -82,9 +82,9 @@ class EnvisalinkPlatform {
                 }
                 if (this.speedKeys.length > 0) this.log("Speed keys accessories configured.");
                 if (this.chime) this.log("Chime toggle accessory configured.")
-                
+
                 // Begin connection process and bind alarm events to local function.
-                // Should plug-in run in a disconnect mode. Allow maintenance without resulting in a lot of log errors 
+                // Should plug-in run in a disconnect mode. Allow maintenance without resulting in a lot of log errors
                 if (this.isMaintenanceMode == false){
                     // Start connection to Envisalink module
                     alarm.startSession();
@@ -93,14 +93,14 @@ class EnvisalinkPlatform {
                     alarm.on('zoneevent', this.zoneUpdate.bind(this));
                     alarm.on('updatepartition', this.partitionUpdate.bind(this));
                     alarm.on('cidupdate', this.cidUpdate.bind(this));
-                    
+
                     // Should module errors be suppress from homekit notification?
                     if (this.isEnvisalinkFailureSuppress == false) alarm.on('envisalinkupdate', this.envisalinkUpdate.bind(this));
                     else this.log.warn("No alarm Tamper will be generated for Envisalink communication failure. Please refer to your Homebridge logs for communication failures.");
-                
+
                     // Generate bypassed zone event to update the bypass accessories
                     setTimeout(function () {alarm.getBypassedZones(this.masterPin)}.bind(this),config.heartbeatInterval*1000);
-                   
+
                 }
                 else
                     this.log.warn("This plug-in is running in maintenance mode. All updates and operations are disabled!");
@@ -128,7 +128,7 @@ class EnvisalinkPlatform {
             }
             partition.model = this.deviceDescription + " Keypad";
             partition.deviceType =  this.deviceType;
-            // set command timeout 
+            // set command timeout
             partition.commandTimeOut = this.commandTimeOut;
             partition.batteryRunTime = this.batteryRunTime * 60 * 60;
             partition.changePartition = this.changePartition;
@@ -151,9 +151,9 @@ class EnvisalinkPlatform {
                 this.addAccessory(partitionAccessory);
             }
             else { // accessory already exist just set characteristic
-                partitionAccessory.setAccessory(foundAccessory); 
+                partitionAccessory.setAccessory(foundAccessory);
             }
-            // Add to active accessory list, which is later used to remove unused cache entries  
+            // Add to active accessory list, which is later used to remove unused cache entries
             this.activeAccessoryMap[partitionAccessory.uuid] = true;
 
             var partitionIndex =  this.platformPartitionAccessories.push(partitionAccessory) - 1;
@@ -175,9 +175,9 @@ class EnvisalinkPlatform {
                 }
                 zone.model = this.deviceDescription + " " + zone.sensorType.charAt(0).toUpperCase() + zone.sensorType.slice(1) + " sensor";
                 zone.serialNumber = "envisalink." + zone.sensorType + "."+ zone.partition + "." + zoneNum;
-                if (this.bypass.length > 0) 
-                    zone.masterBypass = this.bypass[0].enabledbyPass; 
-                else    
+                if (this.bypass.length > 0)
+                    zone.masterBypass = this.bypass[0].enabledbyPass;
+                else
                     zone.masterBypass = false;
                 zone.pin = this.masterPin;
                 zone.commandTimeOut = this.commandTimeOut;
@@ -194,7 +194,7 @@ class EnvisalinkPlatform {
                     this.addAccessory(zoneAccessory);
                 }
                 else { // accessory already exist just set characteristic
-                    zoneAccessory.setAccessory(foundAccessory); 
+                    zoneAccessory.setAccessory(foundAccessory);
                 }
                 // Add to active accessory list, which is later used to remove unused cache entries
                 this.activeAccessoryMap[zoneAccessory.uuid] = true;
@@ -202,7 +202,7 @@ class EnvisalinkPlatform {
                 var accessoryIndex = this.platformZoneAccessories.push(zoneAccessory) - 1;
                 this.platformZoneAccessoryMap['z.' + zoneNum] = accessoryIndex;
                 this.log.debug("refreshAccessories: Zone number - ", zoneNum , " configured.");
-            } else 
+            } else
                 this.log.error("Misconfigured zone definition " + zone.name + ". Entry - " + i + " ignoring.");
          }
 
@@ -211,7 +211,7 @@ class EnvisalinkPlatform {
      // Create associates custom in Homekit based on configuration file
     refreshCustomAccessories() {
 
-        // Process toggle chime switch functionality 
+        // Process toggle chime switch functionality
         if (this.chime ) {
             var chimeswitch = {};
             chimeswitch.pin = this.masterPin;
@@ -234,7 +234,7 @@ class EnvisalinkPlatform {
             }
             else {// accessory already exist just set characteristic
                 customAccessory.setAccessory(foundAccessory);
-                
+
             }
             // Add to active accessory list, which is later used to remove unused cache entries
             this.activeAccessoryMap[customAccessory.uuid] = true;
@@ -254,7 +254,7 @@ class EnvisalinkPlatform {
                 bypassswitch.serialNumber = "envisalink.bypass.all";
                 bypassswitch.commandTimeOut = this.commandTimeOut;
                 bypassswitch.zoneDevices  = this.platformZoneAccessories;
-            
+
                 // Create bypass switch
                 var customAccessory = new customDevices(this.log, bypassswitch, Service, Characteristic, UUIDGen, alarm);
                 // check the accessory was not restored from cache
@@ -277,7 +277,7 @@ class EnvisalinkPlatform {
             }
         }
 
-        // Creating macro/speed keys 
+        // Creating macro/speed keys
         if (this.speedKeys.length > 0) {
             var speedkey = [];
             speedkey.pin = this.masterPin;
@@ -326,7 +326,7 @@ class EnvisalinkPlatform {
                             {
                                 if(data.qualifier == 1) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusTampered.TAMPERED);
                                 if(data.qualifier == 3) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusTampered.NOT_TAMPERED);
-                             
+
                            }
                         break;
                     }
@@ -347,28 +347,28 @@ class EnvisalinkPlatform {
                 if ((partition.processingAlarm == false) && (partition.accessoryType == "partition")) {
                     if ((partition.envisakitCurrentStatus != data.mode)) {
                         partition.envisakitCurrentStatus = data.mode;
-                        
+
                         this.log.debug("systemUpdate: partition change - " + partition.name + ' to ' + partition.envisakitCurrentStatus);
                         const partitionService = partition.accessory.getService(Service.SecuritySystem);
                         if (partitionService) {
                             if (partition.homekitLastTargetState != partition.ENVISA_TO_HOMEKIT_TARGET[data.mode])
                                 {
-                                    
+
                                     partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,partition.ENVISA_TO_HOMEKIT_CURRENT[data.mode]);
                                     if(data.mode != 'ALARM') {
-                                        partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,partition.ENVISA_TO_HOMEKIT_TARGET[data.mode]);  
+                                        partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,partition.ENVISA_TO_HOMEKIT_TARGET[data.mode]);
                                         partition.homekitLastTargetState = partition.ENVISA_TO_HOMEKIT_TARGET[data.mode];
                                     }
-                                }       
+                                }
                             // if system is not ready or has a fault set general fault
-                            if (partition.envisakitCurrentStatus.includes('NOT_READY') || partition.envisakitCurrentStatus.includes('ALARM_MEMORY') || partition.envisakitCurrentStatus.includes('READY_FIRE_TROUBLE') || partition.envisakitCurrentStatus.includes('READY_SYSTEM_TROUBLE')) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT); 
+                            if (partition.envisakitCurrentStatus.includes('NOT_READY') || partition.envisakitCurrentStatus.includes('ALARM_MEMORY') || partition.envisakitCurrentStatus.includes('READY_FIRE_TROUBLE') || partition.envisakitCurrentStatus.includes('READY_SYSTEM_TROUBLE')) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT);
                             else partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.NO_FAULT);
                         }
-                    }                 
+                    }
                 }
             }
         } else {
-            this.log("System status reported: Partition is not monitored, dismissing status update."); 
+            this.log("System status reported: Partition is not monitored, dismissing status update.");
         }
 
         // if chime enable update status;
@@ -403,16 +403,16 @@ class EnvisalinkPlatform {
                     }
                 }
             }
-        } 
+        }
 
         // Check if panel is on battery power (loss power)
         if(!data.keypadledstatus.ac_present){
             if(partition.ChargingState == Characteristic.ChargingState.CHARGING) {
-                partition.ChargingState = Characteristic.ChargingState.NOT_CHARGING; 
-                partition.downTime = new Date(); 
+                partition.ChargingState = Characteristic.ChargingState.NOT_CHARGING;
+                partition.downTime = new Date();
             }
         } else partition.ChargingState = Characteristic.ChargingState.CHARGING;
-        
+
     }
 
     // Capture partition updates usually associated with arm, disarm events
@@ -426,20 +426,29 @@ class EnvisalinkPlatform {
                 this.log.debug("partitionUpdate: Partition data - " + partition.name + ' to ' + partition.envisakitCurrentStatus);
                 const partitionService = partition.accessory.getService(Service.SecuritySystem);
                 if (partitionService) {
-                    if (partition.homekitLastTargetState != partition.ENVISA_TO_HOMEKIT_TARGET[data.mode])
+                    var targetState = partition.ENVISA_TO_HOMEKIT_CURRENT[data.mode];
+
+                    if(
+                        targetState === Characteristic.SecuritySystemTargetState.STAY_ARM &&
+                        partition.homekitLastTargetState === Characteristic.SecuritySystemTargetState.NIGHT_ARM
+                    ) {
+                        targetState = partition.homekitLastTargetState;
+                    }
+
+                    // if (partition.homekitLastTargetState != targetState) // XXX: temporarily removed the condition to resolve issue when disarming via Home app.
                         {
-                            partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,partition.ENVISA_TO_HOMEKIT_CURRENT[data.mode]);
+                            partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,targetState);
                             if(data.mode != 'ALARM') {
-                                partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,partition.ENVISA_TO_HOMEKIT_TARGET[data.mode]);  
+                                partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,targetState);
                                 partition.homekitLastTargetState = partition.ENVISA_TO_HOMEKIT_TARGET[data.mode];
                             }
-                        }       
+                        }
                     // if system is not ready set general fault
-                    if (partition.envisakitCurrentStatus.includes('NOT_READY') || partition.envisakitCurrentStatus.includes('ALARM_MEMORY')) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT); 
+                    if (partition.envisakitCurrentStatus.includes('NOT_READY') || partition.envisakitCurrentStatus.includes('ALARM_MEMORY')) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT);
                     else partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.NO_FAULT);
                 }
                 if (partition.processingAlarm) {
-                    // clear timer 
+                    // clear timer
                     partition.processingAlarm = false;
                     clearTimeout(partition.armingTimeOut);
                     partition.armingTimeOut = undefined;
@@ -447,7 +456,7 @@ class EnvisalinkPlatform {
             }
         }
         else {
-            this.log.debug("Partition status change: Partition not monitored dismissing partition update. "); 
+            this.log.debug("Partition status change: Partition not monitored dismissing partition update. ");
         }
     }
     // Capture zone updates usually associated sensor going from open to close and vice-versa
@@ -463,29 +472,29 @@ class EnvisalinkPlatform {
                 switch(zoneaccessory.sensorType) {
                     case "motion":
                     case "glass":
-                        if (accessoryService) accessoryService.getCharacteristic(Characteristic.MotionDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_MOTION[data.mode]);  
+                        if (accessoryService) accessoryService.getCharacteristic(Characteristic.MotionDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_MOTION[data.mode]);
                     break;
 
                     case "door":
                     case "window":
-                        if (accessoryService) accessoryService.getCharacteristic(Characteristic.ContactSensorState).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_CONTACT[data.mode]);  
+                        if (accessoryService) accessoryService.getCharacteristic(Characteristic.ContactSensorState).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_CONTACT[data.mode]);
                     break;
 
                     case "leak":
-                        if (accessoryService) accessoryService.getCharacteristic(Characteristic.LeakDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_LEAK[data.mode]);  
+                        if (accessoryService) accessoryService.getCharacteristic(Characteristic.LeakDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_LEAK[data.mode]);
                     break;
 
                     case "smoke":
-                        if (accessoryService) accessoryService.getCharacteristic(Characteristic.SmokeDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_SMOKE[data.mode]);  
+                        if (accessoryService) accessoryService.getCharacteristic(Characteristic.SmokeDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_SMOKE[data.mode]);
                     break;
 
                     case "co":
-                        if (accessoryService) accessoryService.getCharacteristic(Characteristic.CarbonMonoxideDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_CO[data.mode]); 
+                        if (accessoryService) accessoryService.getCharacteristic(Characteristic.CarbonMonoxideDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_CO[data.mode]);
                     break;
                 }
-                
+
             }
-        } 
+        }
     }
 
     // Capture low level updates that are not generate from keypad events, but sent to monitoring station.
@@ -499,7 +508,7 @@ class EnvisalinkPlatform {
                 var accessory = this.platformZoneAccessories[accessoryIndex];
                 var accessoryService = accessory.service;
                 this.log.debug(`cidUpdate: Accessory change - Zone: ${data.zone} Name: ${accessory.name} Code: ${data.code} Qualifier: ${data.qualifier}.`);
-                switch (Number(data.code)) { 
+                switch (Number(data.code)) {
 
                     case 150: //Alarm, 24-Hour Auxiliar
                         if(data.qualifier == 1) accessoryService.updateCharacteristic(Characteristic.StatusFault, Characteristic.StatusFault.GENERAL_FAULT);
@@ -518,7 +527,7 @@ class EnvisalinkPlatform {
 
                     // qualifier can be 1 = 'Event or Opening', 3 = 'Restore or Closing'
                     case 570:  // Bypass event
-                        if(data.qualifier == 1){ 
+                        if(data.qualifier == 1){
                             this.log(`${accessory.name} has been bypass.`);
                             accessory.bypassStatus = true;
                         }
@@ -527,14 +536,14 @@ class EnvisalinkPlatform {
                             accessory.bypassStatus = false;
                         }
                         alarm.isProcessingBypassqueue = alarm.isProcessingBypassqueue - 1;
-                        if ((alarm.isProcessingBypassqueue <= 0 ) && (alarm.isProcessingBypass)) { 
-                            alarm.isProcessingBypass = false; 
+                        if ((alarm.isProcessingBypassqueue <= 0 ) && (alarm.isProcessingBypass)) {
+                            alarm.isProcessingBypass = false;
                             alarm.isProcessingBypassqueue = 0;
                             this.log(`All queued bypass/un-bypass command(s) completed.`)
                         }
                     break;
 
-                    
+
                 }
             }
         }
@@ -547,10 +556,10 @@ class EnvisalinkPlatform {
                 switch (Number(data.code)) {
                     case 301: // Trouble-AC Power
                         if((data.qualifier == 1) && (partition.ChargingState == Characteristic.ChargingState.CHARGING)) {
-                            partition.ChargingState = Characteristic.ChargingState.NOT_CHARGING; 
-                            partition.downTime = new Date(); 
+                            partition.ChargingState = Characteristic.ChargingState.NOT_CHARGING;
+                            partition.downTime = new Date();
                         }
-                        if(data.qualifier == 3) partition.ChargingState = Characteristic.ChargingState.CHARGING; 
+                        if(data.qualifier == 3) partition.ChargingState = Characteristic.ChargingState.CHARGING;
                     break;
 
                     case 302: // Trouble-Low Battery (AC is lost, battery is getting low)
@@ -558,7 +567,7 @@ class EnvisalinkPlatform {
                             if (partition.batteryLevel > 20) partition.batteryLevel = 20;
                         if(data.qualifier == 3) partition.batteryLevel = 100;
                         var partitionServiceBattery = partition.getService(Service.Battery);
-                        if (partitionServiceBattery) partitionServiceBattery.updateCharacteristic(Characteristic.BatteryLevel,partition.batteryLevel); 
+                        if (partitionServiceBattery) partitionServiceBattery.updateCharacteristic(Characteristic.BatteryLevel,partition.batteryLevel);
                     break;
 
                     case 309: // Trouble-Battery Test Failure (Battery failed at test interval)
@@ -567,10 +576,10 @@ class EnvisalinkPlatform {
                             partition.batteryLevel = 0;
                         if(data.qualifier == 3) partition.batteryLevel = 100;
                         var partitionService = partition.accessory.getService(Service.SecuritySystem);
-                        if (partitionService) partitionService.updateCharacteristic(Characteristic.BatteryLevel,partition.batteryLevel); 
+                        if (partitionService) partitionService.updateCharacteristic(Characteristic.BatteryLevel,partition.batteryLevel);
                     break;
 
-                    case 144: // Alarm-Sensor Tamper-# 
+                    case 144: // Alarm-Sensor Tamper-#
                     case 145: // Alarm-Exp. Module Tamper-#
                     case 137: // Burg-Tamper-#
                     case 316: // Trouble System Tamper
@@ -589,8 +598,8 @@ class EnvisalinkPlatform {
     removeOrphanAccessory() {
         var cachedAccessory = this.accessories;
         var foundAccessory;
-        for (var i = 0; i < cachedAccessory.length; i++) 
-        {   
+        for (var i = 0; i < cachedAccessory.length; i++)
+        {
             let accessory = cachedAccessory[i];
             foundAccessory = this.activeAccessoryMap[accessory.UUID];
             if (foundAccessory == undefined) {
@@ -641,5 +650,5 @@ const homebridge = homebridge => {
     UUIDGen = homebridge.hap.uuid;
     homebridge.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, EnvisalinkPlatform);
 };
-  
+
 module.exports = homebridge;
