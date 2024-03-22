@@ -32,7 +32,8 @@ class EnvisalinkCustomAccessory {
       'ARMED_NIGHT': false,
       'ARMED_NIGHT_BYPASS': true,
       'ALARM': false,
-      'ALARM_MEMORY': false
+      'ALARM_MEMORY': false,
+      'EXIT_DELAY': false
     };
   }
  
@@ -235,9 +236,11 @@ class EnvisalinkCustomAccessory {
                 locSetValue = false;
             break;
             case 'READY':
-                if (value) this.log(`Alarm is ${this.envisakitCurrentStatus} no action required. Ignoring bypass request.`);
-                // Turn off switch, since no action was completed.
-                setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,false)}.bind(this),2000);
+                if (value == true) {
+                  this.log(`Alarm is ${this.envisakitCurrentStatus} no action required. Ignoring bypass request.`);
+                  // Turn off switch, since no action was completed.
+                  setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,false)}.bind(this),2000);
+                }
                 locSetValue = false;
             break;
             default:
