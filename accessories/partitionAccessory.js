@@ -78,7 +78,7 @@ class EnvisalinkPartitionAccessory {
     this.downTime = undefined;
     this.homekitLastTargetState = this.Characteristic.SecuritySystemTargetState.DISARM;
     this.systemfault = this.Characteristic.StatusFault.NO_FAULT;
-    this.processingAlarm = false;
+    this.processingPartitionCmd = false;
     this.armingTimeOut = undefined;
 
 
@@ -136,7 +136,7 @@ class EnvisalinkPartitionAccessory {
 
   // Timer triggered event if alarm is not process in an allocated time frame.
   processAlarmTimer() {
-      if (this.processingAlarm) {
+      if (this.processingPartitionCmd) {
           this.log.warn(`Alarm request did not return successfully in allocated time. Current alarm status is ${this.envisakitCurrentStatus}`);
           this.setAlarmState();
       } 
@@ -147,7 +147,7 @@ class EnvisalinkPartitionAccessory {
     // get security system
     const securityService = this.accessory.getService(this.Service.SecuritySystem);
     this.log.debug("setAlarmState: Setting Alarm state to", this.envisakitCurrentStatus);
-    this.processingAlarm = false;
+    this.processingPartitionCmd = false;
     this.armingTimeOut = undefined;
     securityService.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus]);
     if(this.envisakitCurrentStatus != 'ALARM') securityService.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.ENVISA_TO_HOMEKIT_TARGET[this.envisakitCurrentStatus]);  
@@ -161,7 +161,7 @@ class EnvisalinkPartitionAccessory {
     var l_alarmCommand = null; // no command has been defined.
     this.log.debug("setTargetState: Homekit alarm requested set - ",homekitState);
     this.log.debug("setTargetState: Current alarm state is - ",l_envisalinkCurrentStatus);
-    if (this.processingAlarm == false) {
+    if (this.processingPartitionCmd == false) {
         // Is alarm system already in current requested state? If yes, ignore the request.
         if (this.ENVISA_TO_HOMEKIT_CURRENT[l_envisalinkCurrentStatus] != homekitState)
         {
@@ -236,7 +236,7 @@ class EnvisalinkPartitionAccessory {
     var l_homekitState = this.homekitLastTargetState;
     // If valid alarm command was determine process request
     if (l_alarmCommand) {
-        this.processingAlarm = true;
+        this.processingPartitionCmd = true;
         this.log.debug("setTargetState: Sending command(s).");
         if (this.changePartition) {
                 this.log(`Changing Partition to ${this.partitionNumber}`);
@@ -250,15 +250,19 @@ class EnvisalinkPartitionAccessory {
           this.armingTimeOut = setTimeout(this.processAlarmTimer.bind(this), this.commandTimeOut * 1000);
          
           // Alarm was successful
-         this.homekitLastTargetState = homekitState;
-         this.envisakitCurrentStatus = l_envisaliklocalStatus;
-         setTimeout( () => {securityService.getCharacteristic(this.Characteristic.SecuritySystemCurrentState).updateValue(this.ENVISA_TO_HOMEKIT_CURRENT[l_envisaliklocalStatus]), 1000})
+
+          // Allow UI to remain on the homekit "night" since partition event and keypad will indicate STAY_ARM event. Keypad event will eventually set to "night"
+          if (l_envisaliklocalStatus != "ARMED_NIGHT") this.homekitLastTargetState = homekitState
+          else this.homekitLastTargetState = this.Characteristic.SecuritySystemTargetState.STAY_ARM;
+
+          // Set UI stateus
+          this.envisakitCurrentStatus = l_envisaliklocalStatus;
+          setTimeout( () => {securityService.getCharacteristic(this.Characteristic.SecuritySystemCurrentState).updateValue(this.ENVISA_TO_HOMEKIT_CURRENT[l_envisaliklocalStatus]), 1000})
           return callback(null);
         }
     } 
     this.log.debug("setTargetState: Command unsuccessful, returning to homekit previous state - ", l_homekitState);
     this.armingTimeOut = setTimeout(this.setAlarmState.bind(this),1000);
-    //return callback(null,l_homekitState);
     return callback(null);
     ;
 
