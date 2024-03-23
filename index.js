@@ -344,16 +344,14 @@ class EnvisalinkPlatform {
             var partition = this.platformPartitionAccessories[partitionIndex];
             // partition update information
             if (partition) {
-                if ((partition.processingAlarm == false) && (partition.accessoryType == "partition")) {
+                if ((partition.processingPartitionCmd == false) && (partition.accessoryType == "partition")) {
                     if ((partition.envisakitCurrentStatus != data.mode)) {
                         partition.envisakitCurrentStatus = data.mode;
-                        
                         this.log.debug("systemUpdate: partition change - " + partition.name + ' to ' + partition.envisakitCurrentStatus);
                         const partitionService = partition.accessory.getService(Service.SecuritySystem);
                         if (partitionService) {
                             if (partition.homekitLastTargetState != partition.ENVISA_TO_HOMEKIT_TARGET[data.mode])
                                 {
-                                    
                                     partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,partition.ENVISA_TO_HOMEKIT_CURRENT[data.mode]);
                                     if(data.mode != 'ALARM') {
                                         partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,partition.ENVISA_TO_HOMEKIT_TARGET[data.mode]);  
@@ -422,12 +420,12 @@ class EnvisalinkPlatform {
         if (partitionIndex !== undefined ) {
             var partition = this.platformPartitionAccessories[partitionIndex];
             if (partition) {
-                partition.envisakitCurrentStatus = data.mode;
-                this.log.debug("partitionUpdate: Partition data - " + partition.name + ' to ' + partition.envisakitCurrentStatus);
                 const partitionService = partition.accessory.getService(Service.SecuritySystem);
                 if (partitionService) {
-                    if (partition.homekitLastTargetState != partition.ENVISA_TO_HOMEKIT_TARGET[data.mode])
+                    if (partition.homekitLastTargetState != partition.ENVISA_TO_HOMEKIT_TARGET[data.mode] && (partition.processingPartitionCmd == false))
                         {
+                            partition.envisakitCurrentStatus = data.mode;
+                            this.log.debug("partitionUpdate: Partition data - " + partition.name + ' to ' + partition.envisakitCurrentStatus);            
                             partitionService.updateCharacteristic(Characteristic.SecuritySystemCurrentState,partition.ENVISA_TO_HOMEKIT_CURRENT[data.mode]);
                             if(data.mode != 'ALARM') {
                                 partitionService.updateCharacteristic(Characteristic.SecuritySystemTargetState,partition.ENVISA_TO_HOMEKIT_TARGET[data.mode]);  
@@ -437,13 +435,18 @@ class EnvisalinkPlatform {
                     // if system is not ready set general fault
                     if (partition.envisakitCurrentStatus.includes('NOT_READY') || partition.envisakitCurrentStatus.includes('ALARM_MEMORY')) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.GENERAL_FAULT); 
                     else partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusFault.NO_FAULT);
-                }
-                if (partition.processingAlarm) {
-                    // clear timer 
-                    partition.processingAlarm = false;
-                    clearTimeout(partition.armingTimeOut);
-                    partition.armingTimeOut = undefined;
-                }
+               
+                    // If event occured, assume it related to user orginated activity and clear state
+                    if (partition.processingPartitionCmd) {
+                        // clear timer 
+                        partition.processingPartitionCmd = false;
+                        clearTimeout(partition.armingTimeOut);
+                        partition.armingTimeOut = undefined;
+                        // In case homeklit didn't set targetstate reset to current value.
+                        partitionService.getCharacteristic(Characteristic.SecuritySystemTargetState).updateValue(partition.ENVISA_TO_HOMEKIT_TARGET[partition.envisakitCurrentStatus])                        
+                    }
+            }
+                
             }
         }
         else {
