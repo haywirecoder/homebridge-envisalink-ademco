@@ -298,7 +298,7 @@ class EnvisaLink extends EventEmitter {
     }
 
     function updatePartition(tpi, data) {
-      // Unlike the code below, this Ademco panel sends an array of bytes, each one representing a partition and its state. 
+      // Ademco panel sends an array of bytes, each one representing a partition and its state. 
       // Example:
       // 0100010000000000
       // so in the example above out of 8 partitions, partitions 1 and 3 are in state READY. 
@@ -485,7 +485,7 @@ class EnvisaLink extends EventEmitter {
       return mode;
     }
 
-    function keyPadToHumanReadable(mode) {
+    function keyPadToHumanReadable(mode, extraInfo) {
 
       var readableCode = 'NOT_READY';
       if (mode.alarm || mode.alarm_fire_zone) {
@@ -498,6 +498,9 @@ class EnvisaLink extends EventEmitter {
         readableCode = 'READY_SYSTEM_TROUBLE';
       } else if (mode.bypass && mode.armed_stay) {
         readableCode = 'ARMED_STAY_BYPASS';
+        // The text message from panel is used to determine if the panel is in might node.
+        if (extraInfo.includes('NIGHT-STAY-BYPASS')) readableCode = 'ARMED_NIGHT_BYPASS';
+        else readableCode = 'ARMED_STAY_BYPASS';
       } else if (mode.bypass && mode.armed_away) {
         readableCode = 'ARMED_AWAY_BYPASS';
       } else if (mode.bypass && mode.armed_zero_entry_delay) {
@@ -507,7 +510,9 @@ class EnvisaLink extends EventEmitter {
       } else if (mode.ready) {
         readableCode = 'READY';
       } else if (mode.armed_stay) {
-        readableCode = 'ARMED_STAY';
+        // The text message from panel is used to determine if the panel is in might node.
+        if (extraInfo.includes('NIGHT-STAY')) readableCode = 'ARMED_NIGHT';
+        else readableCode = 'ARMED_STAY';
       } else if (mode.armed_away) {
         readableCode = 'ARMED_AWAY';
       } else if (mode.armed_zero_entry_delay) {
@@ -541,12 +546,13 @@ class EnvisaLink extends EventEmitter {
       // 00: ALARM (System is in Alarm)
       var ICON = data[2]; //two byte, HEX, representation of the bitfield.
       var keypadledstatus = getKeyPadLedStatus(data[2]);
-      var mode = keyPadToHumanReadable(keypadledstatus);
       var userOrZone = data[3]; // one byte field, representing extra info, either the user or the zone.
       var beep = tpidefs.virtual_keypad_beep[data[4]]; // information for the keypad on how to beep.
       var keypad_txt = data[5]; // 32 byte ascii string, a concat of 16 byte top and 16 byte bottom of display
       var icon_array = [];
       var position = 0; // Start at the right most position, Little endian 0.
+      var mode = keyPadToHumanReadable(keypadledstatus, keypad_txt);
+      
 
       // This loop, take a two byte hex string, and for every bit set to one in the HEX string
       // adds an element to an array indicating the position of the bit set to one... LittleEndian.
