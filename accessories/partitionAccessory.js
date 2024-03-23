@@ -3,6 +3,8 @@ var tpidefs = require('./../tpi.js');
 
 const ENVISALINK_MANUFACTURER = "Envisacor Technologies Inc."
 
+const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
+
 class EnvisalinkPartitionAccessory {
  
   constructor(log, config, Service, Characteristic, UUIDGen, alarm) {
@@ -57,14 +59,14 @@ class EnvisalinkPartitionAccessory {
           'ARMED_NIGHT_BYPASS': Characteristic.SecuritySystemTargetState.NIGHT_ARM,
           'ALARM_MEMORY': Characteristic.SecuritySystemTargetState.DISARM,
           'EXIT_DELAY':  Characteristic.SecuritySystemTargetState.DISARM
-        };
+      };
 
-        this.TARGET_HOMEKIT_TO_ENVISA = {
+      this.TARGET_HOMEKIT_TO_ENVISA = {
           0: 'Home',
           1: 'Away',
           2: 'Night',
           3: 'Disarm'
-        };
+      };
     }
 
   setAccessory(accessory)  {
@@ -91,7 +93,8 @@ class EnvisalinkPartitionAccessory {
         .on('get', async callback => this.getCurrentState(callback));
     securityService.getCharacteristic(this.Characteristic.SecuritySystemTargetState)
         .on('get', async callback => this.getTargetState(callback))
-        .on('set', async (state, callback) => this.setTargetState(state, callback));
+        //.on('set', async (state, callback) => this.setTargetState(state, callback));
+        .on('set', this.setTargetState.bind(this));
     securityService.setCharacteristic(this.Characteristic.StatusFault, this.Characteristic.StatusFault.NO_FAULT);
     securityService.setCharacteristic(this.Characteristic.StatusTampered, this.Characteristic.StatusTampered.NOT_TAMPERED);
 
@@ -112,7 +115,7 @@ class EnvisalinkPartitionAccessory {
             .on('get',  async callback => this.getPanelBatteryLevel(callback)); 
         batteryService
             .getCharacteristic(this.Characteristic.ChargingState)
-            .on('get', async callback => this.getPanelCharingState(callback));     
+            .on('get',async callback =>  this.getPanelCharingState(callback));     
        
     }
 
@@ -149,10 +152,12 @@ class EnvisalinkPartitionAccessory {
     securityService.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus]);
     if(this.envisakitCurrentStatus != 'ALARM') securityService.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.ENVISA_TO_HOMEKIT_TARGET[this.envisakitCurrentStatus]);  
   }
-
-  // Change smart water shutoff monitoring state.
+  
+  // Change state.
   async setTargetState(homekitState, callback) {
+    const securityService = this.accessory.getService(this.Service.SecuritySystem);
     var l_envisalinkCurrentStatus = this.envisakitCurrentStatus;
+    var l_envisaliklocalStatus;
     var l_alarmCommand = null; // no command has been defined.
     this.log.debug("setTargetState: Homekit alarm requested set - ",homekitState);
     this.log.debug("setTargetState: Current alarm state is - ",l_envisalinkCurrentStatus);
@@ -173,6 +178,7 @@ class EnvisalinkPartitionAccessory {
                   if (homekitState == this.Characteristic.SecuritySystemCurrentState.DISARMED) {
                       this.log(`Disarming the alarm system with PIN, [Partition ${this.partitionNumber}].`);
                       l_alarmCommand = this.pin + tpidefs.alarmcommand.disarm;
+                      l_envisaliklocalStatus = "READY";
                   } else this.log("Disarming the alarm system is required prior to changing alarm system state, request is ignored.");
               break;
 
@@ -187,24 +193,27 @@ class EnvisalinkPartitionAccessory {
                     break;
                   }
               case 'READY_SYSTEM_TROUBLE':
-                if (this.ignoreSystemTrouble) {
-                  this.log.warn(`Arming Partition [${this.partitionNumber}] in System Trouble status.`);
-                   // Don't break, fall through arming sequence
-                }
-                else {
-                  this.log.warn(`Partition [${this.partitionNumber}] in System trouble status. Arming request failed.`);
-                  break;
-                }
+                  if (this.ignoreSystemTrouble) {
+                    this.log.warn(`Arming Partition [${this.partitionNumber}] in System Trouble status.`);
+                    // Don't break, fall through arming sequence
+                  }
+                  else {
+                    this.log.warn(`Partition [${this.partitionNumber}] in System trouble status. Arming request failed.`);
+                    break;
+                  }
               case 'READY':
               case 'READY_BYPASS':
                   if (homekitState == this.Characteristic.SecuritySystemCurrentState.STAY_ARM) {
                       this.log(`Arming the alarm system to Stay (Home), [Partition ${this.partitionNumber}].`);
                       l_alarmCommand = this.pin + tpidefs.alarmcommand.stay;
+                      l_envisaliklocalStatus = "ARMED_STAY";
                   } else if (homekitState == this.Characteristic.SecuritySystemCurrentState.NIGHT_ARM) {
                       this.log(`Arming the alarm system to Night, [Partition ${this.partitionNumber}].`);
                       l_alarmCommand = this.pin + tpidefs.alarmcommand.night;
+                      l_envisaliklocalStatus = "ARMED_NIGHT";
                   } else if (homekitState == this.Characteristic.SecuritySystemCurrentState.AWAY_ARM) {
                       this.log(`Arming the alarm system to Away, [Partition ${this.partitionNumber}].`);
+                      l_envisaliklocalStatus = "ARMED_AWAY";
                       l_alarmCommand = this.pin + tpidefs.alarmcommand.away;
                   }
               break;
@@ -232,21 +241,27 @@ class EnvisalinkPartitionAccessory {
         if (this.changePartition) {
                 this.log(`Changing Partition to ${this.partitionNumber}`);
                 this.alarm.changePartition(this.partitionNumber);
-                await new Promise(r => setTimeout(r, 3000));
+                //await new Promise(r => setTimeout(r, 3000));
+                sleep(3000);
         }
         if (this.alarm.sendCommand(l_alarmCommand))
         {
           this.log.debug("setTargetState: Command(s) sent successfully.");
           this.armingTimeOut = setTimeout(this.processAlarmTimer.bind(this), this.commandTimeOut * 1000);
+         
           // Alarm was successful
-          l_homekitState = homekitState;
-          this.homekitLastTargetState = homekitState;
-          return callback(null,l_homekitState);
+         this.homekitLastTargetState = homekitState;
+         this.envisakitCurrentStatus = l_envisaliklocalStatus;
+         setTimeout( () => {securityService.getCharacteristic(this.Characteristic.SecuritySystemCurrentState).updateValue(this.ENVISA_TO_HOMEKIT_CURRENT[l_envisaliklocalStatus]), 1000})
+          return callback(null);
         }
     } 
     this.log.debug("setTargetState: Command unsuccessful, returning to homekit previous state - ", l_homekitState);
     this.armingTimeOut = setTimeout(this.setAlarmState.bind(this),1000);
-    return callback(null,l_homekitState);
+    //return callback(null,l_homekitState);
+    return callback(null);
+    ;
+
   }
 
   // Battery status Low Battery status and Battery Level.
