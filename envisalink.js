@@ -499,7 +499,7 @@ class EnvisaLink extends EventEmitter {
       } else if (mode.bypass && mode.armed_stay) {
         readableCode = 'ARMED_STAY_BYPASS';
         // The text message from panel is used to determine if the panel is in might node.
-        if (extraInfo.includes('NIGHT-STAY-BYPASS')) readableCode = 'ARMED_NIGHT_BYPASS';
+        if (extraInfo.includes('NIGHT-STAY')) readableCode = 'ARMED_NIGHT_BYPASS';
         else readableCode = 'ARMED_STAY_BYPASS';
       } else if (mode.bypass && mode.armed_away) {
         readableCode = 'ARMED_AWAY_BYPASS';
@@ -553,7 +553,6 @@ class EnvisaLink extends EventEmitter {
       var position = 0; // Start at the right most position, Little endian 0.
       var mode = keyPadToHumanReadable(keypadledstatus, keypad_txt);
       
-
       // This loop, take a two byte hex string, and for every bit set to one in the HEX string
       // adds an element to an array indicating the position of the bit set to one... LittleEndian.
       for (var n = parseInt(ICON, 16); n > 0; n = n >> 1) {
