@@ -441,9 +441,7 @@ class EnvisalinkPlatform {
                         // clear timer 
                         partition.processingPartitionCmd = false;
                         clearTimeout(partition.armingTimeOut);
-                        partition.armingTimeOut = undefined;
-                        // In case homeklit didn't set targetstate reset to current value.
-                        partitionService.getCharacteristic(Characteristic.SecuritySystemTargetState).updateValue(partition.ENVISA_TO_HOMEKIT_TARGET[partition.envisakitCurrentStatus])                        
+                        partition.armingTimeOutHandle = undefined;
                     }
             }
                 
