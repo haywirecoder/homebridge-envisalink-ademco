@@ -75,11 +75,13 @@ class EnvisalinkPartitionAccessory {
     // Set default for security service
     this.ChargingState = this.Characteristic.ChargingState.CHARGING;
     this.envisakitCurrentStatus = "READY";
+    this.envisakitRevoveryStatus = "READY";
     this.downTime = undefined;
     this.homekitLastTargetState = this.Characteristic.SecuritySystemTargetState.DISARM;
     this.systemfault = this.Characteristic.StatusFault.NO_FAULT;
     this.processingPartitionCmd = false;
-    this.armingTimeOut = undefined;
+    this.armingTimeOutHandle = undefined;
+    this.setSecuritySystemValueHandle = undefined;
 
 
     this.accessory.getService(this.Service.AccessoryInformation)
@@ -138,17 +140,28 @@ class EnvisalinkPartitionAccessory {
   processAlarmTimer() {
       if (this.processingPartitionCmd) {
           this.log.warn(`Alarm request did not return successfully in allocated time. Current alarm status is ${this.envisakitCurrentStatus}`);
-          this.setAlarmState();
+          this.armingTimeOutHandle = undefined;
+          this.setAlarmRecoveryValues();
       } 
   }
 
   // Set the state of alarm system
-  setAlarmState() {
+  setAlarmRecoveryValues() {
     // get security system
+    this.setSecuritySystemValueHandle = undefined;
     const securityService = this.accessory.getService(this.Service.SecuritySystem);
-    this.log.debug("setAlarmState: Setting Alarm state to", this.envisakitCurrentStatus);
+    this.log.debug("setAlarmRecoveryValues: Setting Alarm state to", this.envisakitRevoveryStatus);
     this.processingPartitionCmd = false;
-    this.armingTimeOut = undefined;
+    securityService.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitRevoveryStatus]);
+    if(this.envisakitCurrentStatus != 'ALARM') securityService.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.ENVISA_TO_HOMEKIT_TARGET[this.envisakitRevoveryStatus]);  
+  }
+
+  // Used to set UI values for alarm state
+  setAlarmValues() {
+    // get security system
+    this.setSecuritySystemValueHandle = undefined;
+    const securityService = this.accessory.getService(this.Service.SecuritySystem);
+    this.log.debug("setAlarmValues: Setting Alarm state to", this.envisakitCurrentStatus);
     securityService.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState,this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus]);
     if(this.envisakitCurrentStatus != 'ALARM') securityService.updateCharacteristic(this.Characteristic.SecuritySystemTargetState,this.ENVISA_TO_HOMEKIT_TARGET[this.envisakitCurrentStatus]);  
   }
@@ -156,16 +169,16 @@ class EnvisalinkPartitionAccessory {
   // Change state.
   async setTargetState(homekitState, callback) {
     const securityService = this.accessory.getService(this.Service.SecuritySystem);
-    var l_envisalinkCurrentStatus = this.envisakitCurrentStatus;
+    this.envisakitRevoveryStatus =  this.envisakitCurrentStatus;
     var l_envisaliklocalStatus;
     var l_alarmCommand = null; // no command has been defined.
     this.log.debug("setTargetState: Homekit alarm requested set - ",homekitState);
-    this.log.debug("setTargetState: Current alarm state is - ",l_envisalinkCurrentStatus);
+    this.log.debug("setTargetState: Current alarm state is - ",this.envisakitCurrentStatus);
     if (this.processingPartitionCmd == false) {
         // Is alarm system already in current requested state? If yes, ignore the request.
-        if (this.ENVISA_TO_HOMEKIT_CURRENT[l_envisalinkCurrentStatus] != homekitState)
+        if (this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus] != homekitState)
         {
-            switch (l_envisalinkCurrentStatus) {
+            switch (this.envisakitCurrentStatus) {
               // Disarm state
               case 'ALARM':   
               case 'ALARM_MEMORY':
@@ -225,7 +238,7 @@ class EnvisalinkPartitionAccessory {
                 this.log(`The alarm system is not READY. The request for ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]} is ignored.`); 
               break;
               default:
-                this.log.warn(`The alarm system mode command is not supported for partition with status of ${l_envisalinkCurrentStatus}. Please see alarm system keypad for more information.`);
+                this.log.warn(`The alarm system mode command is not supported for partition with status of ${this.envisakitCurrentStatus}. Please see alarm system keypad for more information.`);
               break;
           }
         }
@@ -246,25 +259,26 @@ class EnvisalinkPartitionAccessory {
         }
         if (this.alarm.sendCommand(l_alarmCommand))
         {
+           // Alarm was successful
           this.log.debug("setTargetState: Command(s) sent successfully.");
-          this.armingTimeOut = setTimeout(this.processAlarmTimer.bind(this), this.commandTimeOut * 1000);
+          // Confirm success by monitoring for partition change event. IF event doesn't occur X, assume failure and roll back.
+          this.armingTimeOutHandle = setTimeout(this.processAlarmTimer.bind(this), this.commandTimeOut * 1000);
          
           // Alarm was successful
-
-          // Allow UI to remain on the homekit "night" since partition event and keypad will indicate STAY_ARM event. Keypad event will eventually set to "night"
+          // Workaround to prevent Home UI from flip back and forth initial set targetstate to STAY while setting UI to NIGHT. 
+          // when proper state is report by panel UI would already be reading correctly
           if (l_envisaliklocalStatus != "ARMED_NIGHT") this.homekitLastTargetState = homekitState
           else this.homekitLastTargetState = this.Characteristic.SecuritySystemTargetState.STAY_ARM;
 
           // Set UI stateus
           this.envisakitCurrentStatus = l_envisaliklocalStatus;
-          setTimeout( () => {securityService.getCharacteristic(this.Characteristic.SecuritySystemCurrentState).updateValue(this.ENVISA_TO_HOMEKIT_CURRENT[l_envisaliklocalStatus]), 1000})
+          this.setSecuritySystemValueHandle = setTimeout(this.setAlarmValues.bind(this),500);
           return callback(null);
         }
     } 
     this.log.debug("setTargetState: Command unsuccessful, returning to homekit previous state - ", l_homekitState);
-    this.armingTimeOut = setTimeout(this.setAlarmState.bind(this),1000);
+    this.setSecuritySystemValueHandle = setTimeout(this.setAlarmRecoveryValues.bind(this),1000);
     return callback(null);
-    ;
 
   }
 
