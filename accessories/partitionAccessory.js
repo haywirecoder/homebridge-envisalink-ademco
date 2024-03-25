@@ -254,8 +254,7 @@ class EnvisalinkPartitionAccessory {
         if (this.changePartition) {
                 this.log(`Changing Partition to ${this.partitionNumber}`);
                 this.alarm.changePartition(this.partitionNumber);
-                //await new Promise(r => setTimeout(r, 3000));
-                sleep(3000);
+                await sleep(3000);
         }
         if (this.alarm.sendCommand(l_alarmCommand))
         {
@@ -266,7 +265,7 @@ class EnvisalinkPartitionAccessory {
          
           // Alarm was successful
           // Workaround to prevent Home UI from flip back and forth initial set targetstate to STAY while setting UI to NIGHT. 
-          // when proper state is report by panel UI would already be reading correctly
+          // when proper state is report by panel UI would already be reporting correctly and will not have to change.
           if (l_envisaliklocalStatus != "ARMED_NIGHT") this.homekitLastTargetState = homekitState
           else this.homekitLastTargetState = this.Characteristic.SecuritySystemTargetState.STAY_ARM;
 
