@@ -9,9 +9,6 @@
 
  </p>
 
-<b>*** WARNING **** </b> 
-
-When upgrading from any prior version of the plugin to version 2.0.0+, you need to re-assign accessories to the rooms and rebuild/correct the existing automation that included these accessories. This is a one-time event and is not a bug. This is the result of upgrading to the Homebridge modern dynamic platform, which generated new unique internal IDs. 
 
 ----------------------------------
 
@@ -25,7 +22,7 @@ Limits:
 
 * Envisalink TPI interface only supports one connection. Once this plug-in is connected, any other connections will result in an error. Vice-versa, if Envisalink is being used for another purpose this module will not be able to connect. Confirm you have a stable network connection to the Envisalink module before installing this plug-in. While the auto-reconnect logic option is available, it is designed for occasional network issues.
 
-* This plug-in uses "Arm-Instant (Zero Delay-Stay)" as an indicator of <i>NIGHT STAY</i>. Arms-Instant is similar to the STAY mode, but without the entry delay feature and is usually associated with <i>NIGHT STAY</i>.
+* This plug-in uses two indicators for <i>NIGHT STAY</i>.  "Arm-Instant (Zero Delay-Stay)" is similar to the STAY mode, but without the entry delay feature and is usually associated with <i>NIGHT STAY</i>. The plug-in also uses virtual key panel txt as a indicator of night mode.
 
 * To receive updates for RF Low battery, AC failure, Low Panel Battery and Bypass reporting must be enabled for the Envisakit module. Refer to https://www.eyezon.com/EZMAIN/evl4honeywell.php section "Panel Programming Options". 
 
