@@ -738,7 +738,7 @@ class EnvisaLink extends EventEmitter {
         actual.write(command + '\r\n');
         return true;
       } else {
-        this.log.error('Command not successful. No TPI session establish.');
+        this.log.error(`Command not successful. TPI connection status: ${actual.destroyed} and login session connected is: ${this.isConnected}.`);
         return false;
       }
     } else 
