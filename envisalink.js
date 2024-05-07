@@ -5,7 +5,8 @@ const MAXALARMUSERS = 47;
 var net = require('net')
 var EventEmitter = require('events');
 var tpidefs = require('./tpi.js')
-var ciddefs = require('./cid.js')
+var ciddefs = require('./cid.js');
+const { isUndefined } = require('util');
 var actual;
 var activezones = [];
 var activeZoneTimeOut = undefined;
@@ -122,7 +123,7 @@ class EnvisaLink extends EventEmitter {
     actual.on('data', function (data) {
       var dataslice = data.toString().replace(/[\n\r]/g, '|').split('|');
       var source = "session_connect_status";
-      self.lastmessage = new Date(); // Every time a message comes in, reset the lastmessage timer
+      self.lastmessage = Date.now(); // Every time a message comes in, reset the lastmessage timer
       for (var i = 0; i < dataslice.length; i++) {
         var datapacket = dataslice[i];
         if (datapacket !== '') {
@@ -212,13 +213,14 @@ class EnvisaLink extends EventEmitter {
       // we didn't receive any messages for greater than heartbeatInterval seconds. Assume dropped and re-connect.
       // clear handle for interval checking of connection
       clearTimeout(self.isConnectionIdleHandle);
-      var nowDate = new Date();
-      var deltaTime = Math.abs(nowDate.getTime() -self.lastmessage.getTime()) / 1000;
+
+      var millis = Date.now() - self.lastmessage;
+      var deltaTime = Math.floor(millis/ 1000);
 
       // Was there traffic in allocated time frame?
       self.log.debug("Checking for Heartbeat...");
-      if (deltaTime > (self.options.heartbeatInterval)) {
-        self.log.warn("Missing Heartbeat - Time drift: ", deltaTime ,". Trying to re-connect session...");
+      if (deltaTime > (self.options.heartbeatInterval) || !self.isConnected) {
+        self.log.warn("Heartbeat - Time drift: ", deltaTime ," and Connection status of - ", self.isConnected, ". Trying to re-connect session...");
         self.endSession();
         var source = "session_connect_status";
         // Generate event to indicate there is issue with EVL module connection
@@ -732,13 +734,15 @@ class EnvisaLink extends EventEmitter {
   }
 
   sendCommand(command) {
-    if (!this.isMaintenanceMode) {
-      if (actual && !actual.destroyed && this.isConnected) {
+
+      if (!this.isMaintenanceMode) {      
+      if (actual !== undefined && this.isConnected) {
         this.log.debug('!WARNING! PIN/CODE may appear in the clear TX > ', command);
         actual.write(command + '\r\n');
         return true;
       } else {
-        this.log.error(`Command not successful. TPI connection status: ${actual.destroyed} and login session connected is: ${this.isConnected}.`);
+        this.log.error(`Command not successful, connection login session connected is: ${this.isConnected} and data stream object is defined: ${actual !== undefined}`);
+        this.log.debug(`Data Stream: data stream is: ${ JSON.stringify(actual)}`);
         return false;
       }
     } else 
