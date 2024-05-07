@@ -4,6 +4,9 @@ var tpidefs = require('./../tpi.js');
 const SPEED_KEY_PREFIX = "SPEED_KEY_";
 const ENVISALINK_MANUFACTURER = "Envisacor Technologies Inc."
 
+
+const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
+
 class EnvisalinkCustomAccessory {
   constructor(log, config, Service, Characteristic, UUIDGen, alarm) {
     this.Characteristic = Characteristic;
@@ -194,7 +197,7 @@ class EnvisalinkCustomAccessory {
                         var zoneinfo = this.zoneDevices[i];
                         if (zoneinfo) {
                             // Only bypass zone that are open and has been enabled for bypass, default is false for all zone define in configuration file.
-                            this.log.debug("setByPass: Reviewing zone - ", zoneinfo.name + ", " + zoneinfo.status + ", " + zoneinfo.bypassEnabled);
+                            this.log.debug("setByPass: Reviewing zone - ", zoneinfo.name + ", " + zoneinfo.bypassEnabled);
                             if ((zoneinfo.envisakitCurrentStatus == "open") && (zoneinfo.bypassEnabled)) {
                                 this.log(`Requesting bypassing of ${zoneinfo.name} ...`);
                                 if (zonesToBypass.length > 1) zonesToBypass = zonesToBypass + ","; 
@@ -214,8 +217,8 @@ class EnvisalinkCustomAccessory {
                     else {
                         l_alarmCommand = this.pin + tpidefs.alarmcommand.bypass + zonesToBypass;
                         this.alarm.sendCommand(l_alarmCommand);
-                        await new Promise(r => setTimeout(r, 2000));
-                        this.alarm.isProcessingBypassqueue == bypasscount;
+                       // sleep(3000);
+                        this.alarm.isProcessingBypassqueue = bypasscount;
                         bValue = true;
                         this.log(`${bypasscount.toString()} zone(s) queued for bypass.`);
                         this.byPassTimeOut = setTimeout(this.processBypassTimer.bind(this), this.commandTimeOut * 1000);
