@@ -72,25 +72,29 @@ class EnvisaLink extends EventEmitter {
   startSession() {
 
     var self = this;
-    this.shouldReconnect = this.options.autoreconnect;
-    this.isConnected = false;
-    this.lastmessage = new Date();
-    this.isConnectionIdleHandle = undefined;
+    self.shouldReconnect = this.options.autoreconnect;
+    self.isConnected = false;
+    self.lastmessage = Date.now();
+    self.isConnectionIdleHandle = undefined;
 
     // Display starting of connection.
-    this.log.info(`Starting connection to envisalink module at: ${this.options.host}, port: ${this.options.port}`);
+    self.log.info(`Starting connection to envisalink module at: ${self.options.host}, port: ${self.options.port}`);
    
     actual = net.createConnection({
-      port: this.options.port,
-      host: this.options.host
+      
+      port: self.options.port,
+      host: self.options.host
     });
 
 
     actual.on('error', function (ex) {
+
       self.log.error("EnvisaLink Network Error: ", ex);
+      self.isConnected = false;
     });
 
     actual.on('close', function (hadError) {
+
       self.isConnected = false;
       var source = "session_connect_status";
       if (self.isConnectionIdleHandle !== undefined) 
@@ -98,6 +102,7 @@ class EnvisaLink extends EventEmitter {
          clearTimeout(self.isConnectionIdleHandle);
       }
       setTimeout(function () {
+
         if (self.shouldReconnect && (actual === undefined || actual.destroyed)) {
           self.log.warn("Session closed unexpectedly. Re-establishing Session...");
           // Generate event to indicate there is issue with EVL module connection
@@ -116,18 +121,19 @@ class EnvisaLink extends EventEmitter {
     });
 
     actual.on('end', function () {
+
       self.log.info('TPI session disconnected.');
       self.isConnected = false;
     });
 
     actual.on('data', function (data) {
+
       var dataslice = data.toString().replace(/[\n\r]/g, '|').split('|');
       var source = "session_connect_status";
       self.lastmessage = Date.now(); // Every time a message comes in, reset the lastmessage timer
       for (var i = 0; i < dataslice.length; i++) {
         var datapacket = dataslice[i];
         if (datapacket !== '') {
-          
           if (datapacket.substring(0, 5) === 'Login') {
             self.log.debug("Login requested. Sending response " + self.options.password)
             self.isConnected = true;
@@ -172,7 +178,6 @@ class EnvisaLink extends EventEmitter {
                 if(self.lastsentcommand == tpi_str[1].split(',')[0]) 
                   self.log.info(`Envisakit module command return: ${tpidefs.command_response_codes[tpi_str[1].split(',')[1]]}`);
               }
-
             } else {
               var data_array = tpi_str[1].split(','); // Element number 1 should be what was matched between the () in the above match. so everything between % and $
               var command = data_array[0]; // The first part is the command.
@@ -199,7 +204,6 @@ class EnvisaLink extends EventEmitter {
                     case 'zonetimerdump':
                       zoneTimerDump(tpi, data_array);
                       break;
-
                   }
                 }
               }
@@ -214,13 +218,14 @@ class EnvisaLink extends EventEmitter {
       // clear handle for interval checking of connection
       clearTimeout(self.isConnectionIdleHandle);
 
+      // Calculate drift time
       var millis = Date.now() - self.lastmessage;
-      var deltaTime = Math.floor(millis/ 1000);
+      var deltaTime = Math.floor(millis/1000);
 
       // Was there traffic in allocated time frame?
-      self.log.debug("Checking for Heartbeat...");
-      if (deltaTime > (self.options.heartbeatInterval) || !self.isConnected) {
-        self.log.warn("Heartbeat - Time drift: ", deltaTime ," and Connection status of - ", self.isConnected, ". Trying to re-connect session...");
+      self.log.debug("Checking for Heartbeat and connection status...");
+      if (deltaTime > (self.options.heartbeatInterval) || !self.isConnected || actual === undefined || actual.destroyed) {
+        self.log.warn(`Heartbeat time drift is: ${deltaTime}, connection is active: ${self.isConnected} and the data stream object defined: ${actual !== undefined}. Trying to re-connect session...`);
         self.endSession();
         var source = "session_connect_status";
         // Generate event to indicate there is issue with EVL module connection
@@ -236,7 +241,7 @@ class EnvisaLink extends EventEmitter {
         setTimeout(function () {self.startSession()}, SESSION_TIMEOUT);
       } else {
         // Connection not idle. Check again connection idle time seconds...
-        self.log.debug("Heartbeat successful. Last message time: " + self.lastmessage)
+        self.log.debug("Heartbeat check successful and session are validate. Last message time: " + self.lastmessage)
         self.isConnectionIdleHandle = setTimeout(isConnectionIdle, (self.options.heartbeatInterval * 1000)); 
       }
     }; 
@@ -256,7 +261,6 @@ class EnvisaLink extends EventEmitter {
       var zone_array = []; // Define/initialize zone_array.
       for (var i = 0; i < zone_bits.length; i = i + 2) { // work from left to right, one byte at a time.
         var byte = parseInt(zone_bits.substr(i, 2), 16); // get the two character hex byte value into an int
-
 
         // since it's a byte, increment position by 8 bits, but since we're incrementing i by 2. for a 1 byte hex. 
         // we need to use a value of 4 to compensate. Then add 1, since we technically start counting our zones at 1, not zero. so but zero is zone 1.
@@ -336,6 +340,7 @@ class EnvisaLink extends EventEmitter {
     }
 
     function zoneTimerOpen(tpi, zone, eventtype ="fault.") {
+
       var triggerZoneEvent = false;
       var triggerLowbatteryEvent = false;
       var triggerBypassedEvent = false;
@@ -453,6 +458,7 @@ class EnvisaLink extends EventEmitter {
     }
 
     function modeToHumanReadable(mode) {
+
       if (mode === 0)
         return 'AWAY';
       else if (mode === 1)
@@ -528,6 +534,7 @@ class EnvisaLink extends EventEmitter {
     }
 
     function updateKeypad(tpi, data) {
+
       var partition = data[1]; // one byte field indicating which partition the update applies to.
       // ICON bit field is as follows:
       // 15: ARMED STAY
@@ -725,7 +732,7 @@ class EnvisaLink extends EventEmitter {
 
   endSession() {
     // Is connected terminate the connection.
-    if (actual && !actual.destroyed && this.isConnected) {
+    if (actual && !actual.destroyed) {
       actual.end();
       return true;
     } else {
