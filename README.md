@@ -5,9 +5,8 @@
 
 <p align="center">
      <img src="https://github.com/homebridge/branding/blob/latest/logos/homebridge-color-round-stylized.png" width="150">
-
-     <img src="https://github.com/haywirecoder/homebridge-envisalink-ademco/blob/master/img/link.png?raw=true" width="150">
-     <img src="https://github.com/haywirecoder/homebridge-envisalink-ademco/blob/master/img/EyezOn_logo_signature_size.png?raw=true" width="150">
+     <img src="https://github.com/haywirecoder/homebridge-envisalink-ademco/blob/master/img/link.png?raw=true" width="50">
+     <img src="https://github.com/haywirecoder/homebridge-envisalink-ademco/blob/master/img/EyezOn_logo_signature_size.png?raw=true" width="150'>
 
  </p>
 
