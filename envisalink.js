@@ -115,7 +115,7 @@ class EnvisaLink extends EventEmitter {
           });
           inTrouble = true;
         }
-      // This maybe a problem at start up and auto restart timer has been stated. Start it now.
+      // This maybe a problem at startup and auto restart timer hasn't been stated. Start it now and attemp to connect.
       if(self.shouldReconnect && self.isConnectionIdleHandle === undefined )
         { 
           self.log.info(`Re-attempting server connection every: ${self.options.heartbeatInterval} seconds.`);
