@@ -91,33 +91,36 @@ class EnvisaLink extends EventEmitter {
 
       self.log.error("EnvisaLink Network Error: ", ex);
       self.isConnected = false;
+      var source = "session_connect_status";
+      if (!inTrouble)
+      {
+          self.emit('envisalinkupdate', {
+            source: source,
+            qualifier: 1
+          });
+          inTrouble = true;
+      }
     });
 
     actual.on('close', function (hadError) {
 
+      if (hadError) self.log.error("EnvisaLink server connect closed due to a transmission error. ");
       self.isConnected = false;
       var source = "session_connect_status";
-      if (self.isConnectionIdleHandle !== undefined) 
-      {
-         clearTimeout(self.isConnectionIdleHandle);
-      }
-      setTimeout(function () {
-
-        if (self.shouldReconnect && (actual === undefined || actual.destroyed)) {
-          self.log.warn("Session closed unexpectedly. Re-establishing Session...");
-          // Generate event to indicate there is issue with EVL module connection
-          // Qualifier: 1 = Event, 3 = Restore
-          if (!inTrouble)
-          {
+      if (!inTrouble)
+        {
             self.emit('envisalinkupdate', {
-              source: source,
-              qualifier: 1
-            });
-            inTrouble = true;
-          }
-          self.startSession();
+            source: source,
+            qualifier: 1
+          });
+          inTrouble = true;
         }
-      }, SESSION_TIMEOUT);
+      // This maybe a problem at start up and auto restart timer has been stated. Start it now.
+      if(self.shouldReconnect && self.isConnectionIdleHandle === undefined )
+        { 
+          self.log.info(`Re-attempting server connection every: ${self.options.heartbeatInterval} seconds.`);
+          self.isConnectionIdleHandle = setTimeout( isConnectionIdle, (self.options.heartbeatInterval * 1000) ); // Check every idle seconds...
+        }
     });
 
     actual.on('end', function () {
@@ -130,7 +133,10 @@ class EnvisaLink extends EventEmitter {
 
       var dataslice = data.toString().replace(/[\n\r]/g, '|').split('|');
       var source = "session_connect_status";
+
+      self.log.debug("TPI Data stream: " + dataslice); // Display TPI data stream for debug
       self.lastmessage = Date.now(); // Every time a message comes in, reset the lastmessage timer
+
       for (var i = 0; i < dataslice.length; i++) {
         var datapacket = dataslice[i];
         if (datapacket !== '') {
@@ -171,7 +177,7 @@ class EnvisaLink extends EventEmitter {
               tpi_str = datapacket.match(/\^(.+)\$/); // module command string, could be result of previous command  pull out everything between the ^ sand $.
               if (tpi_str == null)
               {
-                self.log.warn("Envisalink data steam format invalid! : '" + datapacket + "'");
+                self.log.warn("Envisalink data steam format invalid. Packets must encapsulated within the % and $ sentinels: " + datapacket + ". Ignoring update.");
               }  
               else
               {
@@ -344,6 +350,7 @@ class EnvisaLink extends EventEmitter {
       var triggerZoneEvent = false;
       var triggerLowbatteryEvent = false;
       var triggerBypassedEvent = false;
+      var triggerCheckEvent = false;
       // remove leading zero from zone information
       var numZone = parseInt(zone, 10);
 
@@ -370,6 +377,7 @@ class EnvisaLink extends EventEmitter {
           if(eventtype == "fault.") triggerZoneEvent = true;
           if(eventtype == "lowbatt.") triggerLowbatteryEvent = true;
           if(eventtype == "bypassed.") triggerBypassedEvent = true;
+          if(eventtype == "check.") triggerCheckEvent = true;
       }
 
       if (activezones.length > 0) {
@@ -384,6 +392,14 @@ class EnvisaLink extends EventEmitter {
           zone: numZone,
           mode: "open",
           source: tpi.name + " Zone fault"
+        });
+      }
+       // Trigger update to fault the zone
+       if (triggerCheckEvent == true) {
+        self.emit('zoneevent', {
+          zone: numZone,
+          mode: "check",
+          source: tpi.name + " Check fault"
         });
       }
       // Trigger low battery using cid event.
@@ -422,7 +438,7 @@ class EnvisaLink extends EventEmitter {
         currZoneTime = Math.floor(Date.now() / 1000) - activezones[z].eventepoch;
         if (currZoneTime >= l_zonetimeout) {
           // Is the zone event if related to a fault
-          if(activezones[z].eventtype == "fault."){
+          if(activezones[z].eventtype == "fault." || activezones[z].eventtype == "check."){
               self.emit('zoneevent', {
                 zone: activezones[z].zone,
                 mode: "close",
@@ -571,6 +587,7 @@ class EnvisaLink extends EventEmitter {
         position++;
       }
 
+
       self.alarmSystemMode = mode;
       // Update zone information timer. 
       // Depending on the state of the update it will either represent a zone, or a user.
@@ -583,7 +600,7 @@ class EnvisaLink extends EventEmitter {
       // Check for a monitored zone
       if ((mode.substring(0, 9) == 'NOT_READY') && (keypad_txt.includes('CHECK')))
       {    
-        zoneTimerOpen(tpi, userOrZone);
+        zoneTimerOpen(tpi, userOrZone, "check.");
       }
       // System generate battery low event 
       if((keypadledstatus.low_battery) && (keypad_txt.includes('LOBAT')))
@@ -748,7 +765,7 @@ class EnvisaLink extends EventEmitter {
         actual.write(command + '\r\n');
         return true;
       } else {
-        this.log.error(`Command not successful, connection login session connected is: ${this.isConnected} and data stream object is defined: ${actual !== undefined}`);
+        this.log.error(`Command not successful. Current session connected status is: ${this.isConnected} and data stream object is defined: ${actual !== undefined}`);
         this.log.debug(`Data Stream: data stream is: ${ JSON.stringify(actual)}`);
         return false;
       }
