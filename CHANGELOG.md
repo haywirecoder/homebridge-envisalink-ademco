@@ -1,5 +1,24 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v2.0.15 (2024-09-15) 
+## Break fixes
+*  Fix re-connection logic for unexpected disconnect (issue #29)
+
+# v2.0.14 (2024-06-12) 
+## Enhancements
+*  Enhance re-connection monitoring, re-connected logic, and reporting.
+
+## Break fixes
+* Bypass something misreporting zone bypass. 
+
+
+# v2.0.13 (2024-03-05) 
+## Enhancements
+*  Enable for support reporting "Night" mode using keypad information thanks @barros001 for the suggestion.
+
+# Break fixes
+* Alarm UI not updating until switching other application and going to another view. (issue #52).
+
 # v2.0.12 (2024-02-18) 
 ## Enhancements
 *  Updates to readme and references
