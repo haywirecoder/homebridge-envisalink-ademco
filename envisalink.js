@@ -104,7 +104,7 @@ class EnvisaLink extends EventEmitter {
 
     actual.on('close', function (hadError) {
 
-      if (hadError) self.log.error("EnvisaLink server connect closed due to a transmission error. ");
+      if (hadError) self.log.error("EnvisaLink server connection closed due to a transmission error. ");
       self.isConnected = false;
       var source = "session_connect_status";
       if (!inTrouble)
@@ -115,7 +115,7 @@ class EnvisaLink extends EventEmitter {
           });
           inTrouble = true;
         }
-      // This maybe a problem at startup and auto restart timer hasn't been stated. Start it now and attemp to connect.
+      // This maybe a problem at startup and auto restart timer hasn't been stated. Start it now and attempt to connect.
       if(self.shouldReconnect && self.isConnectionIdleHandle === undefined )
         { 
           self.log.info(`Re-attempting server connection every: ${self.options.heartbeatInterval} seconds.`);
