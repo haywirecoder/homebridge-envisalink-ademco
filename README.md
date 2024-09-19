@@ -64,7 +64,7 @@ This module was designed to work with Ademco Envisalink module with the Vista se
 > - partitionNumber: partition number - *if not present consecutive number is used, which is not ideal. Not needed in a single partition configuration.*
 > - partitionPIN: partition PIN/Code - *if not present master configure PIN is used. Not needed in a single partition configuration.*
 
-**zones** *(Optional section -- At least one zone must be defined if used)*
+**zones** *(Optional section - At least one zone must be defined if used)*
 
 > - name: zone name  - *This is a required value for each entry*
 > - sensorType : co | door | glass | leak | motion | smoke | window - *This is a required value for each entry*
