@@ -15,7 +15,7 @@
 
 This module was designed to work with Ademco Envisalink module with the Vista series alarm panels. It supports alarm operations (e.g. Arm, disarm, night, and stay), bypassing of zones, and special function keys (e.g. Fire, Panic, Medical) and exposes the alarm system sensors to homebridge. <b>Note:</b> This module uses the Envisalink Third Party Interface (TPI). Make sure TPI is enabled (i.e. Alert is checked) for your module.
 
-Limits:
+<b>Limits and Consideration:</b>
 
 * Ademco panels provide limited zone information to their peripherals. The panel only provides real-time information when a zone is faulted (open) but not when it is restored (close). However, the virtual key panel is continuously updated with zone information. This module auto-sets the faulted zone (open) to restored (close) based on the value set by the *openZoneTimeout* attribute. Default configuration would result in the zone closing 30 seconds after the virtual key panel no longer reports a fault for the specific zone.
 
@@ -23,7 +23,7 @@ Limits:
 
 * Envisalink TPI interface only supports one connection: Once this plug-in is connected, any other connections will result in an error. Vice-versa, if Envisalink is being used for another purpose this module will not be able to connect. 
 
-* Envisalink TPI interface connection reliability: Ideally, both the Envisalink module and Homebridge should be on wired connections, with a static or DHCP reserved IP address within same network. Confirm you have a stable network connection to the Envisalink module before installing this plug-in. While the auto-reconnect logic option is available, it is designed for occasional network issues. Frequent drop will result in miss sensor events and unexpected plug-in shutdown.
+* Envisalink TPI interface connection reliability: Ideally both the Envisalink module and Homebridge should be on wired connections, with a static or DHCP reserved IP address within the same network. Confirm you have a stable network connection to the Envisalink module before installing this plug-in. While the auto-reconnect logic option is available, it is designed for occasional network issues. Frequent drop will result in miss sensor events and plug-in errors.
 
 * This plug-in uses two indicators for <i>NIGHT STAY</i>:  "Arm-Instant (Zero Delay-Stay)" is similar to the STAY mode, but without the entry delay feature and is usually associated with <i>NIGHT STAY</i>. The plug-in also uses virtual key panel txt as a indicator of night mode.
 
