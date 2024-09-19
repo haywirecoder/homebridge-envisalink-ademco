@@ -21,13 +21,15 @@ Limits:
 
 * When the system is "Armed" the panel no longer reports the state of each zone. All zones will age out and be considered restored once armed. Note: A bypass zone will automatically show as fault (open) once the alarm is disarmed.
 
-* Envisalink TPI interface only supports one connection. Once this plug-in is connected, any other connections will result in an error. Vice-versa, if Envisalink is being used for another purpose this module will not be able to connect. Confirm you have a stable network connection to the Envisalink module before installing this plug-in. While the auto-reconnect logic option is available, it is designed for occasional network issues.
+* Envisalink TPI interface only supports one connection: Once this plug-in is connected, any other connections will result in an error. Vice-versa, if Envisalink is being used for another purpose this module will not be able to connect. 
 
-* This plug-in uses two indicators for <i>NIGHT STAY</i>.  "Arm-Instant (Zero Delay-Stay)" is similar to the STAY mode, but without the entry delay feature and is usually associated with <i>NIGHT STAY</i>. The plug-in also uses virtual key panel txt as a indicator of night mode.
+* Envisalink TPI interface connection reliability: Ideally, both the Envisalink module and Homebridge should be on wired connections, with a static or DHCP reserved IP address within same network. Confirm you have a stable network connection to the Envisalink module before installing this plug-in. While the auto-reconnect logic option is available, it is designed for occasional network issues. Frequent drop will result in miss sensor events and unexpected plug-in shutdown.
+
+* This plug-in uses two indicators for <i>NIGHT STAY</i>:  "Arm-Instant (Zero Delay-Stay)" is similar to the STAY mode, but without the entry delay feature and is usually associated with <i>NIGHT STAY</i>. The plug-in also uses virtual key panel txt as a indicator of night mode.
 
 * To receive updates for RF Low battery, AC failure, Low Panel Battery and Bypass reporting must be enabled for the Envisakit module. Refer to https://www.eyezon.com/EZMAIN/evl4honeywell.php section "Panel Programming Options". 
 
-Please Note: It is recommended not to use the master user or installer code in the configure file. Create a separate alarm user with the proper access permissions (please refer to your panel guide).
+<b>Please Note</b>: It is recommended not to use the master user or installer code in the configure file. Create a separate alarm user with the proper access permissions (please refer to your panel guide).
   
 
 ## Configuration options
