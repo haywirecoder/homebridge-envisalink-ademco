@@ -11,6 +11,7 @@ class EnvisalinkCustomAccessory {
   constructor(log, config, Service, Characteristic, UUIDGen, alarm) {
     this.Characteristic = Characteristic;
     this.Service = Service;
+    this.UUIDGen = UUIDGen;
     this.log = log;
     this.name = config.name;
     this.config = config;
@@ -74,34 +75,25 @@ class EnvisalinkCustomAccessory {
             this.envisakitCurrentStatus = "READY";
           break;
           case 'speedkeys':
-            this.speedKeyCommand = [];
-            this.speedKeySubname = [];
-            var l_keylist = this.config.keyList;
-            for (var index = 0; index < l_keylist.length; index++) {
+            
+            var swServiceSpeedkey = this.accessory.getService(this.Service.Switch);
+            if(swServiceSpeedkey == undefined) swServiceSpeedkey = this.accessory.addService(this.Service.Switch);
+            
+            swServiceSpeedkey.setCharacteristic(this.Characteristic.On, false);
+            // bind index value to object for click events
+            swServiceSpeedkey.getCharacteristic(this.Characteristic.On) 
+                 .on('set', this.setSpeedKey.bind(this));
+            
+            if (this.config.speedcommand == "custom") 
+            {
+               this.speedKeyCommand = this.config.customcommand.replace("@pin",this.pin);
+            }
+            else
+            {
+               this.speedKeyCommand = this.config.speedcommand;
+            }  
+           
 
-              var swServiceSpeedkey = this.accessory.getServiceById(this.Service.Switch,SPEED_KEY_PREFIX+l_keylist[index].name);
-              if(swServiceSpeedkey == undefined) swServiceSpeedkey = this.accessory.addService(this.Service.Switch,l_keylist[index].name, SPEED_KEY_PREFIX+l_keylist[index].name); 
-              // bind index value to object for click events
-              swServiceSpeedkey.getCharacteristic(this.Characteristic.On) 
-                 .on('set', this.setSpeedKey.bind(this,index));
-              
-              this.speedKeySubname[index] = l_keylist[index].name;
-              if (l_keylist[index].speedcommand == "custom")  
-                  this.speedKeyCommand[index]= l_keylist[index].customcommand.replace("@pin",this.pin);
-              else
-                  this.speedKeyCommand[index]= l_keylist[index].speedcommand;
-
-             }
-             // remove old switch services if they are no longer define as part of speedkey list
-             if(this.accessory.context.swSubnames){
-              var oldSwitchnamelist = this.accessory.context.swSubnames.filter(x =>  this.speedKeySubname.indexOf(x) === -1);
-              for (var indexOld= 0; indexOld < oldSwitchnamelist.length; indexOld++) {
-                this.log.debug('setAccessory: speedkeys Removing switch - ', oldSwitchnamelist[indexOld]);
-                var swOldServiceSpeedkey = this.accessory.getServiceById(this.Service.Switch,SPEED_KEY_PREFIX+oldSwitchnamelist[indexOld]);
-                if(swOldServiceSpeedkey != undefined) this.accessory.removeService(swOldServiceSpeedkey);
-              }
-             }
-             this.accessory.context.swSubnames = this.speedKeySubname;
           break;
     }
 
@@ -198,8 +190,9 @@ class EnvisalinkCustomAccessory {
                         if (zoneinfo) {
                             // Only bypass zone that are open and has been enabled for bypass, default is false for all zone define in configuration file.
                             this.log.debug("setByPass: Reviewing zone - ", zoneinfo.name + ", " + zoneinfo.bypassEnabled);
-                            if ((zoneinfo.envisakitCurrentStatus == "open") && (zoneinfo.bypassEnabled)) {
+                            if ((zoneinfo.envisakitCurrentStatus != "close") && (zoneinfo.bypassEnabled)) {
                                 this.log(`Requesting bypassing of ${zoneinfo.name} ...`);
+                                if (zoneinfo.envisakitCurrentStatus == "check") this.warn(`${zoneinfo.name} is generating a check message, which requires your attention. This could result in unexpected results with bypass function.`);
                                 if (zonesToBypass.length > 1) zonesToBypass = zonesToBypass + ","; 
                                 // Require leading zero for zone numbers which are not two or three digit (128 Panel)
                                 if (this.deviceType == "128FBP") 
@@ -257,18 +250,17 @@ class EnvisalinkCustomAccessory {
         return callback(null, locSetValue);
     }
   }
-  async setSpeedKey(swIdentity,value,callback) {
-
-    this.log.debug('setSpeedKey:  Macro/speed keys set -', swIdentity,value,callback);
+  async setSpeedKey(value,callback) {
   
     if (value) {
         // Get the button service and updated switch soon after set function is complete
-        var switchService = this.accessory.getServiceById(this.Service.Switch,SPEED_KEY_PREFIX+this.speedKeySubname[swIdentity]);
+        var switchService = this.accessory.getService(this.Service.Switch);
         // Replace token values with pin
-        var l_alarmCommand = this.speedKeyCommand[swIdentity].replace("@pin",this.pin);
-        this.log(`Sending panel command for speed key ${this.speedKeySubname[swIdentity]}`);       
+        var l_alarmCommand = this.speedKeyCommand;
+        this.log(`Sending panel command for speed key ${this.name}`);  
+        this.log.debug(`Sending command string sent ${l_alarmCommand}`);  
         this.alarm.sendCommand(l_alarmCommand);
-          // turn off after 2 sec
+        // turn off after 2 sec
         setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,false)}.bind(this),2000);
     }
     return callback(null); 
