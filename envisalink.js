@@ -7,7 +7,8 @@ var EventEmitter = require('events');
 var tpidefs = require('./tpi.js')
 var ciddefs = require('./cid.js');
 const { isUndefined } = require('util');
-var actual;
+var EnvisalinkProxyShared = require('./EnvisalinkProxy');
+var socket;
 var activezones = [];
 var activeZoneTimeOut = undefined;
 var inTrouble = false;
@@ -24,6 +25,7 @@ class EnvisaLink extends EventEmitter {
   isProcessingBypassqueue;
   isConnected;
   alarmSystemMode;
+  proxyServer;
 
   constructor(log, config) {
     super();
@@ -32,6 +34,8 @@ class EnvisaLink extends EventEmitter {
       host: config.host,
       port: config.port ? config.port : 4025,
       password: config.password ? config.password : "user",
+      proxyEnabled: config.proxyEnabled ? config.proxyEnabled : false, 
+      proxyPort: config.proxyPort ? config.proxyPort : 4026,
     };
 
 
@@ -80,14 +84,14 @@ class EnvisaLink extends EventEmitter {
     // Display starting of connection.
     self.log.info(`Starting connection to envisalink module at: ${self.options.host}, port: ${self.options.port}`);
    
-    actual = net.createConnection({
+    socket = net.createConnection({
       
       port: self.options.port,
       host: self.options.host
     });
 
 
-    actual.on('error', function (ex) {
+    socket.on('error', function (ex) {
 
       self.log.error("EnvisaLink Network Error: ", ex);
       self.isConnected = false;
@@ -102,7 +106,7 @@ class EnvisaLink extends EventEmitter {
       }
     });
 
-    actual.on('close', function (hadError) {
+    socket.on('close', function (hadError) {
 
       if (hadError) self.log.error("EnvisaLink server connection closed due to a transmission error. ");
       self.isConnected = false;
@@ -123,13 +127,13 @@ class EnvisaLink extends EventEmitter {
         }
     });
 
-    actual.on('end', function () {
+    socket.on('end', function () {
 
       self.log.info('TPI session disconnected.');
       self.isConnected = false;
     });
 
-    actual.on('data', function (data) {
+    socket.on('data', function (data) {
 
       var dataslice = data.toString().replace(/[\n\r]/g, '|').split('|');
       var source = "session_connect_status";
@@ -151,6 +155,10 @@ class EnvisaLink extends EventEmitter {
           } else if (datapacket.substring(0, 2) === 'OK') {
             // ignore, OK is good. or report successful connection.    
             self.log.info(`Successful TPI session established.`);
+            if (self.options.proxyEnabled) {
+                  self.log.info(`Starting TPI proxy server...`);
+                  self.proxyServer = new EnvisalinkProxyShared(socket, self.options.proxyPort, self.options.password, self.log);
+            }
             // If connection had issue prior clear and generate restore event
             // Qualifier: 1 = Event, 3 = Restore
             if (inTrouble)
@@ -230,8 +238,8 @@ class EnvisaLink extends EventEmitter {
 
       // Was there traffic in allocated time frame?
       self.log.debug("Checking for Heartbeat and connection status...");
-      if (deltaTime > (self.options.heartbeatInterval) || !self.isConnected || actual === undefined || actual.destroyed) {
-        self.log.warn(`Heartbeat time drift is: ${deltaTime}, connection is active: ${self.isConnected} and the data stream object defined: ${actual !== undefined}. Trying to re-connect session...`);
+      if (deltaTime > (self.options.heartbeatInterval) || !self.isConnected || socket === undefined || socket.destroyed) {
+        self.log.warn(`Heartbeat time drift is: ${deltaTime}, connection is active: ${self.isConnected} and the data stream object defined: ${socket !== undefined}. Trying to re-connect session...`);
         self.endSession();
         var source = "session_connect_status";
         // Generate event to indicate there is issue with EVL module connection
@@ -749,8 +757,8 @@ class EnvisaLink extends EventEmitter {
 
   endSession() {
     // Is connected terminate the connection.
-    if (actual && !actual.destroyed) {
-      actual.end();
+    if (socket && !socket.destroyed) {
+      socket.end();
       return true;
     } else {
       return false;
@@ -760,13 +768,13 @@ class EnvisaLink extends EventEmitter {
   sendCommand(command) {
 
       if (!this.isMaintenanceMode) {      
-      if (actual !== undefined && this.isConnected) {
+      if (socket !== undefined && this.isConnected) {
         this.log.debug('!WARNING! PIN/CODE may appear in the clear TX > ', command);
-        actual.write(command + '\r\n');
+        socket.write(command + '\r\n');
         return true;
       } else {
-        this.log.error(`Command not successful. Current session connected status is: ${this.isConnected} and data stream object is defined: ${actual !== undefined}`);
-        this.log.debug(`Data Stream: data stream is: ${ JSON.stringify(actual)}`);
+        this.log.error(`Command not successful. Current session connected status is: ${this.isConnected} and data stream object is defined: ${socket !== undefined}`);
+        this.log.debug(`Data Stream: data stream is: ${ JSON.stringify(socket)}`);
         return false;
       }
     } else 

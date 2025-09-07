@@ -1,5 +1,13 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v2.1.0 (2025-09-15) 
+## Enhancements
+*  Support for Homebridge 2.0
+##### Warning: For Speedkey users - HomeKit's behavior with multiple services on a single accessory results in non-unique accessories names. This version will no longer group Speedkeys into one single accessory, rather it will create n unique switch for each Speedkey. This doesn't change the functionality of Speedkey, but pre-existing automation using Speedkey will have need to be re-created due to this change. This is a one time event going from 2.0x to 2.1.
+
+*  New Envisakit Proxy server, allowing sharing of the Envisakit module. <b>Please</b> read support notes in readme.
+
+
 # v2.0.15 (2024-09-15) 
 ## Break fixes
 *  Fix re-connection logic for unexpected disconnect (issue #29)

@@ -1,7 +1,7 @@
 {
   "name": "homebridge-envisalink-ademco",
   "displayName": "Homebridge Envisalink Ademco",
-  "version": "2.0.13",
+  "version": "2.1.0",
   "description": "Homebridge Plug-in Envisalink for Ademco/Honeywell",
   "main": "index.js",
   "directories": {
@@ -15,8 +15,8 @@
     "url": "https://github.com/haywirecoder/homebridge-envisalink-ademco"
   },
   "engines": {
-    "node": ">=18.12.0",
-    "homebridge": ">=1.6.0"
+    "homebridge": ">=1.8.0 || >=2.0.0",
+    "node": ">=20"
   },
   "dependencies": {
     "net": ">=1.0.2"
@@ -24,7 +24,6 @@
   "keywords": [
     "homebridge-plugin",
     "homebridge",
-    "hoobs",
     "homekit",
     "envisalink",
     "ademco",

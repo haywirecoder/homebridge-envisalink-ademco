@@ -149,7 +149,7 @@
         "description": "When the virtual keypad send a fire trouble, treat it as a warning and allow the arming" 
       },
       "ignoreSystemTrouble" : {
-        "title": "Allow alarm arming when in system trouble state. ",
+        "title": "Allow alarm arming when in System trouble state. ",
         "type": "boolean",
         "default": false,
         "description": "When the virtual keypad send a system trouble, treat it as a warning and allow the arming" 
@@ -159,6 +159,12 @@
         "type": "boolean",
         "default": false,
         "description": "Place the plug-in in maintenance mode, to allow testing and/or replacement of the Envisalink module without impacting previous automations or filling logs with error messages."
+      },
+      "proxyEnabled": {
+        "title": "Allow sharing of Envisalink TPI connection",
+        "type": "boolean",
+        "default": false,
+        "description": "Allow the sharing of Envisalink TPI connection with two other clients. Since the connection to the Envisalink server is being shared, a secondary TPI client can cause this plug-in to malfunction."
       },
       "partitions": {
         "description": "List of partitions",
@@ -303,7 +309,7 @@
           "type": "object",
           "properties": {
             "name": {
-              "title": "Speed Key Label",
+              "title": "Speed Key Label (Must be unique)",
               "type": "string",
               "required": true,
               "maxLength": 12
@@ -429,7 +435,7 @@
         {
           "key": "speedKeys",
           "title": "Speed Key (Macro) keys",
-          "description": "These Keys (A,B,C and/or D) are usually on the left side of the alarm keypad. They execute pre-stored automated sequences in the system's memory or input custom automated input sequence that imitates keypad inputs.",
+          "description": "These Keys (A,B,C and/or D) are usually on the left side of the alarm keypad. They execute pre-stored automated sequences in the system's memory or input custom automated input sequence that imitates keypad inputs. Each Key name must be unique",
           "type": "array",
           "orderable": false,
           "buttonText": "Add Speed Key",
@@ -443,19 +449,20 @@
     },
     {
       "type": "section",
-      "title": "Additional Setting (Optional)",
+      "title": "Advanced Setting (Optional)",
       "expandable": true,
       "expanded": false,
       "items": [
         "openZoneTimeout",
-        "sessionWatcher",
-        "heartbeatInterval",
         "commandTimeOut",
         "autoReconnect",
+        "sessionWatcher",
+        "heartbeatInterval",
         "ignoreFireTrouble",
         "ignoreSystemTrouble",
         "batteryRunTime",
         "envisalinkFailureSuppress",
+        "proxyEnabled",
         "maintenanceMode"
       ]
     }
