@@ -15,21 +15,21 @@
 
 This module was designed to work with Ademco Envisalink module with the Vista series alarm panels. It supports alarm operations (e.g. Arm, disarm, night, and stay), bypassing of zones, and special function keys (e.g. Fire, Panic, Medical) and exposes the alarm system sensors to homebridge. <b>Note:</b> This module uses the Envisalink Third Party Interface (TPI). Make sure TPI is enabled (i.e. Alert is checked) for your module.
 
-<b>Limits and Consideration:</b>
+Limits:
 
 * Ademco panels provide limited zone information to their peripherals. The panel only provides real-time information when a zone is faulted (open) but not when it is restored (close). However, the virtual key panel is continuously updated with zone information. This module auto-sets the faulted zone (open) to restored (close) based on the value set by the *openZoneTimeout* attribute. Default configuration would result in the zone closing 30 seconds after the virtual key panel no longer reports a fault for the specific zone.
 
 * When the system is "Armed" the panel no longer reports the state of each zone. All zones will age out and be considered restored once armed. Note: A bypass zone will automatically show as fault (open) once the alarm is disarmed.
 
-* Envisalink TPI interface only supports one connection: Once this plug-in is connected, any other connections will result in an error. Vice-versa, if Envisalink is being used for another purpose this module will not be able to connect. 
+* Envisalink TPI interface only supports one connection. Once this plug-in is connected, any other connections will result in an error. Vice-versa, if Envisalink is being used for another purpose this module will not be able to connect. The Proxy server function provided by this plug-in maybe able provide alternative method of sharing this connection. Please see notes below.
 
-* Envisalink TPI interface connection reliability: Ideally both the Envisalink module and Homebridge should be on wired connections, with a static or DHCP reserved IP address within the same network. Confirm you have a stable network connection to the Envisalink module before installing this plug-in. While the auto-reconnect logic option is available, it is designed for occasional network issues. Frequent drop will result in miss sensor events and plug-in errors.
+* Confirm you have a stable network connection to the Envisalink module before installing this plug-in. While the auto-reconnect logic option is available, it is designed for occasional network issues.
 
-* This plug-in uses two indicators for <i>NIGHT STAY</i>:  "Arm-Instant (Zero Delay-Stay)" is similar to the STAY mode, but without the entry delay feature and is usually associated with <i>NIGHT STAY</i>. The plug-in also uses virtual key panel txt as a indicator of night mode.
+* This plug-in uses two indicators for <i>NIGHT STAY</i>.  "Arm-Instant (Zero Delay-Stay)" is similar to the STAY mode, but without the entry delay feature and is usually associated with <i>NIGHT STAY</i>. The plug-in also uses virtual key panel txt as a indicator of night mode.
 
 * To receive updates for RF Low battery, AC failure, Low Panel Battery and Bypass reporting must be enabled for the Envisakit module. Refer to https://www.eyezon.com/EZMAIN/evl4honeywell.php section "Panel Programming Options". 
 
-<b>Please Note</b>: It is recommended not to use the master user or installer code in the configure file. Create a separate alarm user with the proper access permissions (please refer to your panel guide).
+**Please Note:** It is recommended not to use the master user or installer code in the configure file. Create a separate alarm user with the proper access permissions (please refer to your panel guide).
   
 
 ## Configuration options
@@ -51,7 +51,8 @@ This module was designed to work with Ademco Envisalink module with the Vista se
 | batteryRunTime    | *(optional)* User-supplied run time of main system battery backup in hours. This value allows the plug-in to estimate the remaining time when the system switches to a backup battery. |  
 | ignoreFireTrouble   | *(optional)* When the virtual keypad send a fire trouble, treat it as a warning and allow the system arm the alarm. The default is false. |
 | ignoreSystemTrouble   | *(optional)* When the virtual keypad send a system trouble, treat it as a warning and allow the system arm the alarm. The default is false. |
-| maintenanceMode   | *(optional)* Disable communication with envisakit module. The default is false. **Note:** This will disable all updates.                      |
+| proxyEnabled   | *(optional)* Create a proxy server that allows two additional Envisalink TPI clients to share the existing Envisalink TPI connection. These clients can connect to TPI default port <i>4026</i> and HTTP (web console) default port <i>4080</i> of the Homebridge server running this plug-in. The default setting is false. <p><p>**Note:** Because the connection to the Envisalink server is being shared, a secondary TPI client may cause this plug-in to malfunction.<p>**Support Notice:** Support is limited to the proxy server itself. Issues related to third-party client are not covered and will not be address.|
+| maintenanceMode   | *(optional)* Disable communication with Envisalink module. The default is false. <p>**Note:** This will disable all updates.                      |
 | **zones**         | *(optional)* List of zones to appear and monitor in Homekit                                                              |
 | **bypass**        | *(optional)* Creates a bypass control (a switch) to bypass zones that are open (faulted)                                |
 |                   | If "quickbypass" is not enabled, the bypass switch can only bypass the zone that is being monitored in Homekit, and the zone entry "bypassenable" attribute is set to true.    |
@@ -64,7 +65,7 @@ This module was designed to work with Ademco Envisalink module with the Vista se
 > - partitionNumber: partition number - *if not present consecutive number is used, which is not ideal. Not needed in a single partition configuration.*
 > - partitionPIN: partition PIN/Code - *if not present master configure PIN is used. Not needed in a single partition configuration.*
 
-**zones** *(Optional section - At least one zone must be defined if used)*
+**zones** *(Optional section -- At least one zone must be defined if used)*
 
 > - name: zone name  - *This is a required value for each entry*
 > - sensorType : co | door | glass | leak | motion | smoke | window - *This is a required value for each entry*
@@ -78,9 +79,9 @@ This module was designed to work with Ademco Envisalink module with the Vista se
 > - quickbypass : true | false   - Must be pre-configured on the alarm panel (please refer to your alarm panel programming guide). If programmed, "Quick Bypass" allows you to easily bypass all open (faulted) zones without having to configure zones individually and perform operations quickly. *This is a required value for this section*
 
 **speedkeys** *(Optional section)*
-> - name: Name of special function key to display in Homekit - *This is a required value for this section*
-> - speedcommand: A | B | C | D | Custom - Indicates which special function key (e.g. A, B, C, and D keys) will be associated with this switch. The special keys are located to the left of the numeric keys and can be programmed with special functions at the alarm panel. Custom allows the use of a command field to input a custom automated input sequence that imitates keypad inputs. *This is a required value for this section*
-> - command: Input custom automated input sequence that imitates keypad inputs. Special @pin notation will be replaced with configuration master PIN/Code. *This is required if custom is selected as speedcommand.*
+> - name: Name of special function key to display in Homekit - *This is a required value for this section and each name must be unique.*
+> - speedcommand: A | B | C | D | Custom - Indicates which special function key (e.g. A, B, C, and D keys) will be associated with this switch. The special keys are located to the left of the numeric keys and can be programmed with special functions at the alarm panel. Custom allows the use of a command field to input a custom automated input sequence that imitates keypad inputs. *This is a required value for this section* 
+> - command: Input custom automated input sequence that imitates keypad inputs. Special '@pin' notation will be replaced with configuration master PIN/Code. *This is required if custom is selected as speedcommand.*
 
 An example configuration is below.
 

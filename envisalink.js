@@ -3,12 +3,14 @@ const MAXPARTITIONS = 16;
 const MAXZONES = 128;
 const MAXALARMUSERS = 47;
 var net = require('net')
+
 var EventEmitter = require('events');
 var tpidefs = require('./tpi.js')
 var ciddefs = require('./cid.js');
 const { isUndefined } = require('util');
 var EnvisalinkProxyShared = require('./EnvisalinkProxy');
-var socket;
+var EnvisaPortForwarder = require('./TransparentPortForwarder');
+var tpiserverSocket;
 var activezones = [];
 var activeZoneTimeOut = undefined;
 var inTrouble = false;
@@ -25,7 +27,8 @@ class EnvisaLink extends EventEmitter {
   isProcessingBypassqueue;
   isConnected;
   alarmSystemMode;
-  proxyServer;
+  tpiproxyServer;
+  wcForwardServer;
 
   constructor(log, config) {
     super();
@@ -34,8 +37,13 @@ class EnvisaLink extends EventEmitter {
       host: config.host,
       port: config.port ? config.port : 4025,
       password: config.password ? config.password : "user",
+      // Envisalink Proxy server settings
       proxyEnabled: config.proxyEnabled ? config.proxyEnabled : false, 
       proxyPort: config.proxyPort ? config.proxyPort : 4026,
+      proxyValidationFilter: config.validationFilter ? config.validationFilter : null,
+      // Envisalink Web console port settings
+      wcForwardPort: config.wcForwardPort ? config.wcForwardPort : 4080,
+      wcPort: config.wcPort ? config.wcPort : 80
     };
 
 
@@ -84,14 +92,22 @@ class EnvisaLink extends EventEmitter {
     // Display starting of connection.
     self.log.info(`Starting connection to envisalink module at: ${self.options.host}, port: ${self.options.port}`);
    
-    socket = net.createConnection({
-      
+    tpiserverSocket = net.createConnection({
       port: self.options.port,
       host: self.options.host
     });
 
+    if (self.options.proxyEnabled) {
+      if (!self.tpiproxyServer) {
+        self.tpiproxyServer = new EnvisalinkProxyShared(this.options.proxyPort, this.options.password, this.options.proxyValidationFilter, this.log);
+      }
+      if (!self.wcForwardServer) {
+          self.wcForwardServer = new EnvisaPortForwarder(this.options.wcForwardPort, this.options.host, this.options.wcPort, this.log);
+      }
+    }  
 
-    socket.on('error', function (ex) {
+
+    tpiserverSocket.on('error', function (ex) {
 
       self.log.error("EnvisaLink Network Error: ", ex);
       self.isConnected = false;
@@ -104,9 +120,18 @@ class EnvisaLink extends EventEmitter {
           });
           inTrouble = true;
       }
+      // Stop proxy services
+      if (self.options.proxyEnabled) {
+        if (self.tpiproxyServer) {
+          self.tpiproxyServer.stop();
+        }
+        if (self.wcForwardServer) {
+          self.wcForwardServer.stop();      
+        }
+      }
     });
 
-    socket.on('close', function (hadError) {
+    tpiserverSocket.on('close', function (hadError) {
 
       if (hadError) self.log.error("EnvisaLink server connection closed due to a transmission error. ");
       self.isConnected = false;
@@ -119,21 +144,41 @@ class EnvisaLink extends EventEmitter {
           });
           inTrouble = true;
         }
+      // Stop proxy services
+      if (self.options.proxyEnabled) {
+        if (self.tpiproxyServer) {
+          self.tpiproxyServer.stop();
+        }
+        if (self.wcForwardServer) {
+          self.wcForwardServer.stop();      
+        }
+      }
       // This maybe a problem at startup and auto restart timer hasn't been stated. Start it now and attempt to connect.
       if(self.shouldReconnect && self.isConnectionIdleHandle === undefined )
         { 
           self.log.info(`Re-attempting server connection every: ${self.options.heartbeatInterval} seconds.`);
           self.isConnectionIdleHandle = setTimeout( isConnectionIdle, (self.options.heartbeatInterval * 1000) ); // Check every idle seconds...
         }
+
     });
 
-    socket.on('end', function () {
+    tpiserverSocket.on('end', function () {
 
       self.log.info('TPI session disconnected.');
       self.isConnected = false;
+      // Stop proxy services
+      if (self.options.proxyEnabled) {
+        if (self.tpiproxyServer) {
+          self.tpiproxyServer.stop();
+        }
+        if (self.wcForwardServer) {
+          self.wcForwardServer.stop();      
+        }
+      }
+
     });
 
-    socket.on('data', function (data) {
+    tpiserverSocket.on('data', async function (data) {
 
       var dataslice = data.toString().replace(/[\n\r]/g, '|').split('|');
       var source = "session_connect_status";
@@ -156,8 +201,11 @@ class EnvisaLink extends EventEmitter {
             // ignore, OK is good. or report successful connection.    
             self.log.info(`Successful TPI session established.`);
             if (self.options.proxyEnabled) {
-                  self.log.info(`Starting TPI proxy server...`);
-                  self.proxyServer = new EnvisalinkProxyShared(socket, self.options.proxyPort, self.options.password, self.log);
+                  self.log.info(`Starting TPI proxy server and Console Forwarder...`);
+                  if(self.tpiproxyServer.isRunning()) await self.tpiproxyServer.restart(tpiserverSocket);
+                  else await self.tpiproxyServer.start(tpiserverSocket);
+                  if(self.wcForwardServer.isRunning()) await self.wcForwardServer.restart();
+                  else await self.wcForwardServer.start();
             }
             // If connection had issue prior clear and generate restore event
             // Qualifier: 1 = Event, 3 = Restore
@@ -180,6 +228,9 @@ class EnvisaLink extends EventEmitter {
              self.log.warn("Warning: Session monitoring is disabled. Envisalink-Ademco will not watch for hung sessions.") 
             }
           } else {
+            if (self.options.proxyEnabled) {
+                self.tpiproxyServer.writeToClients(data);// Forward data to all connected proxy clients.
+            }
             var tpi_str = datapacket.match(/^%(.+)\$/); // pull out everything between the % and $
             if (tpi_str == null) {
               tpi_str = datapacket.match(/\^(.+)\$/); // module command string, could be result of previous command  pull out everything between the ^ sand $.
@@ -238,8 +289,8 @@ class EnvisaLink extends EventEmitter {
 
       // Was there traffic in allocated time frame?
       self.log.debug("Checking for Heartbeat and connection status...");
-      if (deltaTime > (self.options.heartbeatInterval) || !self.isConnected || socket === undefined || socket.destroyed) {
-        self.log.warn(`Heartbeat time drift is: ${deltaTime}, connection is active: ${self.isConnected} and the data stream object defined: ${socket !== undefined}. Trying to re-connect session...`);
+      if (deltaTime > (self.options.heartbeatInterval) || !self.isConnected || tpiserverSocket === undefined || tpiserverSocket.destroyed) {
+        self.log.warn(`Heartbeat time drift is: ${deltaTime}, connection is active: ${self.isConnected} and the data stream object defined: ${tpiserverSocket !== undefined}. Trying to re-connect session...`);
         self.endSession();
         var source = "session_connect_status";
         // Generate event to indicate there is issue with EVL module connection
@@ -757,8 +808,8 @@ class EnvisaLink extends EventEmitter {
 
   endSession() {
     // Is connected terminate the connection.
-    if (socket && !socket.destroyed) {
-      socket.end();
+    if (tpiserverSocket && !tpiserverSocket.destroyed) {
+      tpiserverSocket.end();
       return true;
     } else {
       return false;
@@ -768,13 +819,13 @@ class EnvisaLink extends EventEmitter {
   sendCommand(command) {
 
       if (!this.isMaintenanceMode) {      
-      if (socket !== undefined && this.isConnected) {
+      if (tpiserverSocket !== undefined && this.isConnected) {
         this.log.debug('!WARNING! PIN/CODE may appear in the clear TX > ', command);
-        socket.write(command + '\r\n');
+        tpiserverSocket.write(command + '\r\n');
         return true;
       } else {
-        this.log.error(`Command not successful. Current session connected status is: ${this.isConnected} and data stream object is defined: ${socket !== undefined}`);
-        this.log.debug(`Data Stream: data stream is: ${ JSON.stringify(socket)}`);
+        this.log.error(`Command not successful. Current session connected status is: ${this.isConnected} and data stream object is defined: ${tpiserverSocket !== undefined}`);
+        this.log.debug(`Data Stream: data stream is: ${ JSON.stringify(tpiserverSocket)}`);
         return false;
       }
     } else 

@@ -279,31 +279,45 @@ class EnvisalinkPlatform {
 
         // Creating macro/speed keys 
         if (this.speedKeys.length > 0) {
-            var speedkey = [];
-            speedkey.pin = this.masterPin;
-            speedkey.model = this.deviceDescription + " Keypad";
-            speedkey.customType =  "speedkeys";
-            speedkey.serialNumber = "envisalink.speedKey.all";
-            speedkey.name = "Speed Key";
-            speedkey.keyList = this.speedKeys;
-            var customAccessory = new customDevices(this.log, speedkey, Service, Characteristic, UUIDGen, alarm);
-            // check the accessory was not restored from cache
-            var foundAccessory = this.accessories.find(accessory => accessory.UUID === customAccessory.uuid)
-            if (!foundAccessory) {
-                // create a new accessory
-                let newAccessory = new this.api.platformAccessory(customAccessory.name, customAccessory.uuid);
-                // add services and Characteristic
-                customAccessory.setAccessory(newAccessory);
-                // register the accessory
-                this.addAccessory(customAccessory);
+            var islableUnique = true;
+            // Are key names unique?
+            if (this.speedKeys && Array.isArray(this.speedKeys)) {
+                const names = this.speedKeys.map(key => key.name);
+                const uniqueNames = [...new Set(names)];
+    
+                if (names.length !== uniqueNames.length) {
+                    this.log.error('Duplicate Speed Key Labels found. Each label must be unique. Ignoring Speed Key configuration.');
+                    islableUnique = false;
+                }
             }
-            else { // accessory already exist just set characteristic
-                customAccessory.setAccessory(foundAccessory);
+            
+            if (islableUnique == true) {
+                for (var i = 0; i < this.speedKeys.length; i++) {
+                    this.speedKeys[i].pin = this.masterPin;
+                    this.speedKeys[i].model = this.deviceDescription + " Keypad";
+                    this.speedKeys[i].customType =  "speedkeys";
+                    this.speedKeys[i].serialNumber = "envisalink.speedKey." + this.speedKeys[i].name
+
+                    var customAccessory = new customDevices(this.log, this.speedKeys[i], Service, Characteristic, UUIDGen, alarm);
+                    // check the accessory was not restored from cache
+                    var foundAccessory = this.accessories.find(accessory => accessory.UUID === customAccessory.uuid)
+                    if (!foundAccessory) {
+                        // create a new accessory
+                        let newAccessory = new this.api.platformAccessory(customAccessory.name, customAccessory.uuid);
+                        // add services and Characteristic
+                        customAccessory.setAccessory(newAccessory);
+                        // register the accessory
+                        this.addAccessory(customAccessory);
+                    }
+                    else { // accessory already exist just set characteristic
+                        customAccessory.setAccessory(foundAccessory);
+                    }
+                    // Add to active accessory list, which is later used to remove unused cache entries
+                    this.activeAccessoryMap[customAccessory.uuid] = true;
+                    var accessoryIndex = this.platformPartitionAccessories.push(customAccessory) - 1;
+                    this.platformPartitionAccessoryMap['c.speedkey' + i] = accessoryIndex;
+                }
             }
-            // Add to active accessory list, which is later used to remove unused cache entries
-            this.activeAccessoryMap[customAccessory.uuid] = true;
-            var accessoryIndex = this.platformPartitionAccessories.push(customAccessory) - 1;
-            this.platformPartitionAccessoryMap['c.speedkey'] = accessoryIndex;
         }
     }
 
@@ -519,19 +533,20 @@ class EnvisalinkPlatform {
 
                     // qualifier can be 1 = 'Event or Opening', 3 = 'Restore or Closing'
                     case 570:  // Bypass event
-                        if(data.qualifier == 1){ 
+                        if((data.qualifier == 1) && (alarm.isProcessingBypassqueue > 0)) { 
                             this.log(`${accessory.name} has been bypass.`);
+                            alarm.isProcessingBypassqueue = alarm.isProcessingBypassqueue - 1;
                             accessory.bypassStatus = true;
                         }
                         if(data.qualifier == 3){
                             this.log(`${accessory.name} has been un-bypass.`);
                             accessory.bypassStatus = false;
                         }
-                        alarm.isProcessingBypassqueue = alarm.isProcessingBypassqueue - 1;
+                       
                         if ((alarm.isProcessingBypassqueue <= 0 ) && (alarm.isProcessingBypass)) { 
                             alarm.isProcessingBypass = false; 
                             alarm.isProcessingBypassqueue = 0;
-                            this.log(`All queued bypass/un-bypass command(s) completed.`)
+                            this.log(`All queued bypass command(s) completed.`);
                         }
                     break;
 

@@ -1,119 +1,251 @@
 const net = require('net');
 const TPILOGINTIMEOUT = 10000; // 10 seconds timeout for TPI login
-const MAXCLIENTS = 2; // Maximum number of clients that can connect to the proxy
+const MAXCLIENTS = 3; // Maximum number of clients that can connect to the proxy
+const MAXRETRY = 5; // Maximum number of retry after failure
+
 
 class EnvisalinkProxyShared {
-    constructor(sharedSocket, proxyPort, password, log) {
-        this.sharedSocket = sharedSocket;  // Already-connected socket to the real Envisalink
+    constructor(proxyPort, password, validationFilter, log) {
+        this.proxyPort = proxyPort;
         this.password = password;
         this.log = log;
+        this.validationRegex = validationFilter || null;
         this.clients = new Set();
+        this.proxyServer = null;
+        this.sharedSocket = null;
+    }
 
-        this.server = net.createServer(clientSocket => this.handleClient(clientSocket));
+    start(sharedSocket, retryCount = 0) {
+        if (this.proxyServer) {
+            this.log.warn('Envisalink TPI Proxy: Server already running');
+            return Promise.resolve();
+        }
 
-        this.server.maxConnections = MAXCLIENTS; // Limit the number of concurrent connections
+        if (!sharedSocket) {
+            this.log.error('Envisalink TPI Proxy: Cannot start without a shared socket');
+            return Promise.reject(new Error('No shared socket provided'));
+        }
 
-        this.server.listen(proxyPort, () => {
-            this.log.info(`Envisalink TPI proxy server listening on port ${proxyPort}`);
-        });
+        this.sharedSocket = sharedSocket;
 
-        this.server.on('error', err => {
-            this.log.error(`Envisalink TPI Proxy: Server error: ${err.message}`);
-        });
+        return new Promise((resolve, reject) => {
+            this.proxyServer = net.createServer(clientSocket => this.handleClient(clientSocket));
+            this.proxyServer.maxConnections = MAXCLIENTS;
 
-        // Forward data from Envisalink to all connected proxy clients
-        this.sharedSocket.on('data', data => {
-            for (const client of this.clients) {
-                if (client.authenticated) {
-                    try {
-                        client.write(data);
-                    } catch (err) {
-                        this.log.warn(`Envisalink TPI Proxy: Server client write failed ${err.message}`);
-                        this.clients.delete(client);
-                        client.destroy();
+            // Set SO_REUSEADDR to allow faster port reuse
+            this.proxyServer.on('listening', () => {
+                this.log.info(`Envisalink TPI proxy server listening on port ${this.proxyPort}`);
+                resolve();
+            });
+
+            this.proxyServer.on('error', err => {
+                if (err.code === 'EADDRINUSE') {
+                    this.log.warn(`Envisalink TPI Proxy: Port ${this.proxyPort} in use, retrying...`);
+                    this.proxyServer = null;
+                    
+                    if (retryCount < MAXRETRY) {
+                        // Wait and retry
+                        setTimeout(() => {
+                            this.start(sharedSocket, retryCount + 1)
+                                .then(resolve)
+                                .catch(reject);
+                        }, 1000 * (retryCount + 1)); // Exponential backoff
+                    } else {
+                        this.log.error(`Envisalink TPI Proxy: Failed to bind port after ${retryCount} retries`);
+                        reject(err);
                     }
+                } else {
+                    this.log.error(`Envisalink TPI Proxy server error: ${err.message}`);
+                    this.proxyServer = null;
+                    reject(err);
                 }
-            }
-        });
+            });
 
-        this.sharedSocket.on('error', err => {
-            this.log.error(`Envisalink TPI Proxy: Server shared socket error ${err.message}`);
-        });
-
-        this.sharedSocket.on('close', () => {
-            this.log.warn('Envisalink TPI Proxy: Server shared socket closed, disconnecting proxy clients');
-            for (const client of this.clients) {
-                client.destroy();
-            }
-            this.clients.clear();
+            this.proxyServer.listen({
+                port: this.proxyPort,
+                host: '0.0.0.0',
+                exclusive: false
+            });
         });
     }
 
     handleClient(clientSocket) {
-       
         this.log.info(`Envisalink TPI Proxy: Client connected from ${clientSocket.remoteAddress}:${clientSocket.remotePort}`);
         clientSocket.authenticated = false;
+        clientSocket.cleanedUp = false; // Flag to prevent multiple cleanup calls
+        clientSocket.ready = false;
 
-        clientSocket.write("Login:\n"); // TPI login prompt
-
+        clientSocket.write("Login:\n");
         clientSocket.setTimeout(TPILOGINTIMEOUT);
+        
         let loginState = {
             step: 'awaitingPassword',
             buffer: ''
         };
 
-        clientSocket.on('data', data => {
+        // Add cleanup helper with guard against multiple calls
+        const cleanup = () => {
+            if (clientSocket.cleanedUp) {
+                return; // Already cleaned up, skip
+            }
+            clientSocket.cleanedUp = true;
             
+            this.clients.delete(clientSocket);
+            
+            if (!clientSocket.destroyed) {
+                clientSocket.destroy();
+            }
+            this.log.debug(`Envisalink TPI Proxy: Client cleanup complete. Active clients: ${this.clients.size}`);
+        };
+
+        clientSocket.on('data', data => {
             const trimmed = data.toString('utf8').trim();
 
             if (loginState.step === 'awaitingPassword') {
-    
                 if (trimmed === this.password) {
-                    clientSocket.setTimeout(0); // Disable timeout after successful login
+                    clientSocket.setTimeout(0);
                     clientSocket.authenticated = true;
                     clientSocket.write("OK\n");
-                    this.log.info(`Envisalink TPI Proxy: Client authenticated`);
+                    this.log.info(`Envisalink TPI Proxy: ${clientSocket.remoteAddress} authenticated`);
                     this.clients.add(clientSocket);
+
+                    // Add small delay before marking ready and adding to clients
+                    setTimeout(() => {
+                        if (!clientSocket.destroyed && clientSocket.authenticated) {
+                            this.clients.add(clientSocket);
+                            clientSocket.ready = true;
+                            this.log.info(`Envisalink TPI Proxy: Starting communication with ${clientSocket.remoteAddress}`);
+                        }
+                    }, 100); // 100ms grace period
                     loginState.step = 'connected';
 
                 } else {
                     this.log.warn(`Envisalink TPI Proxy: Client failed login from ${clientSocket.remoteAddress}`);
                     clientSocket.write("FAILED\n");
-                    clientSocket.end();
+                    cleanup();
                 }
                 return;
             }
 
-            // Forward client data to the real Envisalink
             if (clientSocket.authenticated && this.sharedSocket && !this.sharedSocket.destroyed) {
-                // Debug print client data 
                 this.log.debug(`Envisalink TPI Proxy: Client sent data ${trimmed}`);
                 
-                // If client send none HEX value reject it, since command is not property formatted. 
-                if (/^[0-9A-Fa-f\s,]+$/.test(trimmed)) {
+                if (!this.validationRegex || this.validationRegex.test(trimmed)) {
                     this.sharedSocket.write(trimmed + "\n");
                 } else {
-                    this.log.warn(`Envisalink TPI Proxy: Invalid formated data from client ${clientSocket.remoteAddress}: "${trimmed}"`);
+                    this.log.warn(`Envisalink TPI Proxy: Invalid formatted data from client ${clientSocket.remoteAddress}: "${trimmed}" ignoring.`);
                 }
             }
         });
 
         clientSocket.on('timeout', () => {
-                this.log.info(`Envisalink TPI Proxy: Client Timeout from ${clientSocket.remoteAddress}`);
-                clientSocket.write("Timed Out\n");
-                clientSocket.end(); // Close the connection on timeout
+            this.log.info(`Envisalink TPI Proxy: Client Timeout from ${clientSocket.remoteAddress}`);
+            clientSocket.write("Timed Out\n");
+            cleanup();
         });
 
         clientSocket.on('end', () => {
-            this.log.info(`Envisalink TPI Proxy: Client disconnected from ${clientSocket.remoteAddress}`);
-            this.clients.delete(clientSocket);
+            cleanup();
+            this.log.info(`Envisalink TPI Proxy: Client disconnected from ${clientSocket.remoteAddress}. Active clients: ${this.clients.size}`);
+        });
+
+        clientSocket.on('close', () => {
+            // Ensure cleanup even if 'end' wasn't called
+            cleanup();
         });
 
         clientSocket.on('error', err => {
-            this.log.error(`Envisalink TPI Proxy: Client socket error ${err.message}`);
-            this.clients.delete(clientSocket);
+            this.log.error(`Envisalink TPI Proxy: Client socket error ${err.message}, code: ${err.code}`);
+            cleanup();
         });
+    }
+
+    // Forward data from Envisalink to all connected proxy clients
+    writeToClients(data) {
+        // Create array copy to avoid issues if Set is modified during iteration
+        const clientsArray = Array.from(this.clients);
+        this.log.debug(`Envisalink TPI Proxy: Broadcasting to ${clientsArray.length} clients: ${data.toString().trim()}`);
+        
+        for (const client of clientsArray) {
+            if (client.authenticated && client.ready && !client.destroyed && !client.cleanedUp) {
+                try {
+                    client.write(data);
+                } catch (err) {
+                    this.log.warn(`Envisalink TPI Proxy: Server client write failed ${err.message}`);
+                    // The error event handler will call cleanup
+                    client.destroy();
+                }
+            }
+        }
+    }
+
+    stop() {
+        return new Promise((resolve) => {
+            if (!this.proxyServer) {
+                this.log.debug('Envisalink TPI Proxy: No server to stop');
+                resolve();
+                return;
+            }
+
+            this.log.info('Envisalink TPI Proxy: Closing, disconnecting proxy clients.');
+            
+            // Disconnect all clients first
+            const clientsArray = Array.from(this.clients);
+            for (const client of clientsArray) {
+                if (!client.destroyed) {
+                    try {
+                        client.destroy();
+                    } catch (err) {
+                        this.log.warn(`Envisalink TPI Proxy: Error destroying client: ${err.message}`);
+                    }
+                }
+            }
+            this.clients.clear();
+
+            // Force close the server if it's not already closing
+            if (this.proxyServer.listening) {
+                this.proxyServer.close((err) => {
+                    if (err) {
+                        this.log.warn(`Envisalink TPI Proxy: Error closing server: ${err.message}`);
+                    }
+                    this.log.info('Envisalink TPI Proxy: Server stopped.');
+                    this.proxyServer = null;
+                    this.sharedSocket = null;
+                    resolve();
+                });
+                
+                // Unref to allow process to exit
+                this.proxyServer.unref();
+            } else {
+                // Server not listening, clean up immediately
+                this.proxyServer = null;
+                this.sharedSocket = null;
+                resolve();
+            }
+        });
+    }
+
+    restart(sharedSocket) {
+        return this.stop().then(() => {
+            // Add a small delay to ensure port is fully released
+            return new Promise(resolve => setTimeout(resolve, 500));
+        }).then(() => {
+            this.log.info('Envisalink TPI Proxy: Restarting server...');
+            return this.start(sharedSocket);
+        });
+    }
+
+    isRunning() {
+        return this.proxyServer !== null && this.proxyServer.listening;
+    }
+
+    updateSharedSocket(sharedSocket) {
+        if (sharedSocket) {
+            this.sharedSocket = sharedSocket;
+            this.log.info('Envisalink TPI Proxy: Shared socket updated');
+        }
     }
 }
 
+// Export the class
 module.exports = EnvisalinkProxyShared;
