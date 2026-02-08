@@ -1,5 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
+# v2.1.2 (2026-02-07)
+## Break fixes
+* Fix HomeKit bypass switch not clearing on disarm. The panel silently clears all zone bypasses on disarm without sending per-zone CID events, so bypass state is now cleared in `partitionUpdate` when a disarmed mode is detected.
+
 # v2.1.1 (2025-09-17) 
 ## Enhancements
 * Add support to forward Envisalink web console connection to the actual Envisalink console web portal.

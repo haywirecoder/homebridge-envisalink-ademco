@@ -457,6 +457,23 @@ class EnvisalinkPlatform {
                         clearTimeout(partition.armingTimeOut);
                         partition.armingTimeOutHandle = undefined;
                     }
+
+                    // On disarm, clear bypass status for all zones since the panel clears bypasses on disarm
+                    var disarmedModes = ['READY', 'NOT_READY', 'NOT_READY_TROUBLE', 'NOT_READY_BYPASS', 'READY_BYPASS', 'READY_FIRE_TROUBLE', 'READY_SYSTEM_TROUBLE', 'ALARM_MEMORY'];
+                    if (disarmedModes.includes(data.mode)) {
+                        this.log.debug('partitionUpdate: Disarm detected, clearing all zone bypass switches.');
+                        for (var i = 0; i < this.platformZoneAccessories.length; i++) {
+                            var zoneAccessory = this.platformZoneAccessories[i];
+                            if (zoneAccessory && zoneAccessory.bypassStatus === true) {
+                                this.log(zoneAccessory.name + ' bypass cleared on disarm.');
+                                zoneAccessory.bypassStatus = false;
+                                var bypassSwitch = zoneAccessory.accessory.getService(Service.Switch);
+                                if (bypassSwitch) {
+                                    bypassSwitch.updateCharacteristic(Characteristic.On, false);
+                                }
+                            }
+                        }
+                    }
             }
                 
             }
@@ -537,10 +554,18 @@ class EnvisalinkPlatform {
                             this.log(`${accessory.name} has been bypass.`);
                             alarm.isProcessingBypassqueue = alarm.isProcessingBypassqueue - 1;
                             accessory.bypassStatus = true;
+                            var bypassSwitch = accessory.accessory.getService(Service.Switch);
+                            if (bypassSwitch) {
+                                bypassSwitch.updateCharacteristic(Characteristic.On, true);
+                            }
                         }
                         if(data.qualifier == 3){
                             this.log(`${accessory.name} has been un-bypass.`);
                             accessory.bypassStatus = false;
+                            var bypassSwitch = accessory.accessory.getService(Service.Switch);
+                            if (bypassSwitch) {
+                                bypassSwitch.updateCharacteristic(Characteristic.On, false);
+                            }
                         }
                        
                         if ((alarm.isProcessingBypassqueue <= 0 ) && (alarm.isProcessingBypass)) { 
