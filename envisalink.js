@@ -806,6 +806,12 @@ class EnvisaLink extends EventEmitter {
     }
   }
 
+/**
+ * Terminates the current TPI session with the EnvisaLink module
+ * Cleanly closes the socket connection if it exists and is not already destroyed
+ * 
+ * @returns {boolean} - True if connection was successfully terminated, false if already closed
+ */
   endSession() {
     // Is connected terminate the connection.
     if (tpiserverSocket && !tpiserverSocket.destroyed) {
@@ -816,58 +822,292 @@ class EnvisaLink extends EventEmitter {
     }
   }
 
+/**
+ * Sends a command string to the EnvisaLink TPI interface
+ * Automatically appends carriage return and line feed to the command
+ * Respects maintenance mode and validates connection before sending
+ * 
+ * @param {string} command - The command string to send to the panel
+ * @returns {boolean} - True if command was sent successfully, false otherwise
+ */
   sendCommand(command) {
-
-      if (!this.isMaintenanceMode) {      
+    if (!this.isMaintenanceMode) {      
       if (tpiserverSocket !== undefined && this.isConnected) {
         this.log.debug('!WARNING! PIN/CODE may appear in the clear TX > ', command);
         tpiserverSocket.write(command + '\r\n');
         return true;
       } else {
         this.log.error(`Command not successful. Current session connected status is: ${this.isConnected} and data stream object is defined: ${tpiserverSocket !== undefined}`);
-        this.log.debug(`Data Stream: data stream is: ${ JSON.stringify(tpiserverSocket)}`);
+        this.log.debug(`Data Stream: data stream is: ${JSON.stringify(tpiserverSocket)}`);
         return false;
       }
-    } else 
+    } else {
       this.log.warn('This module running in maintenance mode, command not sent.');
       return false;
+    }
   }
 
+/**
+ * Requests a dump of all zone timers from the EnvisaLink module
+ * Uses TPI command 02 to retrieve the raw zone timer data
+ * Zone timers show how long ago each zone was last opened/closed
+ * Response will be received via 'zonetimerdump' event
+ * 
+ * @returns {void}
+ */
   getZonesTimers() {
     var to_send = '^02,$';
     this.lastsentcommand = "02";
     this.sendCommand(to_send);
   }
 
+/**
+ * Retrieves the list of currently bypassed zones from the alarm panel
+ * Uses keypad command sequence (PIN + 6) to display bypassed zones
+ * Only executes if system is in a bypass state (NOT_READY_BYPASS or READY_BYPASS)
+ * The bypassed zones will be displayed on the virtual keypad
+ * 
+ * @param {string} pin - The user PIN code to authenticate the request
+ * @returns {void}
+ */
   getBypassedZones(pin) {
     // Request panel to list all bypass panel. Check to see if any zone is bypass, if so request panel to output using virtual keypad.
-    if((this.alarmSystemMode == 'NOT_READY_BYPASS') || (this.alarmSystemMode == 'READY_BYPASS')) {
+    if ((this.alarmSystemMode == 'NOT_READY_BYPASS') || (this.alarmSystemMode == 'READY_BYPASS')) {
       var to_send = pin + '6';
       this.lastsentcommand = "6";
       this.sendCommand(to_send);
     }
   }
 
+/**
+ * Changes the active partition on the EnvisaLink module
+ * Uses TPI command 01 to switch between partitions
+ * Validates partition number is within valid range (0 to MAXPARTITIONS-1)
+ * 
+ * @param {number} partitionNumber - The partition number to switch to (0-15)
+ * @returns {void}
+ */
   changePartition(partitionNumber) {
-
     if ((partitionNumber > -1) && (partitionNumber < MAXPARTITIONS)) {
       var to_send = '^01,' + partitionNumber.toString() + '$';
       this.lastsentcommand = "01";
       this.sendCommand(to_send);
-    }
-    else
+    } else {
       this.log.error(`Invalid Partition Number ${partitionNumber} specified when trying to change partition, ignoring.`);
+    }
   }
 
-  sendCommandToPartition(partitionNumber,command) {
+/**
+ * Sends a keypad command string to a specific partition
+ * Uses TPI command 03 to send virtual keypad key presses
+ * Validates partition number is within valid range (0 to MAXPARTITIONS-1)
+ * Command can be any valid keypad sequence (numbers, *, #, function keys)
+ * 
+ * @param {number} partitionNumber - The target partition number (0-15)
+ * @param {string} command - The keypad command string to send
+ * @returns {void}
+ */
+  sendCommandToPartition(partitionNumber, command) {
     if ((partitionNumber > -1) && (partitionNumber < MAXPARTITIONS)) {
-      var to_send = '^03,' + partitionNumber.toString() + ',' + command.toString() +'$';
+      var to_send = '^03,' + partitionNumber.toString() + ',' + command.toString() + '$';
       this.lastsentcommand = "03";
       this.sendCommand(to_send);
-    }
-    else
+    } else {
       this.log.error(`Invalid Partition Number ${partitionNumber} specified when trying to change partition, ignoring.`);
+    }
   }
+
+/**
+ * Synchronizes the Ademco alarm panel's time and date with the host computer time
+ * Uses keypad keystrokes to navigate the programming menu and set time/date
+ * Sequence: *6 + INSTALLER_CODE + 13 + HHMMMMDDYY + #
+ * Where:
+ * HH = Hours (00-23)
+ * MM = Minutes (00-59)
+ * MM = Month (01-12)
+ * DD = Day (01-31)
+ * YY = Year (00-99)
+ * 
+ * @param {string} programmerCode - The installer or Master code (typically 4 digits, default 4112)
+ * @param {number} partitionNumber - The partition number to sync (default: 1)
+ * @returns {boolean} - True if command sequence started successfully, false otherwise
+ */
+  async syncAlarmDateTime(programmerCode = '4112', partitionNumber = 1) {
+    const self = this;
+    
+    if (this.isMaintenanceMode) {
+      this.log.warn('This module is running in maintenance mode, time sync command not sent.');
+      return false;
+    }
+
+    if ((partitionNumber < 1) || (partitionNumber > MAXPARTITIONS)) {
+      this.log.error(`Invalid Partition Number ${partitionNumber} specified when trying to sync time, ignoring.`);
+      return false;
+    }
+
+    if (tpiserverSocket === undefined || !this.isConnected) {
+      this.log.error(`Time sync command not successful. Current session connected status is: ${this.isConnected} and data stream object is defined: ${tpiserverSocket !== undefined}`);
+      return false;
+    }
+
+    // Get current date and time
+    const now = new Date();
+    
+    // Format time components
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const month = (now.getMonth() + 1).toString().padStart(2, '0'); // getMonth() is 0-indexed
+    const day = now.getDate().toString().padStart(2, '0');
+    const year = now.getFullYear().toString().substr(-2);
+    
+    // Build the time/date string: HHMMMMDDYY (no day of week for *20 entry)
+    const timeString = hours + minutes + month + day + year;
+    
+    this.log.info(`Syncing alarm panel time to: ${now.toLocaleString()}`);
+    this.log.debug(`Time string to send: ${timeString}`);
+    
+    // Helper function to send keystroke with delay
+    const sendKeystroke = (keys, delayMs = 300) => {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          self.sendCommand(keys);
+          resolve();
+        }, delayMs);
+      });
+    };
+
+    try {
+      // Step 1: Enter programming mode (*6 + installer code)
+      await sendKeystroke('*6' + programmerCode, 100);
+      this.log.debug('Enter programming mode');
+      
+      // Step 2: Navigate to field *20 (time and date programming)
+      await sendKeystroke('*20', 800);
+      this.log.debug('Navigated to time/date field (*20)');
+      
+      // Step 3: Enter the time and date (HHMMMMDDYY)
+      await sendKeystroke(timeString, 800);
+      this.log.debug('Entered time/date string');
+      
+      // Step 4: Press # to save and exit programming
+      await sendKeystroke('#', 800);
+      this.log.debug('Pressed # to save');
+      
+      // Step 5: Press # again to exit programming mode completely
+      await sendKeystroke('#', 500);
+      this.log.info('Time sync sequence completed');
+      
+      return true;
+    } catch (error) {
+      this.log.error('Error during time sync sequence:', error);
+      // Try to exit programming mode
+      await sendKeystroke('##', 100);
+      return false;
+    }
+  }
+
+/**
+ * Convenience method to sync time for partition 1 with default installer code
+ * @param {string} programmerCode - The installer or Master code (default: 4112)
+ * @returns {Promise<boolean>} - True if command was sent successfully, false otherwise
+ */
+  async syncDateTime(programmerCode = '4112') {
+    return await this.syncAlarmDateTime(programmerCode, 1);
+  }
+
+/**
+ * Reads the current time and date from the alarm panel keypad display
+ * Uses keypad keystrokes to navigate to field *20 and read the display
+ * Sequence: *6 + INSTALLER_CODE + 20
+ * The panel will display current time/date which can be read from keypad updates
+ * 
+ * @param {string} programmerCode - The installer or Master code (typically 4 digits, default 4112)
+ * @param {number} partitionNumber - The partition number to query (default: 1)
+ * @returns {Promise<boolean>} - True if command was sent successfully, false otherwise
+ */
+  async getAlarmDateTime(programmerCode = '4112', partitionNumber = 1) {
+    const self = this;
+    
+    if (this.isMaintenanceMode) {
+      this.log.warn('This module is running in maintenance mode, get time command not sent.');
+      return false;
+    }
+
+    if ((partitionNumber < 1) || (partitionNumber > MAXPARTITIONS)) {
+      this.log.error(`Invalid Partition Number ${partitionNumber} specified when trying to get time, ignoring.`);
+      return false;
+    }
+
+    if (tpiserverSocket === undefined || !this.isConnected) {
+      this.log.error(`Get time command not successful. Current session connected status is: ${this.isConnected} and data stream object is defined: ${tpiserverSocket !== undefined}`);
+      return false;
+  }
+
+  // Helper function to send keystroke with delay
+  const sendKeystroke = (keys, delayMs = 300) => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        self.sendCommand(keys);
+        resolve();
+      }, delayMs);
+    });
+  };
+
+  try {
+    this.log.info('Requesting current alarm panel time from keypad...');
+    
+    // Step 1: Enter programming mode (*6 + installer code)
+    await sendKeystroke('*6' + programmerCode, 100);
+    this.log.debug('Enter programming mode');
+    
+    // Step 2: Navigate to field *20 (time and date programming)
+    // The panel will display the current time on the keypad
+    await sendKeystroke('*20', 800);
+    this.log.debug('Navigated to time/date field (*20) - check keypad display');
+    
+    // Step 3: Exit programming mode without changes
+    await sendKeystroke('##', 500);
+    this.log.info('Exited programming mode - time displayed on keypad');
+    
+    return true;
+  } catch (error) {
+    this.log.error('Error during get time sequence:', error);
+    // Try to exit programming mode
+    await sendKeystroke('##', 100);
+    return false;
+  }
+}
+
+// Usage examples:
+// 
+// 1. Sync time with the alarm panel (async/await):
+//    await envisalink.syncDateTime('4112');
+//    // or for a specific partition with custom installer code:
+//    await envisalink.syncAlarmDateTime('4112', 1);
+//
+// 2. Get current alarm panel time (reads from keypad display):
+//    await envisalink.getAlarmDateTime('4112');
+//    // Watch for 'keypadupdate' events to see the displayed time
+//
+// 3. Set up automatic time sync (e.g., daily at 3 AM):
+//    setInterval(async () => {
+//      await envisalink.syncDateTime('4112');
+//    }, 24 * 60 * 60 * 1000); // Every 24 hours
+//
+// 4. Sync time on successful connection:
+//    envisalink.on('envisalinkupdate', async (event) => {
+//      if (event.source === 'session_connect_status' && event.qualifier === 3) {
+//        // Connection restored - wait a bit then sync
+//        setTimeout(async () => {
+//          await envisalink.syncDateTime('4112');
+//        }, 3000);
+//      }
+//    });
+//
+// 5. Monitor keypad updates to see time display:
+//    envisalink.on('keypadupdate', (data) => {
+//      console.log('Keypad display:', data.code.txt);
+//    });
 
 }
 module.exports = EnvisaLink
