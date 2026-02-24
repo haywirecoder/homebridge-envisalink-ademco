@@ -2,10 +2,10 @@
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
 # v2.1.2 (2026-02-28) 
 ## Enhancements
-* Add support for titl sensors as persence sensor.
+* Add support for titl sensors as an occupancy sensor.
 
 ## Break fixes
-* Fix clear zone bypass status on disarm. Thanks @joshjohanning
+* Fix zone bypass switches on alarm disarm event. Thanks @joshjohanning
 
 # v2.1.1 (2025-09-17) 
 ## Enhancements
