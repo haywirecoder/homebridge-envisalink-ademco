@@ -138,6 +138,7 @@ class EnvisalinkPlatform {
              partition.ignoreFireTrouble =  this.ignoreFireTrouble;
              // Allow alarm to be enable with system trouble
              partition.ignoreSystemTrouble = this.ignoreSystemTrouble;
+             partition.clearzonebypass = false;
 
             var partitionAccessory = new partitionDevice(this.log, partition, Service, Characteristic, UUIDGen, alarm);
             // check the accessory was not restored from cache
@@ -458,14 +459,17 @@ class EnvisalinkPlatform {
                         partition.armingTimeOutHandle = undefined;
                     }
 
-                    // On disarm, clear bypass status for all zones since the panel clears bypasses on disarm
-                    var disarmedModes = ['READY', 'NOT_READY', 'NOT_READY_TROUBLE', 'NOT_READY_BYPASS', 'READY_BYPASS', 'READY_FIRE_TROUBLE', 'READY_SYSTEM_TROUBLE', 'ALARM_MEMORY'];
-                    if (disarmedModes.includes(data.mode)) {
-                        this.log.debug('partitionUpdate: Disarm detected, clearing all zone bypass switches.');
+                    // On system 'ARMED', set flag to clear bypass status for all zones when system comes out of 'ARMED" state since the panel clears bypasses on disarm.
+                    if (data.mode.includes('ARMED')) partition.clearzonebypass = true;
+
+                    // Since panel will clear bypass on disarm, when we detect system is no longer 'ARMED' and flag is set to clear bypass, clear all bypass switches since we know the panel has cleared bypass. 
+                    // This is needed to keep the state of the bypass switch in sync with the actual bypass status of the zones.
+                    if (partition.clearzonebypass && !data.mode.includes('ARMED')) { 
+                        this.log.debug('partitionUpdate: Disarm detected. Clearing all zone bypass switches, since panel will clear bypass.');
                         for (var i = 0; i < this.platformZoneAccessories.length; i++) {
                             var zoneAccessory = this.platformZoneAccessories[i];
                             if (zoneAccessory && zoneAccessory.bypassStatus === true) {
-                                this.log(zoneAccessory.name + ' bypass cleared on disarm.');
+                                this.log('Alarm is disarmed. Clearing bypass switch for zone ' + zoneAccessory.name);
                                 zoneAccessory.bypassStatus = false;
                                 var bypassSwitch = zoneAccessory.accessory.getService(Service.Switch);
                                 if (bypassSwitch) {
@@ -473,6 +477,8 @@ class EnvisalinkPlatform {
                                 }
                             }
                         }
+                        // reset flag until next arming event
+                        partition.clearzonebypass = false;
                     }
             }
                 
