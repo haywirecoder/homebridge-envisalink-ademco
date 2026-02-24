@@ -21,23 +21,34 @@ class EnvisalinkZoneAccessory {
 
     this.ENVISA_TO_HOMEKIT_MOTION = {
       'open': true,
+      'check': true,
       'close': false
     };
     this.ENVISA_TO_HOMEKIT_CONTACT = {
       'open': Characteristic.ContactSensorState.CONTACT_NOT_DETECTED,
+      'check': Characteristic.ContactSensorState.CONTACT_NOT_DETECTED,
       'close': Characteristic.ContactSensorState.CONTACT_DETECTED
     };
     this.ENVISA_TO_HOMEKIT_LEAK = {
       'open': Characteristic.LeakDetected.LEAK_DETECTED,
+      'check': Characteristic.LeakDetected.LEAK_DETECTED,
       'close': Characteristic.LeakDetected.LEAK_NOT_DETECTED
     };
     this.ENVISA_TO_HOMEKIT_SMOKE = {
       'open': Characteristic.SmokeDetected.SMOKE_DETECTED,
+      'check': Characteristic.LeakDetected.SMOKE_DETECTED,
       'close': Characteristic.SmokeDetected.SMOKE_NOT_DETECTED
     };
     this.ENVISA_TO_HOMEKIT_CO = {
       'open': Characteristic.CarbonMonoxideDetected.CO_LEVELS_ABNORMAL,
+      'check': Characteristic.CarbonMonoxideDetected.CO_LEVELS_ABNORMAL,
       'close': Characteristic.CarbonMonoxideDetected.CO_LEVELS_NORMAL
+    };
+    this.ENVISA_TO_HOMEKIT_OCCUPANCY = {
+      'open': Characteristic.OccupancyDetected.OCCUPANCY_DETECTED,
+      'check': Characteristic.OccupancyDetected.OCCUPANCY_DETECTED,
+      'close': Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED
+
     };
 
   
@@ -79,6 +90,33 @@ class EnvisalinkZoneAccessory {
           }
 
       break;
+
+      case 'tilt':
+          // Create Occupancy Sensor service
+          var OccupancyService = this.accessory.getService(this.Service.OccupancySensor);
+          if(OccupancyService == undefined) OccupancyService = this.accessory.addService(this.Service.OccupancySensor,this.name); 
+          OccupancyService.getCharacteristic(this.Characteristic.OccupancyDetected)
+          .on('get', async callback => this.getOccupancyStatus(callback));
+          OccupancyService.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+          OccupancyService.setCharacteristic(this.Characteristic.StatusTampered, this.Characteristic.StatusTampered.NOT_TAMPERED);
+          OccupancyService.setCharacteristic(this.Characteristic.StatusFault, this.Characteristic.StatusFault.NO_FAULT);
+          this.service = OccupancyService;
+          this.bypassEnabled = this.config.bypassEnabled ? this.config.bypassEnabled : false;
+          this.commandTimeOut = this.config.commandTimeOut;
+          this.envisakitCurrentStatus = "close";
+
+          // Bypass switch for individual sensor only if the master bypass switch is disabled. 
+          var swbypass = this.accessory.getService(this.Service.Switch);
+          if(this.bypassEnabled && !this.config.masterBypass) {
+              if(swbypass == undefined) swbypass = this.accessory.addService(this.Service.Switch,this.name + " bypass"); 
+              swbypass.getCharacteristic(this.Characteristic.On) 
+                  .on('get', async callback => this.getByPass(callback))
+                  .on('set', async (state, callback) => this.setByPass(state, callback));  
+          }
+          else {
+            if (swbypass!= undefined) this.accessory.removeService(swbypass);
+          }
+        break;
   
       case 'door':
       case 'window':
@@ -170,6 +208,10 @@ class EnvisalinkZoneAccessory {
 
   async getMotionStatus(callback) {
     callback(null, this.ENVISA_TO_HOMEKIT_MOTION[this.envisakitCurrentStatus]); 
+  }
+
+  async getOccupancyStatus(callback) {
+    callback(null, this.ENVISA_TO_HOMEKIT_OCCUPANCY[this.envisakitCurrentStatus]); 
   }
 
   async getContactSensorStatus(callback) {
