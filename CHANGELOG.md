@@ -1,13 +1,16 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
-# v2.1.2 (2026-02-07)
+# v2.1.2 (2026-02-28) 
+## Enhancements
+* Add support for titl sensors as persence sensor.
+
 ## Break fixes
-* Fix HomeKit bypass switch not clearing on disarm. The panel silently clears all zone bypasses on disarm without sending per-zone CID events, so bypass state is now cleared in `partitionUpdate` when a disarmed mode is detected.
+* Fix clear zone bypass status on disarm. Thanks @joshjohanning
 
 # v2.1.1 (2025-09-17) 
 ## Enhancements
-* Add support to forward Envisalink web console connection to the actual Envisalink console web portal.
-* Re-factoring of Envisalink Proxy to handle more possible errors and provide an options for regex filter for clients commands.
+* Add support to forward proxy server Envisalink web connection to the true Envisalink web portal.
+* Re-factoring of Envisalink Proxy to handle more errors conditions.
 
 ## Break fixes
 * Fix Envisalink Proxy rejecting some validate TPI commands structures.
@@ -15,7 +18,7 @@ All notable changes to this project will be documented in this file. This projec
 # v2.1.0 (2025-09-10) 
 ## Enhancements
 *  Support for Homebridge 2.0
-##### Warning For Speedkey users: - HomeKit's behavior with multiple services on a single accessory results in non-unique accessories names. This version will no longer group Speedkeys into one single accessory, rather it will create n unique switch for each Speedkey. This doesn't change the functionality of Speedkey, but pre-existing automation using Speedkey will need to be re-created due to this change. This is a one time event going from 2.0.x to 2.1.X
+##### Warning For Speedkey users: - HomeKit's behavior with multiple services on a single accessory results in non-unique accessories names. This version will no longer group Speedkeys into one single accessory, rather it will create unique switches for each Speedkey. This doesn't change the functionality of Speedkey, but pre-existing automation using Speedkey will need to be re-created due to this change. This is a one time event going from 2.0.x to 2.1.X
 
 *  New Envisalink Proxy server, allowing sharing of the Envisakit module. <b>Please</b> read support notes in readme.
 

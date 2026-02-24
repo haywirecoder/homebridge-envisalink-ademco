@@ -68,7 +68,7 @@ Limitations:
 **zones** *(Optional section -- At least one zone must be defined if used)*
 
 > - name: Zone name - *This is a required value for each entry.*
-> - sensorType: co | door | glass | leak | motion | smoke | window - *This is a required value for each entry.*
+> - sensorType: co | door | glass | leak | motion | smoke | tilt | window - *This is a required value for each entry.*
 > - partition: Sensor partition number - *This is a required value for each entry.*
 > - zoneNumber: Panel zone number for the sensor. The presence of this attribute triggers consecutive or non-consecutive zone numbering (see example). *This attribute is required if your system has unused zones, uses non-consecutive zone numbering, or if you want to selectively display zones within HomeKit.*
 > - bypassEnabled: true | false - A true value allows zones to be bypassed. This setting works in conjunction with the bypass control option (below). *This is an optional element and defaults to false. The alarm system will not allow fire or emergency zones to be bypassed.*

@@ -109,7 +109,7 @@ class EnvisalinkPlatform {
     }
 
     // ****************************************************
-    // * Homekit Accessories from envisalink module        *
+    // * Homekit Accessories from envisalink module       *
     // ****************************************************
     // Create associates in Homekit based on configuration file
     refreshPartitionsAccessories() {
@@ -168,7 +168,7 @@ class EnvisalinkPlatform {
          var maxZone = this.zones.length;
          for (var i = 0; i < this.zones.length; i++) {
              var zone = this.zones[i];
-             if ((zone.sensorType == "motion" || zone.sensorType == "glass" || zone.sensorType == "window" || zone.sensorType == "door" || zone.sensorType == "leak" || zone.sensorType == "smoke" || zone.sensorType == "co") && (zone.name != undefined)){
+             if ((zone.sensorType == "motion" || zone.sensorType == "tilt" || zone.sensorType == "glass" || zone.sensorType == "window" || zone.sensorType == "door" || zone.sensorType == "leak" || zone.sensorType == "smoke" || zone.sensorType == "co") && (zone.name != undefined)){
                 var zoneNum = Number(zone.zoneNumber ? zone.zoneNumber : (i+1));
                 if (zoneNum > maxZone) {
                      maxZone = zoneNum;
@@ -497,7 +497,11 @@ class EnvisalinkPlatform {
                     case "glass":
                         if (accessoryService) accessoryService.getCharacteristic(Characteristic.MotionDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_MOTION[data.mode]);  
                     break;
-
+    
+                    case "tilt":
+                        if (accessoryService) accessoryService.getCharacteristic(Characteristic.OccupancyDetected).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_OCCUPANCY[data.mode]);  
+                    break;
+                    
                     case "door":
                     case "window":
                         if (accessoryService) accessoryService.getCharacteristic(Characteristic.ContactSensorState).setValue(zoneaccessory.ENVISA_TO_HOMEKIT_CONTACT[data.mode]);  

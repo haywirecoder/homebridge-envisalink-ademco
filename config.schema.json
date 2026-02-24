@@ -263,6 +263,12 @@
                   ]
                 },
                 {
+                  "title": "Tilt",
+                  "enum": [
+                    "tilt"
+                  ]
+                },
+                {
                   "title": "Window",
                   "enum": [
                     "window"
