@@ -1,7 +1,11 @@
 "use strict";
 var tpidefs = require('./../tpi.js');
+const BYPASSZONETIMEOUTFACTOR = 6000;
+const CHARACTERISTICTIMEOUT = 2000;
 
 const ENVISALINK_MANUFACTURER = "Envisacor Technologies Inc."
+
+const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
 
 class EnvisalinkZoneAccessory {
   constructor(log, config, Service, Characteristic, UUIDGen, alarm) {
@@ -13,10 +17,13 @@ class EnvisalinkZoneAccessory {
     this.sensorType = config.sensorType;
     this.accessoryType =  "sensor";
     this.zoneNumber = config.zoneNumber;
+    this.partition = config.partition;
     this.pin = config.pin;
     this.alarm = alarm;
     this.bypassStatus = false;
+    this.targetUnbypassZone = false;
     this.uuid = UUIDGen.generate(this.config.serialNumber);
+    this.commandTimeOut= config.commandTimeOut ? config.commandTimeOut : 10;
     
 
     this.ENVISA_TO_HOMEKIT_MOTION = {
@@ -238,18 +245,20 @@ class EnvisalinkZoneAccessory {
 
   // Timer triggered event if bypass does not occur in an allocated time frame.
   processBypassTimer() {
-    if (this.alarm.isProcessingBypass) {
+    if (this.alarm.isProcessingBypass || this.alarm.isProcessingUnBypass) {
         this.log.warn(`Bypass request did not return successfully in the allocated time.`);
         this.alarm.isProcessingBypass = false;
+        this.alarm.isProcessingUnBypass = false;
         this.alarm.isProcessingBypassqueue = 0;
+        this.alarm.commandreferral = "";
     } 
   }
 
 async setByPass(value, callback) {
     this.log.debug("setByPass: zone - ", this.name + ", " + this.zoneNumber); 
 
-    if (this.alarm.isProcessingBypass) {
-      this.log(`Already processing Bypass request. Command ignored.`);
+    if (this.alarm.isProcessingBypass || this.alarm.isProcessingUnBypass) {
+      this.log(`Already processing Bypass or UnBypass request. Command ignored.`);
       return callback(null);
     }
     // Bypass is only available if system is not armed, alarm or in-trouble state.
@@ -258,7 +267,8 @@ async setByPass(value, callback) {
       var l_zonesToBypass;
       var l_alarmCommand;
       this.alarm.isProcessingBypass = true;
-
+      this.alarm.isProcessingUnBypass = false;
+      this.targetUnbypassZone = false;
       // If switch is bypass is on for zone, clear system (disarm system), otherwise bypass selected zone.
       if (value)
       {
@@ -270,19 +280,26 @@ async setByPass(value, callback) {
           l_zonesToBypass  = (("0" + this.zoneNumber).slice(-2));
       
         l_alarmCommand = this.pin + tpidefs.alarmcommand.bypass + l_zonesToBypass;
+        this.alarm.commandreferral = tpidefs.alarmcommand.bypass;
         this.alarm.isProcessingBypassqueue = 1;
+        this.targetUnbypassZone = false;
     
       }
       else {
         this.log(`Removing bypassing of ${this.name} ...`);
-      l_alarmCommand = this.pin + tpidefs.alarmcommand.disarm;
-      } 
+        this.targetUnbypassZone = true;
+        this.alarm.isProcessingUnBypass = true;
+        this.alarm.isProcessingBypass = false;
+        // Customer grade Vista panels (15P/20P) don't support "unbypassing" a specific zone, the logic must used to 
+        // 1) Identify all currently bypassed zones, 2) Clear all bypassed using Disarmed and 3) Re-bypass other zone. 
+        // TargetUnbypassZone store the specific zone targeted.
+        l_alarmCommand = this.pin + tpidefs.alarmcommand.disarm;
+        this.alarm.commandreferral = tpidefs.alarmcommand.targetedunbypass;
+      }  
     
-      // Set busy status on process Bypass
-      this.byPassTimeOut = setTimeout(this.processBypassTimer.bind(this), this.commandTimeOut * 1000);
       this.alarm.sendCommand(l_alarmCommand);
-      await new Promise(r => setTimeout(r, 2000));
-      // Set current of switch
+      // Set busy status on process Bypass. Time for zone bypass command be lenghty setting value 6x higher than the default command time out to allow for the processing time of bypassing a zone.
+      this.byPassTimeOut = setTimeout(this.processBypassTimer.bind(this), this.commandTimeOut * BYPASSZONETIMEOUTFACTOR);
       this.bypassStatus = value;
     }
     else

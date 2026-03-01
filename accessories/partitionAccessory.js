@@ -2,6 +2,8 @@
 var tpidefs = require('./../tpi.js');
 
 const ENVISALINK_MANUFACTURER = "Envisacor Technologies Inc."
+const TIMEOUTFACTOR = 1000;
+const ACCESSORIESTIMEOUT = 1000;
 
 const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
 
@@ -23,6 +25,10 @@ class EnvisalinkPartitionAccessory {
       this.ignoreFireTrouble =  config.ignoreFireTrouble;
       this.ignoreSystemTrouble = config.ignoreSystemTrouble;
       this.alarm = alarm;
+      // Create variable and object to manage zone bypass. The zone bypass list will maintain the list of zone bypass and use as memory when alarm reset
+      this.bypassedZones = new Set();
+      this.clearZoneBypass = false;
+      this.bypassedZonesMemory = config.bypassedZonesMemory ? config.bypassedZonesMemory :false;
 
       this.ENVISA_TO_HOMEKIT_CURRENT = {
         'NOT_READY': Characteristic.SecuritySystemCurrentState.DISARMED,
@@ -141,6 +147,7 @@ class EnvisalinkPartitionAccessory {
       if (this.processingPartitionCmd) {
           this.log.warn(`Alarm request did not return successfully in allocated time. Current alarm status is ${this.envisakitCurrentStatus}`);
           this.armingTimeOutHandle = undefined;
+          this.alarm.commandreferral = "";
           this.setAlarmRecoveryValues();
       } 
   }
@@ -192,6 +199,7 @@ class EnvisalinkPartitionAccessory {
                       this.log(`Disarming the alarm system with PIN, [Partition ${this.partitionNumber}].`);
                       l_alarmCommand = this.pin + tpidefs.alarmcommand.disarm;
                       l_envisaliklocalStatus = "READY";
+                      this.alarm.commandreferral = tpidefs.alarmcommand.disarm;
                   } else this.log("Disarming the alarm system is required prior to changing alarm system state, request is ignored.");
               break;
 
@@ -220,14 +228,17 @@ class EnvisalinkPartitionAccessory {
                       this.log(`Arming the alarm system to Stay (Home), [Partition ${this.partitionNumber}].`);
                       l_alarmCommand = this.pin + tpidefs.alarmcommand.stay;
                       l_envisaliklocalStatus = "ARMED_STAY";
+                      this.alarm.commandreferral = tpidefs.alarmcommand.stay;
                   } else if (homekitState == this.Characteristic.SecuritySystemCurrentState.NIGHT_ARM) {
                       this.log(`Arming the alarm system to Night, [Partition ${this.partitionNumber}].`);
                       l_alarmCommand = this.pin + tpidefs.alarmcommand.night;
                       l_envisaliklocalStatus = "ARMED_NIGHT";
+                      this.alarm.commandreferral = tpidefs.alarmcommand.night;
                   } else if (homekitState == this.Characteristic.SecuritySystemCurrentState.AWAY_ARM) {
                       this.log(`Arming the alarm system to Away, [Partition ${this.partitionNumber}].`);
                       l_envisaliklocalStatus = "ARMED_AWAY";
                       l_alarmCommand = this.pin + tpidefs.alarmcommand.away;
+                      this.alarm.commandreferral = tpidefs.alarmcommand.away;
                   }
               break;
 
@@ -254,14 +265,14 @@ class EnvisalinkPartitionAccessory {
         if (this.changePartition) {
                 this.log(`Changing Partition to ${this.partitionNumber}`);
                 this.alarm.changePartition(this.partitionNumber);
-                await sleep(3000);
+                sleep(3000);
         }
         if (this.alarm.sendCommand(l_alarmCommand))
         {
            // Alarm was successful
           this.log.debug("setTargetState: Command(s) sent successfully.");
           // Confirm success by monitoring for partition change event. IF event doesn't occur X, assume failure and roll back.
-          this.armingTimeOutHandle = setTimeout(this.processAlarmTimer.bind(this), this.commandTimeOut * 1000);
+          this.armingTimeOutHandle = setTimeout(this.processAlarmTimer.bind(this), this.commandTimeOut * TIMEOUTFACTOR);
          
           // Alarm was successful
           // Workaround to prevent Home UI from flip back and forth initial set targetstate to STAY while setting UI to NIGHT. 
@@ -269,14 +280,14 @@ class EnvisalinkPartitionAccessory {
           if (l_envisaliklocalStatus != "ARMED_NIGHT") this.homekitLastTargetState = homekitState
           else this.homekitLastTargetState = this.Characteristic.SecuritySystemTargetState.STAY_ARM;
 
-          // Set UI stateus
+          // Set UI status
           this.envisakitCurrentStatus = l_envisaliklocalStatus;
-          this.setSecuritySystemValueHandle = setTimeout(this.setAlarmValues.bind(this),500);
+          this.setSecuritySystemValueHandle = setTimeout(this.setAlarmValues.bind(this),ACCESSORIESTIMEOUT/2);
           return callback(null);
         }
     } 
     this.log.debug("setTargetState: Command unsuccessful, returning to homekit previous state - ", l_homekitState);
-    this.setSecuritySystemValueHandle = setTimeout(this.setAlarmRecoveryValues.bind(this),1000);
+    this.setSecuritySystemValueHandle = setTimeout(this.setAlarmRecoveryValues.bind(this),ACCESSORIESTIMEOUT);
     return callback(null);
 
   }
@@ -313,6 +324,85 @@ class EnvisalinkPartitionAccessory {
 
   async getSecuritySystemService() {
     return this.accessory.getService(this.Service.SecuritySystem);
+  }
+
+  // Reestablish zone bypasses from plug-in memory. The plugin tracks bypassed zones in the bypassedZones set, 
+  // but the panel will clear all bypasses on an alarm disarm, creating a mismatch between the plugin and panel states.
+  // This method re-sends a single combined bypass command for all zones tracked in bypassedZones,
+  // restoring the panel state to match the plugin's internal set.
+  //
+  reestablishZoneBypass() {
+
+    if (this.bypassedZones.size === 0) {
+        this.log.debug(`reestablishZoneBypass: [Partition ${this.partitionNumber}] No zones to reestablish.`);
+        return;
+    }
+
+    this.log(`reestablishZoneBypass: [Partition ${this.partitionNumber}] Reestablishing bypass for zone(s): ${Array.from(this.bypassedZones)}`);
+
+    let zonesToBypass = "";
+    let bypassCount = 0;
+
+    for (const zoneNumber of this.bypassedZones) {
+        if (zonesToBypass.length > 0) zonesToBypass = zonesToBypass + ",";
+
+        if (this.deviceType == "128FBP")
+            zonesToBypass = zonesToBypass + (("00" + zoneNumber).slice(-3));
+        else
+            zonesToBypass = zonesToBypass + (("0" + zoneNumber).slice(-2));
+
+        bypassCount++;
+    }
+
+    const l_alarmCommand = this.pin + tpidefs.alarmcommand.bypass + zonesToBypass;
+    this.alarm.commandreferral = tpidefs.alarmcommand.bypass;
+    this.alarm.isProcessingBypassqueue = bypassCount;
+    this.alarm.sendCommand(l_alarmCommand);
+
+    this.log(`reestablishZoneBypass: [Partition ${this.partitionNumber}] ${bypassCount} zone(s) sent for re-bypass.`);
+  }
+  // Restore bypassedZones from Homebridge storage on plugin startup.
+  // Returns true if data was restored, false if no file found or load failed.
+  restoreBypassedZones() {
+    const fs = require('fs');
+    const path = require('path');
+
+    try {
+        const filePath = path.join(this.alarm.api.user.storagePath(), 
+            `envisalink-bypass-p${this.partitionNumber}.json`);
+
+        if (!fs.existsSync(filePath)) {
+            this.log.debug(`restoreBypassedZones: [Partition ${this.partitionNumber}] No saved bypass file found, starting fresh.`);
+            return false;
+        }
+
+        const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        if (Array.isArray(data.bypassedZones)) {
+            this.bypassedZones = new Set(data.bypassedZones);
+            this.log(`restoreBypassedZones: [Partition ${this.partitionNumber}] Restored zones: ${Array.from(this.bypassedZones)}`);
+            return true;
+        }
+    } catch (err) {
+        this.log.warn(`restoreBypassedZones: [Partition ${this.partitionNumber}] Failed to restore bypassedZones: ${err.message}`);
+    }
+    return false;
+  }
+
+// Persist bypassedZones to Homebridge storage so it survives plugin restarts.
+// File is stored at <homebridge_storage_path>/envisalink-bypass-p<partitionNumber>.json
+saveBypassedZones() {
+    const fs = require('fs');
+    const path = require('path');
+
+    try {
+        const filePath = path.join(this.alarm.api.user.storagePath(), 
+            `envisalink-bypass-p${this.partitionNumber}.json`);
+        const data = JSON.stringify({ bypassedZones: Array.from(this.bypassedZones) });
+        fs.writeFileSync(filePath, data, 'utf8');
+        this.log.debug(`saveBypassedZones: [Partition ${this.partitionNumber}] Saved zones: ${Array.from(this.bypassedZones)}`);
+    } catch (err) {
+        this.log.warn(`saveBypassedZones: [Partition ${this.partitionNumber}] Failed to save bypassedZones: ${err.message}`);
+    }
   }
 }
 
