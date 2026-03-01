@@ -249,7 +249,8 @@ exports.led_status = {
     'max': '4',
     'night': '33',
     'stay': '3',
-    'togglechime': '9'
+    'togglechime': '9',
+    'targetedunbypass': '11'
   }
 
   exports.command_response_codes = {

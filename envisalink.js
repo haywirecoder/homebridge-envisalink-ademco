@@ -23,9 +23,11 @@ const SESSION_TIMEOUT = 5000;
 class EnvisaLink extends EventEmitter {
 
   isProcessingBypass;
+  isProcessingUnBypass;
   isProcessingAlarm;
   isProcessingBypassqueue;
   isConnected;
+  commandreferral;
   alarmSystemMode;
   tpiproxyServer;
   wcForwardServer;
@@ -75,8 +77,10 @@ class EnvisaLink extends EventEmitter {
     this.lastsentcommand = "";
     this.isProcessingBypass = false;
     this.isProcessingAlarm = false;
+    this.isProcessingUnBypass = false;
     this.isProcessingBypassqueue = 0;
     this.alarmSystemMode = 'READY';
+    this.commandreferral = "";
 
   }
 
@@ -227,7 +231,7 @@ class EnvisaLink extends EventEmitter {
             {
              self.log.warn("Warning: Session monitoring is disabled. Envisalink-Ademco will not watch for hung sessions.") 
             }
-          } else {
+           } else {
             if (self.options.proxyEnabled) {
                 self.tpiproxyServer.writeToClients(data);// Forward data to all connected proxy clients.
             }
@@ -651,6 +655,7 @@ class EnvisaLink extends EventEmitter {
       // Update zone information timer. 
       // Depending on the state of the update it will either represent a zone, or a user.
       // module makes assumption, if system is not-ready and panel text display "FAULT" assume zone is in fault.
+      self.log.debug(`Keypad update received. Mode: ${mode}, Text: ${keypad_txt}, Beep: ${beep}, Icon Array: ${icon_array}, Keypad LED Status: ${JSON.stringify(keypadledstatus)}`);
       
       if ((mode.substring(0, 9) == 'NOT_READY') && (keypad_txt.includes('FAULT')))
       {    
@@ -862,21 +867,18 @@ class EnvisaLink extends EventEmitter {
   }
 
 /**
- * Retrieves the list of currently bypassed zones from the alarm panel
- * Uses keypad command sequence (PIN + 6) to display bypassed zones
- * Only executes if system is in a bypass state (NOT_READY_BYPASS or READY_BYPASS)
- * The bypassed zones will be displayed on the virtual keypad
+ * Retrieves the list of zones status from the alarm panel
+ * Uses keypad command sequence "*" to display zones status
+ * The zones will be displayed on the virtual keypad
  * 
  * @param {string} pin - The user PIN code to authenticate the request
  * @returns {void}
  */
-  getBypassedZones(pin) {
-    // Request panel to list all bypass panel. Check to see if any zone is bypass, if so request panel to output using virtual keypad.
-    if ((this.alarmSystemMode == 'NOT_READY_BYPASS') || (this.alarmSystemMode == 'READY_BYPASS')) {
-      var to_send = pin + '6';
-      this.lastsentcommand = "6";
-      this.sendCommand(to_send);
-    }
+  syncZones(pin) {
+    // On an Ademco Vista panel, the * key is a "Read-Only" or "Status" button.
+    var to_send = '^00,$';
+    this.lastsentcommand = "00";
+    this.sendCommand(to_send);
   }
 
 /**
