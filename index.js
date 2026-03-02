@@ -135,6 +135,7 @@ class EnvisalinkPlatform {
             partition.changePartition = this.changePartition;
             partition.serialNumber = "envisalink.partition." + partitionNumber;
             partition.partitionNumber = partitionNumber;
+            partition.api = this.api;
              // Allow alarm to be enable to be set with fire trouble
              partition.ignoreFireTrouble =  this.ignoreFireTrouble;
              // Allow alarm to be enable with system trouble
@@ -457,7 +458,7 @@ class EnvisalinkPlatform {
                                 alarm.isProcessingUnBypass = false; 
                                 this.log(`All queued unbypass command completed.`);
                                 // This would reestablish bypass for zones untargeted
-                                 if(partition.bypassedZonesMemory && alarm.commandreferral === tpidefs.alarmcommand.targetedunbypass) {
+                                if(partition.bypassedZonesMemory && alarm.commandreferral === tpidefs.alarmcommand.targetedunbypass) {
                                     partition.reestablishZoneBypass();
                                 } 
                                 alarm.commandreferral = "";
@@ -471,17 +472,16 @@ class EnvisalinkPlatform {
                         partition.armingTimeOutHandle = undefined;
                     }
 
-                  
                     // Since panel will clear bypass on disarm, when we detect system is no longer 'ARMED' and flag is set to clear bypass, clear all bypass switches since we know the panel has cleared bypass. 
                     // This is needed to keep the state of the bypass switch in sync with the actual bypass status of the zones.
                     if (partition.clearzonebypass && !data.mode.includes('ARMED')) {
-                        this.log.debug('partitionUpdate: Disarm detected. Clearing all zone bypass switches.');
-    
-                        for (var i = 0; i < this.platformZoneAccessories.length; i++) {
+                        this.log(`partitionUpdate: Disarm detected. Clearing all zone bypass switches. Total zone accessories to review: ${this.platformZoneAccessories.length}`);
+                         for (var i = 0; i < this.platformZoneAccessories.length; i++) {
                             var zoneAccessory = this.platformZoneAccessories[i];
                             // Scope to zones belonging to this partition only
-                            if (zoneAccessory && zoneAccessory.bypassStatus === true && zoneAccessory.partition === partition.partitionNumber) {
-                                this.log.debug('partitionUpdate: Alarm is disarmed. Clearing bypass switch for zone ' + zoneAccessory.name);
+                            this.log(`partitionUpdate: ${zoneAccessory.name} partition ${zoneAccessory.partition} bypass status ${zoneAccessory.bypassStatus}`);
+                            if (zoneAccessory.config.masterBypass == false && zoneAccessory.bypassStatus == true && zoneAccessory.partition == partition.partitionNumber) {
+                                this.log('partitionUpdate: Clearing bypass switch for zone ' + zoneAccessory.name);
                                 zoneAccessory.bypassStatus = false;
                                 var bypassSwitch = zoneAccessory.accessory.getService(Service.Switch);
                                 if (bypassSwitch) {
@@ -490,9 +490,14 @@ class EnvisalinkPlatform {
                             }
                         }
                         partition.clearzonebypass = false;
+                        this.log(`partitionUpdate: Checking for reestablishing bypass for zones ${partition.bypassedZonesMemory}.`);
                         if(partition.bypassedZonesMemory) {partition.reestablishZoneBypass();}
                     }
-                    if (data.mode.includes('ARMED')) partition.clearzonebypass = true;
+                    if (data.mode.includes('ARMED')) { 
+                        
+                        this.log(`partitionUpdate: ${data.mode} detected. Setting clear zone bypass after disarm flag to true.`);
+                        partition.clearzonebypass = true;
+                    }
 
                 }
                 
@@ -620,7 +625,7 @@ class EnvisalinkPlatform {
                                 this.log('cidUpdate: Removed zone ' + accessory.zoneNumber + 
                                     ' from bypassedZones, bypassedZones Memory:' + Array.from(partition.bypassedZones));
                             } else {
-                                this.log('Zone not targeted for un-bypass, skipping removal.');
+                                this.log('cidUpdate: Zone not targeted for un-bypass, skipping removal.');
                             }
                         }
 
