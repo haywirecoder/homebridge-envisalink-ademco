@@ -24,11 +24,13 @@ class EnvisalinkPartitionAccessory {
       this.uuid = UUIDGen.generate(this.config.serialNumber);
       this.ignoreFireTrouble =  config.ignoreFireTrouble;
       this.ignoreSystemTrouble = config.ignoreSystemTrouble;
+      this.api = config.api;
       this.alarm = alarm;
       // Create variable and object to manage zone bypass. The zone bypass list will maintain the list of zone bypass and use as memory when alarm reset
       this.bypassedZones = new Set();
       this.clearZoneBypass = false;
       this.bypassedZonesMemory = config.bypassedZonesMemory ? config.bypassedZonesMemory :false;
+     
 
       this.ENVISA_TO_HOMEKIT_CURRENT = {
         'NOT_READY': Characteristic.SecuritySystemCurrentState.DISARMED,
@@ -338,7 +340,7 @@ class EnvisalinkPartitionAccessory {
         return;
     }
 
-    this.log(`reestablishZoneBypass: [Partition ${this.partitionNumber}] Reestablishing bypass for zone(s): ${Array.from(this.bypassedZones)}`);
+    this.log(`[Partition ${this.partitionNumber}] Reestablishing bypass for zone(s): ${Array.from(this.bypassedZones)}`);
 
     let zonesToBypass = "";
     let bypassCount = 0;
@@ -359,7 +361,7 @@ class EnvisalinkPartitionAccessory {
     this.alarm.isProcessingBypassqueue = bypassCount;
     this.alarm.sendCommand(l_alarmCommand);
 
-    this.log(`reestablishZoneBypass: [Partition ${this.partitionNumber}] ${bypassCount} zone(s) sent for re-bypass.`);
+    this.log(`[Partition ${this.partitionNumber}] ${bypassCount} zone(s) sent for re-bypass.`);
   }
   // Restore bypassedZones from Homebridge storage on plugin startup.
   // Returns true if data was restored, false if no file found or load failed.
@@ -368,7 +370,7 @@ class EnvisalinkPartitionAccessory {
     const path = require('path');
 
     try {
-        const filePath = path.join(this.alarm.api.user.storagePath(), 
+        const filePath = path.join(this.api.user.storagePath(), 
             `envisalink-bypass-p${this.partitionNumber}.json`);
 
         if (!fs.existsSync(filePath)) {
@@ -393,9 +395,8 @@ class EnvisalinkPartitionAccessory {
 saveBypassedZones() {
     const fs = require('fs');
     const path = require('path');
-
     try {
-        const filePath = path.join(this.alarm.api.user.storagePath(), 
+        const filePath = path.join(this.api.user.storagePath(), 
             `envisalink-bypass-p${this.partitionNumber}.json`);
         const data = JSON.stringify({ bypassedZones: Array.from(this.bypassedZones) });
         fs.writeFileSync(filePath, data, 'utf8');
