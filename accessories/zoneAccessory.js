@@ -2,6 +2,7 @@
 var tpidefs = require('./../tpi.js');
 const BYPASSZONETIMEOUTFACTOR = 6000;
 const CHARACTERISTICTIMEOUT = 2000;
+const SENDCMDTIMEOUT = 5000;
 
 const ENVISALINK_MANUFACTURER = "Envisacor Technologies Inc."
 
@@ -249,7 +250,7 @@ class EnvisalinkZoneAccessory {
         this.log.warn(`Bypass request did not return successfully in the allocated time.`);
         this.alarm.isProcessingBypass = false;
         this.alarm.isProcessingUnBypass = false;
-        this.alarm.isProcessingBypassqueue = 0;
+        this.alarm.processingBypassqueue = 0;
         this.alarm.commandreferral = "";
     } 
   }
@@ -281,13 +282,13 @@ async setByPass(value, callback) {
       
         l_alarmCommand = this.pin + tpidefs.alarmcommand.bypass + l_zonesToBypass;
         this.alarm.commandreferral = tpidefs.alarmcommand.bypass;
-        this.alarm.isProcessingBypassqueue = 1;
-        this.targetUnbypassZone = false;
+        this.alarm.processingBypassqueue = 1;
     
       }
       else {
         this.log(`Removing bypassing of ${this.name} ...`);
         this.targetUnbypassZone = true;
+        this.alarm.targetUnbypassZoneNumber = this.zoneNumber;
         this.alarm.isProcessingUnBypass = true;
         this.alarm.isProcessingBypass = false;
         // Customer grade Vista panels (15P/20P) don't support "unbypassing" a specific zone, the logic must used to 
@@ -298,8 +299,11 @@ async setByPass(value, callback) {
       }  
     
       this.alarm.sendCommand(l_alarmCommand);
+
+      sleep(SENDCMDTIMEOUT);
       // Set busy status on process Bypass. Time for zone bypass command be lenghty setting value 6x higher than the default command time out to allow for the processing time of bypassing a zone.
-      this.byPassTimeOut = setTimeout(this.processBypassTimer.bind(this), this.commandTimeOut * BYPASSZONETIMEOUTFACTOR);
+      //this.byPassTimeOut = setTimeout(this.processBypassTimer.bind(this), this.commandTimeOut * BYPASSZONETIMEOUTFACTOR);
+      
       this.bypassStatus = value;
     }
     else

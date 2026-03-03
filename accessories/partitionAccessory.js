@@ -4,6 +4,7 @@ var tpidefs = require('./../tpi.js');
 const ENVISALINK_MANUFACTURER = "Envisacor Technologies Inc."
 const TIMEOUTFACTOR = 1000;
 const ACCESSORIESTIMEOUT = 1000;
+const SENDCMDTIMEOUT = 500;
 
 const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
 
@@ -30,7 +31,7 @@ class EnvisalinkPartitionAccessory {
       this.bypassedZones = new Set();
       this.clearZoneBypass = false;
       this.bypassedZonesMemory = config.bypassedZonesMemory ? config.bypassedZonesMemory :false;
-     
+      
 
       this.ENVISA_TO_HOMEKIT_CURRENT = {
         'NOT_READY': Characteristic.SecuritySystemCurrentState.DISARMED,
@@ -267,7 +268,7 @@ class EnvisalinkPartitionAccessory {
         if (this.changePartition) {
                 this.log(`Changing Partition to ${this.partitionNumber}`);
                 this.alarm.changePartition(this.partitionNumber);
-                sleep(3000);
+                sleep(SENDCMDTIMEOUT);
         }
         if (this.alarm.sendCommand(l_alarmCommand))
         {
@@ -334,34 +335,40 @@ class EnvisalinkPartitionAccessory {
   // restoring the panel state to match the plugin's internal set.
   //
   reestablishZoneBypass() {
-
     if (this.bypassedZones.size === 0) {
         this.log.debug(`reestablishZoneBypass: [Partition ${this.partitionNumber}] No zones to reestablish.`);
         return;
     }
 
-    this.log(`[Partition ${this.partitionNumber}] Reestablishing bypass for zone(s): ${Array.from(this.bypassedZones)}`);
+    this.log(`Reestablishing bypass for ${this.bypassedZones.size} zone(s) individually to support Ready state.`);
 
-    let zonesToBypass = "";
     let bypassCount = 0;
-
-    for (const zoneNumber of this.bypassedZones) {
-        if (zonesToBypass.length > 0) zonesToBypass = zonesToBypass + ",";
-
-        if (this.deviceType == "128FBP")
-            zonesToBypass = zonesToBypass + (("00" + zoneNumber).slice(-3));
-        else
-            zonesToBypass = zonesToBypass + (("0" + zoneNumber).slice(-2));
-
-        bypassCount++;
-    }
-
-    const l_alarmCommand = this.pin + tpidefs.alarmcommand.bypass + zonesToBypass;
+ 
+    this.alarm.processingBypassqueue = this.bypassedZones.size;
     this.alarm.commandreferral = tpidefs.alarmcommand.bypass;
-    this.alarm.isProcessingBypassqueue = bypassCount;
-    this.alarm.sendCommand(l_alarmCommand);
+    this.alarm.isProcessingBypass = true;
+    // Iterate through each zone and send a discrete bypass command
+    for (const zoneNumber of this.bypassedZones) {
+        let formattedZone = "";
 
-    this.log(`[Partition ${this.partitionNumber}] ${bypassCount} zone(s) sent for re-bypass.`);
+        // Format zone based on panel type
+        if (this.deviceType == "128FBP") {
+            formattedZone = (("00" + zoneNumber).slice(-3));
+        } else {
+            formattedZone = (("0" + zoneNumber).slice(-2));
+        }
+
+        // Construct individual command: PIN + 6 + ZONE
+        const l_alarmCommand = this.pin + tpidefs.alarmcommand.bypass + formattedZone;
+        
+        // Send the command for the individual zone bypass
+        this.alarm.sendCommand(l_alarmCommand);
+        // Wait before sending next command to prevent panel from dropping bypass requests due to buffer overflow. 
+        sleep(SENDCMDTIMEOUT); 
+        bypassCount++;
+        this.log(`reestablishZoneBypass: Sent bypass for zone: ${formattedZone}`);
+    }
+    this.log(`${bypassCount} zone(s) queued for bypass.`);
   }
   // Restore bypassedZones from Homebridge storage on plugin startup.
   // Returns true if data was restored, false if no file found or load failed.

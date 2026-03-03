@@ -3,6 +3,7 @@ var tpidefs = require('./../tpi.js');
 const TIMEOUTFACTOR = 1000;
 const BYPASSZONETIMEOUTFACTOR = 2000;
 const CHARACTERISTICTIMEOUT = 2000;
+const SENDCMDTIMEOUT = 5000;
 
 
 const SPEED_KEY_PREFIX = "SPEED_KEY_";
@@ -150,7 +151,7 @@ class EnvisalinkCustomAccessory {
     if (this.alarm.isProcessingBypass) {
         this.log.warn(`All Bypass request did not return successfully in the allocated time.`);
         this.alarm.isProcessingBypass = false;
-        this.alarm.isProcessingBypassqueue = 0;
+        this.alarm.processingBypassqueue = 0;
         this.alarm.commandreferral = "";
     } 
   }
@@ -166,7 +167,7 @@ class EnvisalinkCustomAccessory {
         var locSetValue = value;
         // Set busy status on process Bypass
         this.alarm.isProcessingBypass = true;
-        this.alarm.isProcessingBypassqueue = 0;
+        this.alarm.processingBypassqueue = 0;
         // Get the button service and updated switch soon after set function is complete 
         var switchService = this.accessory.getService(this.Service.Switch);
         // Determine alarm status and execute bypass on status
@@ -189,38 +190,39 @@ class EnvisalinkCustomAccessory {
                         setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,false)}.bind(this),CHARACTERISTICTIMEOUT);
                         break;
                     }
-                    var bypasscount = 0;
-                    var zonesToBypass = "";
+                    var bypassCount = 0;
+                    var formattedZone = "";
                     var bValue = false;
                     for (var i = 0; i < this.zoneDevices.length; i++) {
                         var zoneinfo = this.zoneDevices[i];
                         if (zoneinfo) {
                             // Only bypass zone that are open and has been enabled for bypass, default is false for all zone define in configuration file.
-                            this.log.debug("setByPass: Reviewing zone - ", zoneinfo.name + ", " + zoneinfo.bypassEnabled);
+                            this.log.debug(`setByPass: Reviewing zone - ${zoneinfo.name}, ${zoneinfo.bypassEnabled}`);
                             if ((zoneinfo.envisakitCurrentStatus != "close") && (zoneinfo.bypassEnabled)) {
                                 this.log(`Requesting bypassing of ${zoneinfo.name} ...`);
                                 if (zoneinfo.envisakitCurrentStatus == "check") this.warn(`${zoneinfo.name} is generating a check message, which requires your attention. This could result in unexpected results with bypass function.`);
-                                if (zonesToBypass.length > 1) zonesToBypass = zonesToBypass + ","; 
+                                if (formattedZone.length > 1) formattedZone = formattedZone + ","; 
                                 // Require leading zero for zone numbers which are not two or three digit (128 Panel)
                                 if (this.deviceType == "128FBP") 
-                                    zonesToBypass = zonesToBypass + (("00" + zoneinfo.zoneNumber).slice(-3));
+                                    formattedZone = formattedZone + (("00" + zoneinfo.zoneNumber).slice(-3));
                                 else
-                                    zonesToBypass = zonesToBypass + (("0" + zoneinfo.zoneNumber).slice(-2));
-                                bypasscount = bypasscount + 1;
+                                    formattedZone = formattedZone + (("0" + zoneinfo.zoneNumber).slice(-2));
+                                bypassCount++;
                             }
                         }
                     } 
-                    if (bypasscount == 0) {
+                    if (bypassCount == 0) {
                         this.log("No zones were enabled for bypass. Please set bypassEnabled flag for zone(s) wanting to enable for bypass by Homekit.")
                         bValue = false;
                     }
                     else {
-                        l_alarmCommand = this.pin + tpidefs.alarmcommand.bypass + zonesToBypass;
+                        l_alarmCommand = this.pin + tpidefs.alarmcommand.bypass + formattedZone;
                         this.alarm.commandreferral = tpidefs.alarmcommand.bypass;
-                        this.alarm.isProcessingBypassqueue = bypasscount;
+                        this.alarm.processingBypassqueue = bypassCount;
                         this.alarm.sendCommand(l_alarmCommand);
+                        sleep(SENDCMDTIMEOUT);
                         bValue = true;
-                        this.log(`${bypasscount.toString()} zone(s) queued for bypass.`);
+                        this.log(`${bypassCount} zone(s) queued for bypass.`);
                         this.byPassTimeOut = setTimeout(this.processBypassTimer.bind(this), this.commandTimeOut * BYPASSZONETIMEOUTFACTOR);
                     }
                 
@@ -237,6 +239,7 @@ class EnvisalinkCustomAccessory {
                     this.alarm.commandreferral = tpidefs.alarmcommand.disarm;
                     this.alarm.isProcessingUnBypass = true;
                     this.alarm.isProcessingBypass = false;
+                    this.alarm.targetUnbypassZoneNumber[this.partition] = 0;
                     this.alarm.sendCommand(l_alarmCommand);
                 }
                 locSetValue = false;
@@ -256,7 +259,7 @@ class EnvisalinkCustomAccessory {
             break;
         }
         // Is there anything in the queue being process?
-        if (this.alarm.isProcessingBypassqueue == 0 ) this.alarm.isProcessingBypass = false;
+        if (this.alarm.processingBypassqueue == 0 ) this.alarm.isProcessingBypass = false;
         return callback(null, locSetValue);
     }
   }
