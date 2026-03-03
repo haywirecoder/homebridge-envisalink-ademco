@@ -572,7 +572,7 @@ class EnvisalinkPlatform {
                     case 570:  // Bypass event
                         if((data.qualifier == 1)) { 
                             this.log(`${accessory.name} has been bypass.`);
-                            if (alarm.isProcessingBypass) {alarm.processingBypassqueue--;}
+                            if (alarm.isProcessingBypass) { alarm.processingBypassqueue--; }
                             accessory.bypassStatus = true;
                             // Add to list of bypass zones. If attempt to add an zone that already exists in the set, the operation is simply ignored.
                             partition.bypassedZones.add(accessory.zoneNumber);
@@ -594,8 +594,10 @@ class EnvisalinkPlatform {
                                 ', targetUnbypassZone: ' + accessory.targetUnbypassZone + 
                                 ', alarm command code: ' + alarm.commandreferral + 
                                 ', bypassedZones Memory: ' + Array.from(partition.bypassedZones));
-                            alarm.processingUnBypassqueue--;
-                            this.log(`cidUpdate: processingUnBypassqueue decremented, new value: ${alarm.processingUnBypassqueue}`);
+                            if (alarm.isProcessingUnBypass) {
+                                alarm.processingUnBypassqueue--;
+                                this.log(`cidUpdate: processingUnBypassqueue decremented, new value: ${alarm.processingUnBypassqueue}`);
+                            }
                             const isTargetedUnbypass = partition.bypassedZonesMemory && alarm.commandreferral == tpidefs.alarmcommand.targetedunbypass;
                             const shouldRemove = !isTargetedUnbypass || accessory.targetUnbypassZone === true;
 
