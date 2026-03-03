@@ -21,14 +21,14 @@ class TransparentPortForwarder {
 
         return new Promise((resolve, reject) => {
             this.tcpFowardServer = net.createServer((clientSocket) => {
-            this.log.info(`EnvisaLink Web Forward: New connection from ${clientSocket.remoteAddress}:${clientSocket.remotePort}`);
+            this.log.debug(`EnvisaLink Web Forward: New connection from ${clientSocket.remoteAddress}:${clientSocket.remotePort}`);
             
             // Create connection to target server
             const targetSocket = net.createConnection({
                 host: this.targetHost,
                 port: this.targetPort
             }, () => {
-                this.log.info(`EnvisaLink Web Forward: Forwarding to server ${this.targetHost}:${this.targetPort}`);
+                this.log.debug(`EnvisaLink Web Forward: Forwarding to server ${this.targetHost}:${this.targetPort}`);
             });
             
             // Add client-target pair to active connections

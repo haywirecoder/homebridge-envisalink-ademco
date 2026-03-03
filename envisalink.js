@@ -18,6 +18,9 @@ var inTrouble = false;
 const RF_LOW_BATTERY = 384;
 const ZONE_BYPASS = 570;
 const SESSION_TIMEOUT = 5000;
+const SENDCMDTIMEOUT = 1000;
+
+const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
 
 
 class EnvisaLink extends EventEmitter {
@@ -25,7 +28,9 @@ class EnvisaLink extends EventEmitter {
   isProcessingBypass;
   isProcessingUnBypass;
   isProcessingAlarm;
-  isProcessingBypassqueue;
+  processingBypassqueue;
+  processingUnBypassqueue;
+  targetUnbypassZoneNumber;
   isConnected;
   commandreferral;
   alarmSystemMode;
@@ -78,7 +83,9 @@ class EnvisaLink extends EventEmitter {
     this.isProcessingBypass = false;
     this.isProcessingAlarm = false;
     this.isProcessingUnBypass = false;
-    this.isProcessingBypassqueue = 0;
+    this.processingBypassqueue = 0;
+    this.processingUnBypassqueue = 0;
+    this.targetUnbypassZoneNumber = 0;
     this.alarmSystemMode = 'READY';
     this.commandreferral = "";
 
@@ -246,6 +253,7 @@ class EnvisaLink extends EventEmitter {
               {
                 if(self.lastsentcommand == tpi_str[1].split(',')[0]) 
                   self.log.info(`Envisakit module command return: ${tpidefs.command_response_codes[tpi_str[1].split(',')[1]]}`);
+
               }
             } else {
               var data_array = tpi_str[1].split(','); // Element number 1 should be what was matched between the () in the above match. so everything between % and $

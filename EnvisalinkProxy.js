@@ -129,7 +129,6 @@ class EnvisalinkProxyShared {
 
             if (clientSocket.authenticated && this.sharedSocket && !this.sharedSocket.destroyed) {
                 this.log.debug(`Envisalink TPI Proxy: Client sent data ${trimmed}`);
-                
                 if (!this.validationRegex || this.validationRegex.test(trimmed)) {
                     this.sharedSocket.write(trimmed + "\n");
                 } else {
@@ -165,7 +164,6 @@ class EnvisalinkProxyShared {
         // Create array copy to avoid issues if Set is modified during iteration
         const clientsArray = Array.from(this.clients);
         this.log.debug(`Envisalink TPI Proxy: Broadcasting to ${clientsArray.length} clients: ${data.toString().trim()}`);
-        
         for (const client of clientsArray) {
             if (client.authenticated && client.ready && !client.destroyed && !client.cleanedUp) {
                 try {
