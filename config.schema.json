@@ -167,7 +167,7 @@
         "description": "Allow the sharing of Envisalink TPI connection with two other clients. Since the connection to the Envisalink server is being shared, a secondary TPI client can cause this plug-in to malfunction."
       },
       "bypassedZonesMemory" : {
-        "title": "Remember bypassed zones across alarm reset.",
+        "title": "Enable bypassed zones memory",
         "type": "boolean",
         "default": false,
         "description": "Setting allow Plug-in to remember which zones were bypassed and restore after disarming. This also enables individual zone bypasses to be toggle on and off.  <b>Note:</b> This option will cause multiple bypass commands to be sent to the panel on alarm reset, which can increase the time it take for the alarm panel to be ready for processing commands."
@@ -472,9 +472,10 @@
         "heartbeatInterval",
         "ignoreFireTrouble",
         "ignoreSystemTrouble",
+        "bypassedZonesMemory",
+        "proxyEnabled",
         "batteryRunTime",
         "envisalinkFailureSuppress",
-        "proxyEnabled",
         "maintenanceMode"
       ]
     }
