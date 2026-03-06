@@ -14,7 +14,6 @@ const PLATFORM_NAME = 'Envisalink-Ademco';
 class EnvisalinkPlatform {
 
     constructor(log, config, api)  {
-
         this.log = log;
         this.api = api;
         this.config = config;
@@ -61,15 +60,15 @@ class EnvisalinkPlatform {
             // suppress envisalink failure?
             this.isEnvisalinkFailureSuppress = config.envisalinkFailureSuppress ? config.envisalinkFailureSuppress: false;
 
-             // When this event is fired it means Homebridge has restored all cached accessories from disk.
+            // When this event is fired it means Homebridge has restored all cached accessories from disk.
             // Dynamic Platform plugins should only register new accessories after this event was fired,
             // in order to ensure they weren't added to homebridge already. This event can also be used
-             // to start discovery of new accessories.
+            // to start discovery of new accessories.
             api.on('didFinishLaunching', () => {
                 // Create connection object 
                 alarm = new elink(log, config);
                 // Build device list
-                this.log("Configuring", this.deviceDescription, "for Homekit...");
+                this.log("Configuring", this.deviceDescription, " for Homekit...");
                 this.refreshPartitionsAccessories();
                 this.refreshZoneAccessories();
                 this.refreshCustomAccessories();
@@ -210,7 +209,7 @@ class EnvisalinkPlatform {
 
     }
 
-     // Create associates custom in Homekit based on configuration file
+    // Create associates custom in Homekit based on configuration file
     refreshCustomAccessories() {
 
         // Process toggle chime switch functionality 
@@ -342,7 +341,6 @@ class EnvisalinkPlatform {
                             {
                                 if(data.qualifier == 1) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusTampered.TAMPERED);
                                 if(data.qualifier == 3) partitionService.updateCharacteristic(Characteristic.StatusFault,Characteristic.StatusTampered.NOT_TAMPERED);
-                             
                            }
                         break;
                     }
@@ -430,7 +428,7 @@ class EnvisalinkPlatform {
     }
 
     // Capture partition updates usually associated with arm, disarm events
-    partitionUpdate(data) {
+    async partitionUpdate(data) {
         this.log.debug('partitionUpdate: status change - ', data);
         var partitionIndex = this.platformPartitionAccessoryMap['p.' + Number(data.partition)];
         if (partitionIndex !== undefined ) {
@@ -476,10 +474,17 @@ class EnvisalinkPlatform {
                                     bypassSwitch.updateCharacteristic(Characteristic.On, false);
                                 }
                             }
+                            // reestablishZoneBypass() sets isProcessingBypass. If the unbypass watchdog
+                            // fired mid-reestablish it would zero commandreferral out from under it.
+                            if (zoneAccessory.unbypassWatchdogHandle) {
+                                clearTimeout(zoneAccessory.unbypassWatchdogHandle);
+                                zoneAccessory.unbypassWatchdogHandle = undefined;
+                            }
                         }
                         partition.clearzonebypass = false;
                         this.log(`partitionUpdate: Checking for reestablishing bypass for zones ${partition.bypassedZonesMemory}.`);
-                        if(partition.bypassedZonesMemory) {partition.reestablishZoneBypass();}
+                        // ReestablishZoneBypass is async — await it so that no code after this point runs until the full send loop completes.
+                        if(partition.bypassedZonesMemory) { await partition.reestablishZoneBypass(); }
                     }
                     if (data.mode.includes('ARMED')) { 
                         
@@ -538,7 +543,7 @@ class EnvisalinkPlatform {
     }
 
     // Capture low level updates that are not generate from keypad events, but sent to monitoring station.
-    cidUpdate(data)
+    async cidUpdate(data)
     {
         this.log.debug('cidUpdate: Status change - ', data);
         /// Zone event
@@ -549,6 +554,14 @@ class EnvisalinkPlatform {
                 var partitionIndex = this.platformPartitionAccessoryMap['p.' + Number(accessory.partition)];
                 var partition = this.platformPartitionAccessories[partitionIndex];
                 
+                // Guard against zones configured on an unmonitored partition.
+                // Without this, all partition.xxx accesses below throw TypeError and crash
+                // the entire cidUpdate handler including non-bypass codes (150, 384, 383).
+                if (!partition) {
+                    this.log.warn(`cidUpdate: Zone ${data.zone} belongs to partition ${accessory.partition} which is not monitored. Skipping.`);
+                    return;
+                }
+
                 var accessoryService = accessory.service;
                 this.log.debug(`cidUpdate: Accessory change - Zone: ${data.zone} Name: ${accessory.name} Code: ${data.code} Qualifier: ${data.qualifier}.`);
                 switch (Number(data.code)) { 
@@ -572,14 +585,19 @@ class EnvisalinkPlatform {
                     case 570:  // Bypass event
                         if((data.qualifier == 1)) { 
                             this.log(`${accessory.name} has been bypass.`);
-                            if (alarm.isProcessingBypass) { alarm.processingBypassqueue--; }
-                            accessory.bypassStatus = true;
-                            // Add to list of bypass zones. If attempt to add an zone that already exists in the set, the operation is simply ignored.
+                            if (alarm.isProcessingBypass) { 
+                                alarm.processingBypassqueue = Math.max(0, alarm.processingBypassqueue - 1);
+                                this.log(`cidUpdate: processingBypassqueue decremented, new value: ${alarm.processingBypassqueue}`);
+                            }
+
                             partition.bypassedZones.add(accessory.zoneNumber);
-                            alarm.processingUnBypassqueue = partition.bypassedZones.size;
+                            // if zone is  bypass but currently system is also processing unbypass, don't touch unbypass queue since we know the panel
+                            // is still processing the unbypass command
+                            if (!alarm.isProcessingUnBypass) { alarm.processingUnBypassqueue = partition.bypassedZones.size; }
                             partition.saveBypassedZones();
                             
-                            this.log('cidUpdate: Bypass event for zone ' +accessory.zoneNumber+ ' bypassedZones Memory: ' + Array.from(partition.bypassedZones));
+                            this.log('cidUpdate: Bypass event for zone ' +accessory.zoneNumber+ 
+                                ' bypassedZones Memory: ' + Array.from(partition.bypassedZones));
 
                             var bypassSwitch = accessory.accessory.getService(Service.Switch);
                             if (bypassSwitch) {
@@ -594,8 +612,9 @@ class EnvisalinkPlatform {
                                 ', targetUnbypassZone: ' + accessory.targetUnbypassZone + 
                                 ', alarm command code: ' + alarm.commandreferral + 
                                 ', bypassedZones Memory: ' + Array.from(partition.bypassedZones));
+                            // Only need when process plug unbypass command, otherwise event is related the another panel action
                             if (alarm.isProcessingUnBypass) {
-                                alarm.processingUnBypassqueue--;
+                                alarm.processingUnBypassqueue = Math.max(0, alarm.processingUnBypassqueue - 1);
                                 this.log(`cidUpdate: processingUnBypassqueue decremented, new value: ${alarm.processingUnBypassqueue}`);
                             }
                             const isTargetedUnbypass = partition.bypassedZonesMemory && alarm.commandreferral == tpidefs.alarmcommand.targetedunbypass;
@@ -623,24 +642,46 @@ class EnvisalinkPlatform {
                             alarm.isProcessingBypass = false;
                             alarm.processingBypassqueue = 0;
                             alarm.commandreferral = 0;
+                            // Cancel the zone-level watchdog (set by setByPass on a single-zone bypass)
+                            if (accessory.bypassWatchdogHandle) {
+                                clearTimeout(accessory.bypassWatchdogHandle);
+                                accessory.bypassWatchdogHandle = undefined;
+                            }
+                            // Cancel the partition-level watchdog (set by reestablishZoneBypass for multi-zone)
+                            if (partition.bypassWatchdogHandle) {
+                                clearTimeout(partition.bypassWatchdogHandle);
+                                partition.bypassWatchdogHandle = undefined;
+                            }
                             this.log(`All queued bypass command(s) completed.`);
                         }
                         if((alarm.isProcessingUnBypass) && (alarm.processingUnBypassqueue <= 0)){
-                                alarm.isProcessingUnBypass = false; 
-                                alarm.processingUnBypassqueue = 0;
-                             
-                                this.log(`All queued unbypass command completed.`);
-                                // This would reestablish bypass for zones untargeted
-                                if(partition.bypassedZonesMemory && alarm.commandreferral == tpidefs.alarmcommand.targetedunbypass) {
-                                    // Remove targeted unbypass zone from bypass memory since we know the panel has processed the unbypass command and cleared bypass for the zone.
-                                    this.log(`partitionUpdate: Removing zone ${alarm.targetUnbypassZoneNumber} from bypass zone memory`);
-                                    partition.bypassedZones.delete(alarm.targetUnbypassZoneNumber);
-                                    partition.saveBypassedZones();
-                                    alarm.targetUnbypassZoneNumber = 0;
-                                    this.log('partitionUpdate: bypassedZones Memory: ' + Array.from(partition.bypassedZones));
-                                    partition.reestablishZoneBypass();
-                                } 
+                            alarm.isProcessingUnBypass = false; 
+                            // Cancel the zone-level unbypass watchdog
+                            if (accessory.unbypassWatchdogHandle) {
+                                clearTimeout(accessory.unbypassWatchdogHandle);
+                                accessory.unbypassWatchdogHandle = undefined;
+                            }
+                            this.log(`All queued unbypass command completed.`);
+                            // This would reestablish bypass for zones untargeted
+                            if(partition.bypassedZonesMemory && alarm.commandreferral == tpidefs.alarmcommand.targetedunbypass) {
+                                this.log(`partitionUpdate: Removing zone ${alarm.targetUnbypassZoneNumber} from bypass zone memory`);
+                                partition.bypassedZones.delete(alarm.targetUnbypassZoneNumber);
+                                partition.saveBypassedZones();
+                                this.log('partitionUpdate: bypassedZones Memory: ' + Array.from(partition.bypassedZones));
+                                // cancel unbypass watchdogs on all zone accessories
+                                // in this partition before reestablishZoneBypass sets isProcessingBypass.
+                                for (const za of this.platformZoneAccessories) {
+                                    if (za.partition == partition.partitionNumber && za.unbypassWatchdogHandle) {
+                                        clearTimeout(za.unbypassWatchdogHandle);
+                                        za.unbypassWatchdogHandle = undefined;
+                                    }
+                                }
                                 alarm.commandreferral = 0;
+                                alarm.targetUnbypassZoneNumber = 0;
+                                await partition.reestablishZoneBypass();
+                            } else {
+                                alarm.commandreferral = 0;
+                            }
                         }
                     break;
                 }
@@ -739,8 +780,6 @@ class EnvisalinkPlatform {
         this.accessories.push(accessory);
     }
 }
-
-
 
 const homebridge = homebridge => {
     Accessory = homebridge.hap.Accessory;

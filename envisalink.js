@@ -709,73 +709,67 @@ class EnvisaLink extends EventEmitter {
       return hours.toString().padStart(2, '0') + 'h:' + minutes.toString().padStart(2, '0') + 'm:' + seconds.toString().padStart(2, '0') +'s';
     }
 
-    function zoneTimerDump(tpi, data) {
+    const zoneTimerDump = (tpi, data) => {
       // Raw zone timers used inside the Envisalink.
       // The dump is a 256 character packed HEX string representing 64 UINT16
-      // (little endian) zone timers. Zone timers count down from 0xFFFF (zone is open) 
-      // to 0x0000 (zone is closed too long ago to remember). Each “tick” of he zone time 
-      // is actually 5 seconds so a zone timer of 0xFFFE means “5
-      // seconds ago”. Remember, the zone timers are LITTLE ENDIAN so the
-      // above example would be transmitted as FEFF.
-      const MAXINT = 65536;
-      var zone_time = Date.now();
+      // (little endian) zone timers. Zone timers count down from 0xFFFF (zone is open)
+      // to 0x0000 (zone is closed too long ago to remember). Each "tick" of the zone timer
+      // is actually 5 seconds so a zone timer of 0xFFFE means "5 seconds ago".
+      // Remember, the zone timers are LITTLE ENDIAN so the above example would be transmitted as FEFF.
+      const MAXINT = 0xFFFF;;
+      const zone_time = Date.now();
       var zonenum = 0;
-      var aHexStringInt = data[1];
-      var swappedBits = [];
-      var zonesDumpData = []; // Array to store zone information from zone dump
-      var leZoneTimerDumpHexStr; // zone timers in LITTLE ENDIAN
+      const aHexStringInt = data[1];
+      var swappedBits = '';
+      const zonesDumpData = []; // Array to store zone information from zone dump
+      let beHexStr = ''; // zone timers in LITTLE ENDIAN
       var zoneClosedTimeCountDown;
       var byte;
       for (var i = 0; i < aHexStringInt.length; i = i + 4) { // work from left to right, one byte at a time.
-          byte = aHexStringInt.substr(i, 4); // get the two character hex byte value into an int
-          zonenum += 1; // Current zone number
-          // swap bits to get actual time
-          swappedBits = [];
-          swappedBits = byte.substr(2, 4);
-          swappedBits += byte.substr(0, 2);
-          leZoneTimerDumpHexStr += swappedBits;
-          zoneClosedTimeCountDown = (MAXINT - parseInt(swappedBits.toString(),16)) * 5; 
-          if (swappedBits == "FFFF")
-          {
-            zonesDumpData.push({
-                  zone: zonenum,
-                  zonestatus: 'open',
-                  ClosedTimeCount: 0,
-                  zone_txt: 'Currently Open'
-            });
-
-            // Track of zone status
-            zoneTimerOpen(tpi, zonenum);
-          }
-          if (swappedBits == "0000")
-            {
-              zonesDumpData.push({
-                    zone: zonenum,
-                    zonestatus: 'close',
-                    ClosedTimeCount: MAXINT,
-                    zone_txt: 'Last Closed longer than I can remember'
-                });
-            }
-            else {
-              zonesDumpData.push({
-                  zone: zonenum,
-                  zonestatus: 'close',
-                  ClosedTimeCount: zoneClosedTimeCountDown,
-                  zone_txt: "Last Closed " + zoneTimeToHumanReadable(zoneClosedTimeCountDown)
-              });
-            }
+        byte = aHexStringInt.substring(i, i + 4); // get the four character hex value
+        zonenum += 1; // Current zone number
+        // swap bits to get actual time
+        swappedBits = '';
+        swappedBits = byte.substring(2, 6);
+        swappedBits += byte.substring(0, 2);
+        beHexStr += swappedBits;
+        zoneClosedTimeCountDown = (MAXINT - parseInt(swappedBits.toString(), 16)) * 5;
+        if (swappedBits === "FFFF") {
+          zonesDumpData.push({
+            zone: zonenum,
+            zonestatus: 'open',
+            ClosedTimeCount: 0,
+            zone_txt: 'Currently Open'
+          });
+          // Track zone status
+          zoneTimerOpen(tpi, zonenum);
+        } else if (swappedBits === "0000") {
+          zonesDumpData.push({
+            zone: zonenum,
+            zonestatus: 'close',
+            ClosedTimeCount: MAXINT,
+            zone_txt: 'Last Closed longer than I can remember'
+          });
+        } else {
+          zonesDumpData.push({
+            zone: zonenum,
+            zonestatus: 'close',
+            ClosedTimeCount: zoneClosedTimeCountDown,
+            zone_txt: "Last Closed " + zoneTimeToHumanReadable(zoneClosedTimeCountDown)
+          });
+        }
       }
-      self.emit('zonetimerdump', {
+      this.emit('zonetimerdump', {
         zonedump: zone_time,
         status: tpi.name,
         zoneTimerStatus: zonesDumpData,
-        zoneHexData: leZoneTimerDumpHexStr
+        zoneHexData: beHexStr
       });
-    }
+    };
 
-    function cidEvent(tpi, data) {
-      // When a system event happens that is signaled to either the Envisalerts servers or the central monitoring station, 
-      // it is also presented through this command. The CID event differs from other TPI 
+    const cidEvent = (tpi, data) => {
+      // When a system event happens that is signaled to either the Envisalerts servers or the central monitoring station,
+      // it is also presented through this command. The CID event differs from other TPI
       // commands as it is a binary coded decimal, not HEX.
       // QXXXPPZZZ0
       // Where:
@@ -790,22 +784,43 @@ class EnvisaLink extends EventEmitter {
       // 002 = User 2 did it
       // 0 = Always 0
       var qualifier_description;
-      var cid = data[1];
-      var qualifier = cid.substr(0, 1);
-      if (qualifier == 1) { // Event
+      const cid = data[1];
+
+      // Parse qualifier as integer — the raw CID string digit must become a number
+      // to match all other cidupdate emissions in this file which use numeric qualifier.
+      // Contact ID standard qualifier values:
+      //   1 = New Event / Opening
+      //   3 = New Restore / Closing
+      //   6 = Previously reported condition still present (repeat) — valid CID, Envisalink may not emit
+      const qualifier = parseInt(cid.substring(0, 1), 10);
+      if (qualifier === 1) {
         qualifier_description = "event";
-      } else if (qualifier == 3) { // Restore
+      } else if (qualifier === 3) {
         qualifier_description = "restore";
-      } else { // Unknown Qualifier!!
-        self.log.error(`EnvisaLink: Unrecognized qualifier: ${qualifier} received from Panel!`);
+      } else if (qualifier === 6) {
+        // Qualifier 6 is valid per the Contact ID standard (repeat/still-present condition).
+        // Envisalink may not emit this, but handle it gracefully rather than dropping it as an error.
+        qualifier_description = "repeat";
+        this.log.warn(`EnvisaLink: CID qualifier 6 (repeat event) received — condition still present.`);
+      } else {
+        this.log.error(`EnvisaLink: Unrecognized CID qualifier: ${qualifier} received from Panel!`);
         return undefined;
       }
-      var code = cid.substr(1, 3);
-      var partition = cid.substr(4, 2);
-      var zone_or_user = cid.substr(6, 3);
-      var cid_obj = ciddefs.cid_events_def[code];
-      
-      var cidupdate_object = {
+
+      const code         = cid.substring(1, 4);
+      // Parse partition and zone_or_user as integers — consistent with all other events in this
+      // file (updatePartition, zoneTimerOpen, etc.) which emit numeric zone and partition values.
+      // Leading zeros in the raw BCD string ("01", "002") are safely dropped by parseInt.
+      const partition    = parseInt(cid.substring(4, 6), 10);
+      const zone_or_user = parseInt(cid.substring(6, 9), 10);
+      const cid_obj      = ciddefs.cid_events_def[code];
+
+      if (!cid_obj) {
+        this.log.error(`EnvisaLink: Unrecognized CID code: ${code} received from Panel!`);
+        return undefined;
+      }
+
+      const cidupdate_object = {
         partition: partition,
         qualifier: qualifier,
         qualifier_description: qualifier_description,
@@ -815,8 +830,8 @@ class EnvisaLink extends EventEmitter {
         status: tpi.name
       };
       cidupdate_object[cid_obj.type] = zone_or_user;
-      self.emit('cidupdate', cidupdate_object);
-    }
+      this.emit('cidupdate', cidupdate_object);
+    };
   }
 
 /**
@@ -884,8 +899,8 @@ class EnvisaLink extends EventEmitter {
  */
   syncZones(pin) {
     // On an Ademco Vista panel, the * key is a "Read-Only" or "Status" button.
-    var to_send = '^00,$';
-    this.lastsentcommand = "00";
+    var to_send = '0301*';
+    this.lastsentcommand = "0301*";
     this.sendCommand(to_send);
   }
 
