@@ -2,11 +2,15 @@
 var tpidefs = require('./../tpi.js');
 
 const ENVISALINK_MANUFACTURER = "Envisacor Technologies Inc."
-const TIMEOUTFACTOR = 1000;
+const SECONDS = 1000;
 const ACCESSORIESTIMEOUT = 1000;
-const SENDCMDTIMEOUT = 500;
+const PARTITION_SWITCH_DELAY = 2000; // Partition switch: Long delay
+const BYPASS_DELAY = 800;  // Bypass: Medium delay
+const DISARM_CLEAR_DELAY = 1200; // Disarm/Clear: Long delay
+const STANDARD_KEYSTROKE_DELAY = 400; // Standard keystroke: Short delay
+const FINAL_SETTLING_TIME = 500; // Final Settling Time
 
-const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
+const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 
 class EnvisalinkPartitionAccessory {
  
@@ -29,9 +33,13 @@ class EnvisalinkPartitionAccessory {
       this.alarm = alarm;
       // Create variable and object to manage zone bypass. The zone bypass list will maintain the list of zone bypass and use as memory when alarm reset
       this.bypassedZones = new Set();
-      this.clearZoneBypass = false;
-      this.bypassedZonesMemory = config.bypassedZonesMemory ? config.bypassedZonesMemory :false;
-      
+      // Use lowercase throughout — index.js reads/writes partition.clearzonebypass (all lowercase).
+      // The previous clearZoneBypass (capital Z) was a different property and was never read.
+      this.clearzonebypass = false;
+      this.delayfactor = config.delayfactor ? config.delayfactor : 1;
+      // Respect user config — the line that unconditionally overwrote this with true has been removed.
+      this.bypassedZonesMemory = config.bypassedZonesMemory ? config.bypassedZonesMemory : false;
+   
 
       this.ENVISA_TO_HOMEKIT_CURRENT = {
         'NOT_READY': Characteristic.SecuritySystemCurrentState.DISARMED,
@@ -268,14 +276,16 @@ class EnvisalinkPartitionAccessory {
         if (this.changePartition) {
                 this.log(`Changing Partition to ${this.partitionNumber}`);
                 this.alarm.changePartition(this.partitionNumber);
-                sleep(SENDCMDTIMEOUT);
+                sleep(PARTITION_SWITCH_DELAY);
         }
         if (this.alarm.sendCommand(l_alarmCommand))
         {
+          
            // Alarm was successful
           this.log.debug("setTargetState: Command(s) sent successfully.");
           // Confirm success by monitoring for partition change event. IF event doesn't occur X, assume failure and roll back.
-          this.armingTimeOutHandle = setTimeout(this.processAlarmTimer.bind(this), this.commandTimeOut * TIMEOUTFACTOR);
+          sleep(DISARM_CLEAR_DELAY);
+          this.armingTimeOutHandle = setTimeout(this.processAlarmTimer.bind(this), this.commandTimeOut * SECONDS);
          
           // Alarm was successful
           // Workaround to prevent Home UI from flip back and forth initial set targetstate to STAY while setting UI to NIGHT. 
@@ -294,7 +304,6 @@ class EnvisalinkPartitionAccessory {
     return callback(null);
 
   }
-
   // Battery status Low Battery status and Battery Level.
   async getPanelStatusLowBattery(callback) {
       // Assume battery level is normal.
@@ -329,12 +338,26 @@ class EnvisalinkPartitionAccessory {
     return this.accessory.getService(this.Service.SecuritySystem);
   }
 
+  // To determine the total time required to re-establish bypasses, we need to account for the panel's 
+  // processing speed and the mandatory "breathing room" required between keystrokes to avoid the ^00,00 (Busy) 
+  // or ^00,04 (Timeout) errors.
+  calculateBypassWaitTime(zoneCount) {
+    let smartDelay;
+    if (zoneCount <= 2) {
+        smartDelay = 500;   // Performance Mode
+    } else if (zoneCount <= 8) {
+        smartDelay = 800;   // Balanced Mode
+    } else {
+        smartDelay = 1200;  // High Reliability Mode
+    }
+    return (smartDelay * this.delayfactor);
+  }
+
   // Reestablish zone bypasses from plug-in memory. The plugin tracks bypassed zones in the bypassedZones set, 
   // but the panel will clear all bypasses on an alarm disarm, creating a mismatch between the plugin and panel states.
   // This method re-sends a single combined bypass command for all zones tracked in bypassedZones,
   // restoring the panel state to match the plugin's internal set.
-  //
-  reestablishZoneBypass() {
+  async reestablishZoneBypass() {
     if (this.bypassedZones.size === 0) {
         this.log.debug(`reestablishZoneBypass: [Partition ${this.partitionNumber}] No zones to reestablish.`);
         return;
@@ -342,34 +365,55 @@ class EnvisalinkPartitionAccessory {
 
     this.log(`Reestablishing bypass for ${this.bypassedZones.size} zone(s) individually to support Ready state.`);
 
-    let bypassCount = 0;
- 
+    // Usage of individual bypass commands with delay is required to prevent panel from dropping bypass
+    // requests due to buffer overflow when multiple zones are bypassed.
+    const waitTime = this.calculateBypassWaitTime(this.bypassedZones.size);
+
     this.alarm.processingBypassqueue = this.bypassedZones.size;
     this.alarm.commandreferral = tpidefs.alarmcommand.bypass;
     this.alarm.isProcessingBypass = true;
+    // Note: any pending unbypass watchdog on zone accessories is cancelled by the
+    // index.js call site before invoking reestablishZoneBypass() — see partitionUpdate
+    // and cidUpdate. The stub loop that was here did nothing (_getZoneAccessoryIndex
+    // does not exist on this class) and has been removed.
+
     // Iterate through each zone and send a discrete bypass command
     for (const zoneNumber of this.bypassedZones) {
-        let formattedZone = "";
-
         // Format zone based on panel type
-        if (this.deviceType == "128FBP") {
-            formattedZone = (("00" + zoneNumber).slice(-3));
-        } else {
-            formattedZone = (("0" + zoneNumber).slice(-2));
-        }
+        const formattedZone = (this.deviceType === "128FBP")
+                ? (("00" + zoneNumber).slice(-3))
+                : (("0" + zoneNumber).slice(-2));
 
         // Construct individual command: PIN + 6 + ZONE
         const l_alarmCommand = this.pin + tpidefs.alarmcommand.bypass + formattedZone;
-        
+        this.log(`reestablishZoneBypass: Sent bypass for zone: ${formattedZone}`);
         // Send the command for the individual zone bypass
         this.alarm.sendCommand(l_alarmCommand);
-        // Wait before sending next command to prevent panel from dropping bypass requests due to buffer overflow. 
-        sleep(SENDCMDTIMEOUT); 
-        bypassCount++;
-        this.log(`reestablishZoneBypass: Sent bypass for zone: ${formattedZone}`);
+        // Await the delay — without await the sleep() Promise is discarded and
+        // all commands fire in a tight loop, defeating the inter-command spacing.
+        await sleep(waitTime);
     }
-    this.log(`${bypassCount} zone(s) queued for bypass.`);
+    await sleep(FINAL_SETTLING_TIME);
+    this.log(`${this.bypassedZones.size} zone(s) queued for bypass.`);
+
+    // Safety watchdog is set HERE — after all commands have been sent and the
+    // settling time has elapsed. Starting it before sendCommand() would consume
+    // part of the timeout budget just waiting for the send loop to complete,
+    // leaving the panel less time to respond before the watchdog fires.
+    // commandTimeOut gives the panel its full allocated window from this point.
+    if (this.bypassWatchdogHandle) clearTimeout(this.bypassWatchdogHandle);
+    this.bypassWatchdogHandle = setTimeout(() => {
+        if (this.alarm.isProcessingBypass) {
+            this.log.warn(`[Partition ${this.partitionNumber}] Bypass time expired — panel did not confirm all bypasses. ${this.alarm.processingBypassqueue} zones were still pending.`);
+            this.alarm.isProcessingBypass = false;
+            this.alarm.processingBypassqueue = 0;
+            this.alarm.commandreferral = 0;
+        }
+        this.bypassWatchdogHandle = undefined;
+    }, this.commandTimeOut * SECONDS);
   }
+
+
   // Restore bypassedZones from Homebridge storage on plugin startup.
   // Returns true if data was restored, false if no file found or load failed.
   restoreBypassedZones() {
@@ -399,18 +443,28 @@ class EnvisalinkPartitionAccessory {
 
 // Persist bypassedZones to Homebridge storage so it survives plugin restarts.
 // File is stored at <homebridge_storage_path>/envisalink-bypass-p<partitionNumber>.json
+// Uses a debounce so that rapid CID 570 bursts during reestablishZoneBypass() (N zones)
+// result in only ONE disk write after the burst settles, rather than N blocking writes
+// that would stall the Node.js event loop and risk missing subsequent CID events.
 saveBypassedZones() {
-    const fs = require('fs');
-    const path = require('path');
-    try {
-        const filePath = path.join(this.api.user.storagePath(), 
+    if (this._saveDebounceHandle) clearTimeout(this._saveDebounceHandle);
+    this._saveDebounceHandle = setTimeout(() => {
+        this._saveDebounceHandle = undefined;
+        const fs = require('fs');
+        const path = require('path');
+        const filePath = path.join(this.api.user.storagePath(),
             `envisalink-bypass-p${this.partitionNumber}.json`);
         const data = JSON.stringify({ bypassedZones: Array.from(this.bypassedZones) });
-        fs.writeFileSync(filePath, data, 'utf8');
-        this.log.debug(`saveBypassedZones: [Partition ${this.partitionNumber}] Saved zones: ${Array.from(this.bypassedZones)}`);
-    } catch (err) {
-        this.log.warn(`saveBypassedZones: [Partition ${this.partitionNumber}] Failed to save bypassedZones: ${err.message}`);
-    }
+        // Use non-blocking writeFile — writeFileSync would block the event loop and
+        // could cause the plugin to miss incoming TPI CID events during reestablish.
+        fs.writeFile(filePath, data, 'utf8', (err) => {
+            if (err) {
+                this.log.warn(`saveBypassedZones: [Partition ${this.partitionNumber}] Failed to save bypassedZones: ${err.message}`);
+            } else {
+                this.log.debug(`saveBypassedZones: [Partition ${this.partitionNumber}] Saved zones: ${Array.from(this.bypassedZones)}`);
+            }
+        });
+    }, 300); // 300 ms debounce — comfortably longer than inter-command spacing
   }
 }
 

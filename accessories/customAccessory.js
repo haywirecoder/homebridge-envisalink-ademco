@@ -1,14 +1,17 @@
 "use strict";
 var tpidefs = require('./../tpi.js');
-const TIMEOUTFACTOR = 1000;
-const BYPASSZONETIMEOUTFACTOR = 2000;
-const CHARACTERISTICTIMEOUT = 2000;
-const SENDCMDTIMEOUT = 5000;
 
+const ENVISALINK_MANUFACTURER = "Envisacor Technologies Inc."
+const SECONDS = 1000;
+const ACCESSORIESTIMEOUT = 1000;
+const PARTITION_SWITCH_DELAY = 2000; // Partition switch: Long delay
+const BYPASS_DELAY = 800;  // Bypass: Medium delay
+const DISARM_CLEAR_DELAY = 1200; // Disarm/Clear: Long delay
+const STANDARD_KEYSTROKE_DELAY = 400; // Standard keystroke: Short delay
+const FINAL_SETTLING_TIME = 500; // Final Settling Time
 
 const SPEED_KEY_PREFIX = "SPEED_KEY_";
-const ENVISALINK_MANUFACTURER = "Envisacor Technologies Inc."
-
+const CHARACTERISTICTIMEOUT = 2000; // Time to wait before resetting characteristic to false for momentary switch
 
 const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
 
@@ -26,6 +29,8 @@ class EnvisalinkCustomAccessory {
     this.uuid = UUIDGen.generate(this.config.serialNumber);
     this.alarm = alarm;
     this.envisakitCurrentStatus = false;
+    this.delayfactor = config.delayfactor ? config.delayfactor : 1;
+
     this.ENVISA_BYPASS_TO_HOMEKIT = {
       'NOT_READY': false,
       'NOT_READY_TROUBLE': false,
@@ -77,6 +82,7 @@ class EnvisalinkCustomAccessory {
             this.quickbypass = this.config.quickbypass ? this.config.quickbypass : false;
             this.commandTimeOut = this.config.commandTimeOut;
             this.byPassTimeOut = undefined;
+            this.unByPassTimeOut = undefined;
             this.envisakitCurrentStatus = "READY";
           break;
           case 'speedkeys':
@@ -120,7 +126,8 @@ class EnvisalinkCustomAccessory {
       if(this.alarm.sendCommand(l_alarmCommand)) {
         this.envisakitCurrentStatus = value;     
         this.isProcessingChimeOnOff = true;
-        this.chimeOnOffTimeOut = setTimeout(this.processChimeOffTimer.bind(this), this.commandTimeOut * TIMEOUTFACTOR);
+        if (this.chimeOnOffTimeOut) clearTimeout(this.chimeOnOffTimeOut);
+        this.chimeOnOffTimeOut = setTimeout(this.processChimeOffTimer.bind(this), this.commandTimeOut * SECONDS);
       }          
       } 
       else {
@@ -133,13 +140,7 @@ class EnvisalinkCustomAccessory {
     if (this.isProcessingChimeOnOff) {
         this.log.warn(`Chime toggle request did not return successfully in the allocated time.`);
         this.isProcessingChimeOnOff = false;
-    } 
-  }
-
-  processChimeOffTimer() {
-    if (this.isProcessingChimeOnOff) {
-        this.log.warn(`Chime toggle request did not return successfully in the allocated time.`);
-        this.isProcessingChimeOnOff = false;
+        this.chimeOnOffTimeOut = undefined;
     } 
   }
 
@@ -152,15 +153,34 @@ class EnvisalinkCustomAccessory {
         this.log.warn(`All Bypass request did not return successfully in the allocated time.`);
         this.alarm.isProcessingBypass = false;
         this.alarm.processingBypassqueue = 0;
-        this.alarm.commandreferral = "";
+        this.alarm.commandreferral = 0;
+        // Roll back the HomeKit master bypass switch so the UI reflects
+        // that the bypass was not confirmed by the panel. Without this the switch
+        // stays ON even though the panel rejected or dropped the command.
+        const switchService = this.accessory.getService(this.Service.Switch);
+        if (switchService) switchService.updateCharacteristic(this.Characteristic.On, false);
+        this.byPassTimeOut = undefined;
     } 
+  }
+
+  processUnBypassTimer() {
+    if (this.alarm.isProcessingUnBypass) {
+        this.log.warn(`All Unbypass request did not return successfully in the allocated time.`);
+        this.alarm.isProcessingUnBypass = false;
+        this.alarm.processingUnBypassqueue = 0;
+        this.alarm.commandreferral = 0;
+        this.alarm.targetUnbypassZoneNumber = 0;
+        this.unByPassTimeOut = undefined;
+        // No HomeKit UI rollback needed here — the switch was already set to false
+        // (locSetValue = false) before the disarm command was sent in READY_BYPASS path.
+    }
   }
   async setByPass(value, callback) {
     this.log.debug('setByPass:  Bypass set - ', value);
     // Determine if processing another bypass command.
-    if (this.alarm.isProcessingBypass) {
-        this.log("Already processing Bypass request. Command ignored.");
-        return callback(null,this.ENVISA_BYPASS_TO_HOMEKIT[this.envisakitCurrentStatus]);
+    if (this.alarm.isProcessingBypass || this.alarm.isProcessingUnBypass) {
+        this.log("Already processing Bypass or UnBypass request. Command ignored.");
+        return callback(null, this.ENVISA_BYPASS_TO_HOMEKIT[this.envisakitCurrentStatus]);
     }
     else
     {
@@ -181,7 +201,12 @@ class EnvisalinkCustomAccessory {
                         this.log(`Quick Bypass configured. Quick bypass of fault zones.`);
                         l_alarmCommand = this.pin + tpidefs.alarmcommand.quickbypass;
                         this.alarm.commandreferral = tpidefs.alarmcommand.quickbypass;
+                        // Set queue to 1 so the guard at the bottom does NOT
+                        // immediately clear isProcessingBypass before any CID 570 arrives.
+                        // Without this, rapid taps bypass the throttle entirely.
+                        this.alarm.processingBypassqueue = 1;
                         this.alarm.sendCommand(l_alarmCommand);
+                        this.byPassTimeOut = setTimeout(this.processBypassTimer.bind(this), this.commandTimeOut * SECONDS);
                         break;
                     }
                     // Reviewing zone that are being monitored and are bypass enabled (allowed to be bypass)
@@ -203,10 +228,9 @@ class EnvisalinkCustomAccessory {
                                 if (zoneinfo.envisakitCurrentStatus == "check") this.warn(`${zoneinfo.name} is generating a check message, which requires your attention. This could result in unexpected results with bypass function.`);
                                 if (formattedZone.length > 1) formattedZone = formattedZone + ","; 
                                 // Require leading zero for zone numbers which are not two or three digit (128 Panel)
-                                if (this.deviceType == "128FBP") 
-                                    formattedZone = formattedZone + (("00" + zoneinfo.zoneNumber).slice(-3));
-                                else
-                                    formattedZone = formattedZone + (("0" + zoneinfo.zoneNumber).slice(-2));
+                                formattedZone = (this.deviceType === "128FBP")
+                                    ? (("00" + zoneinfo.zoneNumber).slice(-3))
+                                    : (("0" + zoneinfo.zoneNumber).slice(-2));
                                 bypassCount++;
                             }
                         }
@@ -220,10 +244,11 @@ class EnvisalinkCustomAccessory {
                         this.alarm.commandreferral = tpidefs.alarmcommand.bypass;
                         this.alarm.processingBypassqueue = bypassCount;
                         this.alarm.sendCommand(l_alarmCommand);
-                        sleep(SENDCMDTIMEOUT);
+                        await sleep(BYPASS_DELAY * this.delayfactor);
                         bValue = true;
                         this.log(`${bypassCount} zone(s) queued for bypass.`);
-                        this.byPassTimeOut = setTimeout(this.processBypassTimer.bind(this), this.commandTimeOut * BYPASSZONETIMEOUTFACTOR);
+                        if (this.byPassTimeOut) clearTimeout(this.byPassTimeOut);
+                        this.byPassTimeOut = setTimeout(this.processBypassTimer.bind(this), this.commandTimeOut * SECONDS);
                     }
                 
                 }
@@ -239,8 +264,13 @@ class EnvisalinkCustomAccessory {
                     this.alarm.commandreferral = tpidefs.alarmcommand.disarm;
                     this.alarm.isProcessingUnBypass = true;
                     this.alarm.isProcessingBypass = false;
-                    this.alarm.targetUnbypassZoneNumber[this.partition] = 0;
+                    this.alarm.processingUnBypassqueue = 1;
+                    this.alarm.targetUnbypassZoneNumber = 0;
                     this.alarm.sendCommand(l_alarmCommand);
+                    // Add unbypass watchdog so isProcessingUnBypass cannot
+                    // stay true forever if the panel never sends CID 570 qualifier=3.
+                    if (this.unByPassTimeOut) clearTimeout(this.unByPassTimeOut);
+                    this.unByPassTimeOut = setTimeout(this.processUnBypassTimer.bind(this), this.commandTimeOut * SECONDS);
                 }
                 locSetValue = false;
             break;
@@ -258,7 +288,10 @@ class EnvisalinkCustomAccessory {
                 locSetValue = !value;
             break;
         }
-        // Is there anything in the queue being process?
+        // Clear the processing flag only if nothing is queued. The quickbypass and
+        // multi-zone bypass paths now set processingBypassqueue > 0 before reaching here,
+        // so this guard correctly leaves isProcessingBypass set until CID 570 confirms.
+        // The unbypass path sets isProcessingBypass = false directly and uses isProcessingUnBypass.
         if (this.alarm.processingBypassqueue == 0 ) this.alarm.isProcessingBypass = false;
         return callback(null, locSetValue);
     }
