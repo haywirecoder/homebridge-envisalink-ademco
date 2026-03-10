@@ -252,8 +252,9 @@ async setByPass(value, callback) {
     this.log.debug("setByPass: zone - ", this.name + ", " + this.zoneNumber); 
 
     if (this.alarm.isProcessingBypass || this.alarm.isProcessingUnBypass) {
-      this.log(`Already processing Bypass or UnBypass request. Command ignored.`);
-      return callback(null);
+        const activeOperation = this.alarm.isProcessingBypass ? 'Bypass' : 'UnBypass';
+        this.log.warn(`[Zone ${this.zoneNumber}] is already processing ${activeOperation} request. Ignoring request.`);
+        return callback(null);
     }
     // Bypass is only available if system is not armed, alarm or in-trouble state.
     if (!this.alarm.alarmSystemMode.includes('ALARM') && !this.alarm.alarmSystemMode.includes('ARMED')) {
@@ -274,6 +275,7 @@ async setByPass(value, callback) {
         this.alarm.commandreferral = tpidefs.alarmcommand.bypass;
         this.alarm.processingBypassqueue = 1;
         this.alarm.sendCommand(l_alarmCommand);
+        this.bypassStatus = true;
         // Await the delay so the settling time is actually observed
         await sleep(BYPASS_DELAY + FINAL_SETTLING_TIME);
 
@@ -311,6 +313,7 @@ async setByPass(value, callback) {
         // logic must: 1) disarm to clear all bypasses, 2) re-bypass all other zones.
         const l_alarmCommand = this.pin + tpidefs.alarmcommand.disarm;
         this.alarm.commandreferral = tpidefs.alarmcommand.targetedunbypass;
+        this.bypassStatus = false;
         this.alarm.sendCommand(l_alarmCommand);
         // Await the delay so the settling time is actually observed
         await sleep(DISARM_CLEAR_DELAY + FINAL_SETTLING_TIME);
@@ -340,7 +343,7 @@ async setByPass(value, callback) {
       // the command and the watchdog fires.
     } else {
       this.bypassStatus = !value;
-      this.log(`Alarm is ${this.alarm.alarmSystemMode} no action required. Ignoring bypass request.`);
+      this.log(`Alarm is ${this.alarm.alarmSystemMode} can't change bypass state. Ignoring bypass request.`);
     } 
     return callback(null);
   }
