@@ -41,42 +41,43 @@ class EnvisalinkPartitionAccessory {
       this.bypassedZonesMemory = config.bypassedZonesMemory ? config.bypassedZonesMemory : false;
    
 
-      this.ENVISA_TO_HOMEKIT_CURRENT = {
-        'NOT_READY': Characteristic.SecuritySystemCurrentState.DISARMED,
-        'NOT_READY_TROUBLE': Characteristic.SecuritySystemCurrentState.DISARMED,
-        'NOT_READY_BYPASS': Characteristic.SecuritySystemCurrentState.DISARMED,
-        'READY_FIRE_TROUBLE' : Characteristic.SecuritySystemCurrentState.DISARMED,
-        'READY_SYSTEM_TROUBLE' : Characteristic.SecuritySystemCurrentState.DISARMED,
-        'READY': Characteristic.SecuritySystemCurrentState.DISARMED,
-        'READY_BYPASS': Characteristic.SecuritySystemCurrentState.DISARMED,
-        'ARMED_STAY': Characteristic.SecuritySystemCurrentState.STAY_ARM,
-        'ARMED_STAY_BYPASS': Characteristic.SecuritySystemCurrentState.STAY_ARM,
-        'ARMED_AWAY': Characteristic.SecuritySystemCurrentState.AWAY_ARM,
-        'ARMED_AWAY_BYPASS': Characteristic.SecuritySystemCurrentState.AWAY_ARM,
-        'ARMED_NIGHT': Characteristic.SecuritySystemCurrentState.NIGHT_ARM,
-        'ARMED_NIGHT_BYPASS': Characteristic.SecuritySystemCurrentState.NIGHT_ARM,
-        'ALARM': Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED,
-        'ALARM_MEMORY': Characteristic.SecuritySystemCurrentState.DISARMED,
-        'EXIT_DELAY':  Characteristic.SecuritySystemCurrentState.DISARMED
-      };
+        this.ENVISA_TO_HOMEKIT_CURRENT = {
+        'NOT_READY':            Characteristic.SecuritySystemCurrentState.DISARMED,
+        'NOT_READY_TROUBLE':    Characteristic.SecuritySystemCurrentState.DISARMED,  
+        'NOT_READY_BYPASS':     Characteristic.SecuritySystemCurrentState.DISARMED,
+        'READY_FIRE_TROUBLE':   Characteristic.SecuritySystemCurrentState.DISARMED,
+        'READY_SYSTEM_TROUBLE': Characteristic.SecuritySystemCurrentState.DISARMED,
+        'READY':                Characteristic.SecuritySystemCurrentState.DISARMED,
+        'READY_BYPASS':         Characteristic.SecuritySystemCurrentState.DISARMED,
+        'ARMED_STAY':           Characteristic.SecuritySystemCurrentState.STAY_ARM,
+        'ARMED_STAY_BYPASS':    Characteristic.SecuritySystemCurrentState.STAY_ARM,
+        'ARMED_AWAY':           Characteristic.SecuritySystemCurrentState.AWAY_ARM,
+        'ARMED_AWAY_BYPASS':    Characteristic.SecuritySystemCurrentState.AWAY_ARM,
+        'ARMED_NIGHT':          Characteristic.SecuritySystemCurrentState.NIGHT_ARM,
+        'ARMED_NIGHT_BYPASS':   Characteristic.SecuritySystemCurrentState.NIGHT_ARM,
+        'ALARM':                Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED,
+        'ALARM_MEMORY':         Characteristic.SecuritySystemCurrentState.DISARMED,
+        'EXIT_DELAY':           Characteristic.SecuritySystemCurrentState.DISARMED
+        };
 
-      this.ENVISA_TO_HOMEKIT_TARGET = {
-          'NOT_READY': Characteristic.SecuritySystemTargetState.DISARM,
-          'NOT_READY_TROUBLE': Characteristic.SecuritySystemTargetState.DISARM,
-          'NOT_READY_BYPASS': Characteristic.SecuritySystemTargetState.DISARM,
-          'READY_FIRE_TROUBLE' : Characteristic.SecuritySystemTargetState.DISARM,
-          'READY_SYSTEM_TROUBLE' : Characteristic.SecuritySystemTargetState.DISARM,
-          'READY': Characteristic.SecuritySystemTargetState.DISARM,
-          'READY_BYPASS': Characteristic.SecuritySystemTargetState.DISARM,
-          'ARMED_STAY': Characteristic.SecuritySystemTargetState.STAY_ARM,
-          'ARMED_STAY_BYPASS': Characteristic.SecuritySystemTargetState.STAY_ARM,
-          'ARMED_AWAY': Characteristic.SecuritySystemTargetState.AWAY_ARM,
-          'ARMED_AWAY_BYPASS': Characteristic.SecuritySystemTargetState.AWAY_ARM,
-          'ARMED_NIGHT': Characteristic.SecuritySystemTargetState.NIGHT_ARM,
-          'ARMED_NIGHT_BYPASS': Characteristic.SecuritySystemTargetState.NIGHT_ARM,
-          'ALARM_MEMORY': Characteristic.SecuritySystemTargetState.DISARM,
-          'EXIT_DELAY':  Characteristic.SecuritySystemTargetState.DISARM
-      };
+        this.ENVISA_TO_HOMEKIT_TARGET = {
+        'NOT_READY':            Characteristic.SecuritySystemTargetState.DISARM,
+        'NOT_READY_TROUBLE':    Characteristic.SecuritySystemTargetState.DISARM,
+        'NOT_READY_BYPASS':     Characteristic.SecuritySystemTargetState.DISARM,
+        'READY_FIRE_TROUBLE':   Characteristic.SecuritySystemTargetState.DISARM,
+        'READY_SYSTEM_TROUBLE': Characteristic.SecuritySystemTargetState.DISARM,
+        'READY':                Characteristic.SecuritySystemTargetState.DISARM,
+        'READY_BYPASS':         Characteristic.SecuritySystemTargetState.DISARM,
+        'ARMED_STAY':           Characteristic.SecuritySystemTargetState.STAY_ARM,
+        'ARMED_STAY_BYPASS':    Characteristic.SecuritySystemTargetState.STAY_ARM,
+        'ARMED_AWAY':           Characteristic.SecuritySystemTargetState.AWAY_ARM,
+        'ARMED_AWAY_BYPASS':    Characteristic.SecuritySystemTargetState.AWAY_ARM,
+        'ARMED_NIGHT':          Characteristic.SecuritySystemTargetState.NIGHT_ARM,
+        'ARMED_NIGHT_BYPASS':   Characteristic.SecuritySystemTargetState.NIGHT_ARM,
+        'ALARM':                Characteristic.SecuritySystemTargetState.DISARM,  
+        'ALARM_MEMORY':         Characteristic.SecuritySystemTargetState.DISARM,
+        'EXIT_DELAY':           Characteristic.SecuritySystemTargetState.DISARM
+        };
 
       this.TARGET_HOMEKIT_TO_ENVISA = {
           0: 'Home',
@@ -112,7 +113,6 @@ class EnvisalinkPartitionAccessory {
         .on('get', async callback => this.getCurrentState(callback));
     securityService.getCharacteristic(this.Characteristic.SecuritySystemTargetState)
         .on('get', async callback => this.getTargetState(callback))
-        //.on('set', async (state, callback) => this.setTargetState(state, callback));
         .on('set', this.setTargetState.bind(this));
     securityService.setCharacteristic(this.Characteristic.StatusFault, this.Characteristic.StatusFault.NO_FAULT);
     securityService.setCharacteristic(this.Characteristic.StatusTampered, this.Characteristic.StatusTampered.NOT_TAMPERED);
@@ -186,124 +186,124 @@ class EnvisalinkPartitionAccessory {
   
   // Change state.
   async setTargetState(homekitState, callback) {
+
+    // Acknowledge HomeKit immediately to prevent re-firing the set handler
+    // before async operations complete. Execution continues normally after this.
+    callback(null);
+
     const securityService = this.accessory.getService(this.Service.SecuritySystem);
-    this.envisakitRevoveryStatus =  this.envisakitCurrentStatus;
+    this.envisakitRevoveryStatus = this.envisakitCurrentStatus;
     var l_envisaliklocalStatus;
-    var l_alarmCommand = null; // no command has been defined.
-    this.log.debug("setTargetState: Homekit alarm requested set - ",homekitState);
-    this.log.debug("setTargetState: Current alarm state is - ",this.envisakitCurrentStatus);
+    var l_alarmCommand = null;
+    this.log.debug("setTargetState: Homekit alarm requested set - ", homekitState);
+    this.log.debug("setTargetState: Current alarm state is - ", this.envisakitCurrentStatus);
+
     if (this.processingPartitionCmd == false) {
         // Is alarm system already in current requested state? If yes, ignore the request.
-        if (this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus] != homekitState)
-        {
+        if (this.ENVISA_TO_HOMEKIT_CURRENT[this.envisakitCurrentStatus] != homekitState) {
             switch (this.envisakitCurrentStatus) {
-              // Disarm state
-              case 'ALARM':   
-              case 'ALARM_MEMORY':
-              case 'ARMED_STAY':
-              case 'ARMED_STAY_BYPASS':
-              case 'ARMED_NIGHT':
-              case 'ARMED_NIGHT_BYPASS':    
-              case 'ARMED_AWAY':
-              case 'ARMED_AWAY_BYPASS':
-                  if (homekitState == this.Characteristic.SecuritySystemCurrentState.DISARMED) {
-                      this.log(`Disarming the alarm system with PIN, [Partition ${this.partitionNumber}].`);
-                      l_alarmCommand = this.pin + tpidefs.alarmcommand.disarm;
-                      l_envisaliklocalStatus = "READY";
-                      this.alarm.commandreferral = tpidefs.alarmcommand.disarm;
-                  } else this.log("Disarming the alarm system is required prior to changing alarm system state, request is ignored.");
-              break;
+                // Disarm state
+                case 'ALARM':
+                case 'ALARM_MEMORY':
+                case 'ARMED_STAY':
+                case 'ARMED_STAY_BYPASS':
+                case 'ARMED_NIGHT':
+                case 'ARMED_NIGHT_BYPASS':
+                case 'ARMED_AWAY':
+                case 'ARMED_AWAY_BYPASS':
+                    if (homekitState == this.Characteristic.SecuritySystemCurrentState.DISARMED) {
+                        this.log(`Disarming the alarm system with PIN, [Partition ${this.partitionNumber}].`);
+                        l_alarmCommand = this.pin + tpidefs.alarmcommand.disarm;
+                        l_envisaliklocalStatus = "READY";
+                        this.alarm.commandreferral = tpidefs.alarmcommand.disarm;
+                    } else this.log("Disarming the alarm system is required prior to changing alarm system state, request is ignored.");
+                break;
 
-              // Arming state
-              case 'READY_FIRE_TROUBLE': 
-                  if (this.ignoreFireTrouble) {
-                    this.log.warn(`Arming Partition [${this.partitionNumber}] in Fire Trouble status.`);
-                    // Don't break, fall through arming sequence
-                  }
-                  else {
-                    this.log.warn(`Partition [${this.partitionNumber}] in Fire trouble status. Arming request failed.`);
-                    break;
-                  }
-              case 'READY_SYSTEM_TROUBLE':
-                  if (this.ignoreSystemTrouble) {
-                    this.log.warn(`Arming Partition [${this.partitionNumber}] in System Trouble status.`);
-                    // Don't break, fall through arming sequence
-                  }
-                  else {
-                    this.log.warn(`Partition [${this.partitionNumber}] in System trouble status. Arming request failed.`);
-                    break;
-                  }
-              case 'READY':
-              case 'READY_BYPASS':
-                  if (homekitState == this.Characteristic.SecuritySystemCurrentState.STAY_ARM) {
-                      this.log(`Arming the alarm system to Stay (Home), [Partition ${this.partitionNumber}].`);
-                      l_alarmCommand = this.pin + tpidefs.alarmcommand.stay;
-                      l_envisaliklocalStatus = "ARMED_STAY";
-                      this.alarm.commandreferral = tpidefs.alarmcommand.stay;
-                  } else if (homekitState == this.Characteristic.SecuritySystemCurrentState.NIGHT_ARM) {
-                      this.log(`Arming the alarm system to Night, [Partition ${this.partitionNumber}].`);
-                      l_alarmCommand = this.pin + tpidefs.alarmcommand.night;
-                      l_envisaliklocalStatus = "ARMED_NIGHT";
-                      this.alarm.commandreferral = tpidefs.alarmcommand.night;
-                  } else if (homekitState == this.Characteristic.SecuritySystemCurrentState.AWAY_ARM) {
-                      this.log(`Arming the alarm system to Away, [Partition ${this.partitionNumber}].`);
-                      l_envisaliklocalStatus = "ARMED_AWAY";
-                      l_alarmCommand = this.pin + tpidefs.alarmcommand.away;
-                      this.alarm.commandreferral = tpidefs.alarmcommand.away;
-                  }
-              break;
+                // Arming state
+                case 'READY_FIRE_TROUBLE':
+                    if (this.ignoreFireTrouble) {
+                        this.log.warn(`Arming Partition [${this.partitionNumber}] in Fire Trouble status.`);
+                        // Don't break, fall through arming sequence
+                    } else {
+                        this.log.warn(`Partition [${this.partitionNumber}] in Fire trouble status. Arming request failed.`);
+                        break;
+                    }
+                case 'READY_SYSTEM_TROUBLE':
+                    if (this.ignoreSystemTrouble) {
+                        this.log.warn(`Arming Partition [${this.partitionNumber}] in System Trouble status.`);
+                        // Don't break, fall through arming sequence
+                    } else {
+                        this.log.warn(`Partition [${this.partitionNumber}] in System trouble status. Arming request failed.`);
+                        break;
+                    }
+                case 'READY':
+                case 'READY_BYPASS':
+                    if (homekitState == this.Characteristic.SecuritySystemCurrentState.STAY_ARM) {
+                        this.log(`Arming the alarm system to Stay (Home), [Partition ${this.partitionNumber}].`);
+                        l_alarmCommand = this.pin + tpidefs.alarmcommand.stay;
+                        l_envisaliklocalStatus = "ARMED_STAY";
+                        this.alarm.commandreferral = tpidefs.alarmcommand.stay;
+                    } else if (homekitState == this.Characteristic.SecuritySystemCurrentState.NIGHT_ARM) {
+                        this.log(`Arming the alarm system to Night, [Partition ${this.partitionNumber}].`);
+                        l_alarmCommand = this.pin + tpidefs.alarmcommand.night;
+                        l_envisaliklocalStatus = "ARMED_NIGHT";
+                        this.alarm.commandreferral = tpidefs.alarmcommand.night;
+                    } else if (homekitState == this.Characteristic.SecuritySystemCurrentState.AWAY_ARM) {
+                        this.log(`Arming the alarm system to Away, [Partition ${this.partitionNumber}].`);
+                        l_envisaliklocalStatus = "ARMED_AWAY";
+                        l_alarmCommand = this.pin + tpidefs.alarmcommand.away;
+                        this.alarm.commandreferral = tpidefs.alarmcommand.away;
+                    }
+                break;
 
-              // Trouble states
-              case 'NOT_READY': 
-              case 'NOT_READY_TROUBLE': 
-              case 'NOT_READY_BYPASS': 
-                this.log(`The alarm system is not READY. The request for ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]} is ignored.`); 
-              break;
-              default:
-                this.log.warn(`The alarm system mode command is not supported for partition with status of ${this.envisakitCurrentStatus}. Please see alarm system keypad for more information.`);
-              break;
-          }
-        }
-        else this.log.debug(`setTargetState: Alarm system state is already ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]}, ignoring request.`); 
+                // Trouble states
+                case 'NOT_READY':
+                case 'NOT_READY_TROUBLE':
+                case 'NOT_READY_BYPASS':
+                    this.log(`The alarm system is not READY. The request for ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]} is ignored.`);
+                break;
+                default:
+                    this.log.warn(`The alarm system mode command is not supported for partition with status of ${this.envisakitCurrentStatus}. Please see alarm system keypad for more information.`);
+                break;
+            }
+        } else this.log.debug(`setTargetState: Alarm system state is already ${this.TARGET_HOMEKIT_TO_ENVISA[homekitState]}, ignoring request.`);
     } else this.log("Ignoring request, alarm system is busy processing a previous alarm system mode command(s).");
-    // Assume alarm can't be process alarm request return to previous state. 
-    // This will get updated if alarm command is valid and successful.
-    var l_homekitState = this.homekitLastTargetState;
-    // If valid alarm command was determine process request
+
+    // If a valid alarm command was determined, process the request.
     if (l_alarmCommand) {
         this.processingPartitionCmd = true;
         this.log.debug("setTargetState: Sending command(s).");
         if (this.changePartition) {
-                this.log(`Changing Partition to ${this.partitionNumber}`);
-                this.alarm.changePartition(this.partitionNumber);
-                sleep(PARTITION_SWITCH_DELAY);
+            this.log(`Changing Partition to ${this.partitionNumber}`);
+            this.alarm.changePartition(this.partitionNumber);
+            await sleep(PARTITION_SWITCH_DELAY);
         }
-        if (this.alarm.sendCommand(l_alarmCommand))
-        {
-          
-           // Alarm was successful
-          this.log.debug("setTargetState: Command(s) sent successfully.");
-          // Confirm success by monitoring for partition change event. IF event doesn't occur X, assume failure and roll back.
-          sleep(DISARM_CLEAR_DELAY);
-          this.armingTimeOutHandle = setTimeout(this.processAlarmTimer.bind(this), this.commandTimeOut * SECONDS);
-         
-          // Alarm was successful
-          // Workaround to prevent Home UI from flip back and forth initial set targetstate to STAY while setting UI to NIGHT. 
-          // when proper state is report by panel UI would already be reporting correctly and will not have to change.
-          if (l_envisaliklocalStatus != "ARMED_NIGHT") this.homekitLastTargetState = homekitState
-          else this.homekitLastTargetState = this.Characteristic.SecuritySystemTargetState.STAY_ARM;
+        if (this.alarm.sendCommand(l_alarmCommand)) {
+            this.log.debug("setTargetState: Command(s) sent successfully.");
+            // Confirm success by monitoring for partition change event. If event doesn't 
+            // occur within commandTimeOut, assume failure and roll back.
+            await sleep(DISARM_CLEAR_DELAY);
+            this.armingTimeOutHandle = setTimeout(this.processAlarmTimer.bind(this), this.commandTimeOut * SECONDS);
 
-          // Set UI status
-          this.envisakitCurrentStatus = l_envisaliklocalStatus;
-          this.setSecuritySystemValueHandle = setTimeout(this.setAlarmValues.bind(this),ACCESSORIESTIMEOUT/2);
-          return callback(null);
+            // Workaround to prevent Home UI from flipping back and forth when setting NIGHT.
+            // When the proper state is reported by the panel the UI will already be correct.
+            if (l_envisaliklocalStatus != "ARMED_NIGHT") this.homekitLastTargetState = homekitState;
+            else this.homekitLastTargetState = this.Characteristic.SecuritySystemTargetState.STAY_ARM;
+
+            // Set UI status
+            this.envisakitCurrentStatus = l_envisaliklocalStatus;
+            this.setSecuritySystemValueHandle = setTimeout(this.setAlarmValues.bind(this), ACCESSORIESTIMEOUT / 2);
+            return;
         }
-    } 
-    this.log.debug("setTargetState: Command unsuccessful, returning to homekit previous state - ", l_homekitState);
-    this.setSecuritySystemValueHandle = setTimeout(this.setAlarmRecoveryValues.bind(this),ACCESSORIESTIMEOUT);
-    return callback(null);
+    }
 
+    // Command unsuccessful or not determined — return UI to previous state.
+    this.log.debug("setTargetState: Command unsuccessful, returning to homekit previous state - ", this.homekitLastTargetState);
+    this.setSecuritySystemValueHandle = setTimeout(this.setAlarmRecoveryValues.bind(this), ACCESSORIESTIMEOUT);
   }
+
+
+
   // Battery status Low Battery status and Battery Level.
   async getPanelStatusLowBattery(callback) {
       // Assume battery level is normal.

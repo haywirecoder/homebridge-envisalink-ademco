@@ -28,7 +28,7 @@ class EnvisalinkZoneAccessory {
     this.bypassStatus = false;
     this.targetUnbypassZone = false;
     this.uuid = UUIDGen.generate(this.config.serialNumber);
-    this.commandTimeOut= config.commandTimeOut ? config.commandTimeOut : 10;
+    this.commandTimeOut = config.commandTimeOut ? config.commandTimeOut : 10;
     
 
     this.ENVISA_TO_HOMEKIT_MOTION = {
@@ -86,7 +86,6 @@ class EnvisalinkZoneAccessory {
           motionService.setCharacteristic(this.Characteristic.StatusFault, this.Characteristic.StatusFault.NO_FAULT);
           this.service = motionService;
           this.bypassEnabled = this.config.bypassEnabled ? this.config.bypassEnabled : false;
-          this.commandTimeOut = this.config.commandTimeOut;
           this.envisakitCurrentStatus = "close";
 
           // Bypass switch for individual sensor only if the master bypass switch is disabled. 
@@ -114,7 +113,6 @@ class EnvisalinkZoneAccessory {
           OccupancyService.setCharacteristic(this.Characteristic.StatusFault, this.Characteristic.StatusFault.NO_FAULT);
           this.service = OccupancyService;
           this.bypassEnabled = this.config.bypassEnabled ? this.config.bypassEnabled : false;
-          this.commandTimeOut = this.config.commandTimeOut;
           this.envisakitCurrentStatus = "close";
 
           // Bypass switch for individual sensor only if the master bypass switch is disabled. 
@@ -142,7 +140,6 @@ class EnvisalinkZoneAccessory {
           contactService.setCharacteristic(this.Characteristic.StatusFault, this.Characteristic.StatusFault.NO_FAULT);
           this.service = contactService;
           this.bypassEnabled = this.config.bypassEnabled ? this.config.bypassEnabled : false;
-          this.commandTimeOut = this.config.commandTimeOut;
           this.envisakitCurrentStatus = "close";
 
           // Bypass switch for individual sensor only if the master bypass switch is disabled. 
@@ -249,103 +246,111 @@ class EnvisalinkZoneAccessory {
   }
 
 async setByPass(value, callback) {
-    this.log.debug("setByPass: zone - ", this.name + ", " + this.zoneNumber); 
+    this.log.debug("setByPass: zone - ", this.name + ", " + this.zoneNumber);
+
+    // Acknowledge HomeKit immediately to prevent it from re-firing the set handler
+    // before the async operation completes. Execution continues normally after this.
+    callback(null);
 
     if (this.alarm.isProcessingBypass || this.alarm.isProcessingUnBypass) {
         const activeOperation = this.alarm.isProcessingBypass ? 'Bypass' : 'UnBypass';
-        this.log.warn(`[Zone ${this.zoneNumber}] is already processing ${activeOperation} request. Ignoring request.`);
-        return callback(null);
+        const zoneOperation = value ? 'Bypass' : 'UnBypass';
+        this.log.warn(`[Partition ${this.partition}] is already processing ${activeOperation} request. Ignoring [Zone ${this.zoneNumber}] ${zoneOperation} request.`);
+        return;
     }
+
     // Bypass is only available if system is not armed, alarm or in-trouble state.
     if (!this.alarm.alarmSystemMode.includes('ALARM') && !this.alarm.alarmSystemMode.includes('ARMED')) {
 
-      // If bypass switch is on for zone, bypass it; otherwise unbypass (targeted remove).
-      if (value) {
-        this.log(`Requesting bypassing of ${this.name} ...`);
-        // Set flags once here — removed duplicate assignments that were also in outer block.
-        this.alarm.isProcessingBypass = true;
-        this.alarm.isProcessingUnBypass = false;
-        this.targetUnbypassZone = false;
-        // Require leading zero for zone numbers which are not two or three digit (128 Panel)
-        const formattedZone = (this.deviceType === "128FBP")
-                ? (("00" + this.zoneNumber).slice(-3))
-                : (("0" + this.zoneNumber).slice(-2));
-      
-        const l_alarmCommand = this.pin + tpidefs.alarmcommand.bypass + formattedZone;
-        this.alarm.commandreferral = tpidefs.alarmcommand.bypass;
-        this.alarm.processingBypassqueue = 1;
-        this.alarm.sendCommand(l_alarmCommand);
-        this.bypassStatus = true;
-        // Await the delay so the settling time is actually observed
-        await sleep(BYPASS_DELAY + FINAL_SETTLING_TIME);
+        // If bypass switch is on for zone, bypass it; otherwise unbypass (targeted remove).
+        if (value) {
+            // Set flags immediately before any await — prevents re-entrant calls from
+            // slipping through the guard above during async execution.
+            this.alarm.isProcessingBypass = true;
+            this.alarm.isProcessingUnBypass = false;
+            this.targetUnbypassZone = false;
+            this.log(`Requesting bypassing of ${this.name} ...`);
 
-        // Safety watchdog: if the panel never sends CID 570 confirmation, clear the
-        // flags after commandTimeOut seconds so future bypass requests are not blocked.
-        // bypassStatus is NOT set here — cidUpdate() sets it on panel confirmation.
-        // If the watchdog fires, the UI is rolled back to reflect the actual panel state.
-        if (this.bypassWatchdogHandle) clearTimeout(this.bypassWatchdogHandle);
-        this.bypassWatchdogHandle = setTimeout(() => {
-            if (this.alarm.isProcessingBypass) {
-                this.log.warn(`[Zone ${this.zoneNumber}] Bypass time exceeded, panel did not confirm Bypass. ${this.alarm.processingBypassqueue} zones were still pending. Rolling back UI.`);
-                this.alarm.isProcessingBypass = false;
-                this.alarm.processingBypassqueue = 0;
-                this.alarm.commandreferral = 0;
-                // Roll back the HomeKit switch to reflect that bypass was not confirmed
-                this.bypassStatus = false;
-                const bypassSwitch = this.accessory.getService(this.Service.Switch);
-                if (bypassSwitch) bypassSwitch.updateCharacteristic(this.Characteristic.On, false);
-            }
-            this.bypassWatchdogHandle = undefined;
-        }, this.commandTimeOut * SECONDS);
-    
-      } else {
-        this.log(`Removing bypassing of ${this.name} ...`);
-        // Set flags once here — removed duplicate assignments that were also in outer block.
-        this.alarm.isProcessingUnBypass = true;
-        this.alarm.isProcessingBypass = false;
-        this.targetUnbypassZone = true;
-        this.alarm.targetUnbypassZoneNumber = this.zoneNumber;
-        // Explicitly reset queue to 1 for this single-zone unbypass. Without this, a stale
-        // non-zero value left from a prior reestablishZoneBypass() would require multiple
-        // CID 570 events to drain — which never happens for a single-zone command.
-        this.alarm.processingUnBypassqueue = 1;
-        // Customer grade Vista panels (15P/20P) don't support "unbypassing" a specific zone;
-        // logic must: 1) disarm to clear all bypasses, 2) re-bypass all other zones.
-        const l_alarmCommand = this.pin + tpidefs.alarmcommand.disarm;
-        this.alarm.commandreferral = tpidefs.alarmcommand.targetedunbypass;
-        this.bypassStatus = false;
-        this.alarm.sendCommand(l_alarmCommand);
-        // Await the delay so the settling time is actually observed
-        await sleep(DISARM_CLEAR_DELAY + FINAL_SETTLING_TIME);
+            // Require leading zero for zone numbers which are not two or three digit (128 Panel)
+            const formattedZone = (this.deviceType === "128FBP")
+                    ? (("00" + this.zoneNumber).slice(-3))
+                    : (("0" + this.zoneNumber).slice(-2));
 
-        // Safety watchdog: if the panel never sends CID 570 unbypass confirmation,
-        // clear the flags after commandTimeOut seconds so future requests are not blocked.
-        // Roll back the HomeKit switch UI to its prior state if unbypass was not confirmed.
-        if (this.unbypassWatchdogHandle) clearTimeout(this.unbypassWatchdogHandle);
-        this.unbypassWatchdogHandle = setTimeout(() => {
-            if (this.alarm.isProcessingUnBypass) {
-                this.log.warn(`[Zone ${this.zoneNumber}] Unbypass time exceeded, panel did not confirm unbypass. ${this.alarm.processingUnBypassqueue} zones were still pending.`);
-                this.alarm.isProcessingUnBypass = false;
-                this.alarm.processingUnBypassqueue = 0;
-                this.alarm.commandreferral = 0;
-                this.alarm.targetUnbypassZoneNumber = 0;
-                // Roll back the HomeKit switch to reflect that unbypass was not confirmed
-                this.bypassStatus = true;
-                const bypassSwitch = this.accessory.getService(this.Service.Switch);
-                if (bypassSwitch) bypassSwitch.updateCharacteristic(this.Characteristic.On, true);
-            }
-            this.unbypassWatchdogHandle = undefined;
-        }, this.commandTimeOut * SECONDS);
-      }
-      // bypassStatus is intentionally NOT set here — it is owned by cidUpdate() on
-      // panel confirmation (CID 570), or by the watchdog on failure. Setting it here
-      // optimistically would leave the UI showing the wrong state if the panel rejects
-      // the command and the watchdog fires.
+            const l_alarmCommand = this.pin + tpidefs.alarmcommand.bypass + formattedZone;
+            this.alarm.commandreferral = tpidefs.alarmcommand.bypass;
+            this.alarm.processingBypassqueue = 1;
+            this.alarm.sendCommand(l_alarmCommand);
+            this.bypassStatus = true;
+            // Await the delay so the settling time is actually observed
+            await sleep(BYPASS_DELAY + FINAL_SETTLING_TIME);
+
+            // Safety watchdog: if the panel never sends CID 570 confirmation, clear the
+            // flags after commandTimeOut seconds so future bypass requests are not blocked.
+            // bypassStatus is NOT set here — cidUpdate() sets it on panel confirmation.
+            // If the watchdog fires, the UI is rolled back to reflect the actual panel state.
+            if (this.bypassWatchdogHandle) clearTimeout(this.bypassWatchdogHandle);
+            this.bypassWatchdogHandle = setTimeout(() => {
+                if (this.alarm.isProcessingBypass) {
+                    this.log.warn(`[Zone ${this.zoneNumber}] Bypass time exceeded, panel did not confirm Bypass. ${this.alarm.processingBypassqueue} zones were still pending. Rolling back UI.`);
+                    this.alarm.isProcessingBypass = false;
+                    this.alarm.processingBypassqueue = 0;
+                    this.alarm.commandreferral = 0;
+                    // Roll back the HomeKit switch to reflect that bypass was not confirmed
+                    this.bypassStatus = false;
+                    const bypassSwitch = this.accessory.getService(this.Service.Switch);
+                    if (bypassSwitch) bypassSwitch.updateCharacteristic(this.Characteristic.On, false);
+                }
+                this.bypassWatchdogHandle = undefined;
+            }, this.commandTimeOut * SECONDS);
+
+        } else {
+            // Set flags immediately before any await — same reasoning as bypass branch above.
+            this.alarm.isProcessingUnBypass = true;
+            this.alarm.isProcessingBypass = false;
+            this.targetUnbypassZone = true;
+            this.alarm.targetUnbypassZoneNumber = this.zoneNumber;
+            this.log(`Removing bypassing of ${this.name} ...`);
+
+            // Explicitly reset queue to 1 for this single-zone unbypass. Without this, a stale
+            // non-zero value left from a prior reestablishZoneBypass() would require multiple
+            // CID 570 events to drain — which never happens for a single-zone command.
+            this.alarm.processingUnBypassqueue = 1;
+            // Customer grade Vista panels (15P/20P) don't support "unbypassing" a specific zone;
+            // logic must: 1) disarm to clear all bypasses, 2) re-bypass all other zones.
+            const l_alarmCommand = this.pin + tpidefs.alarmcommand.disarm;
+            this.alarm.commandreferral = tpidefs.alarmcommand.targetedunbypass;
+            this.bypassStatus = false;
+            this.alarm.sendCommand(l_alarmCommand);
+            // Await the delay so the settling time is actually observed
+            await sleep(DISARM_CLEAR_DELAY + FINAL_SETTLING_TIME);
+
+            // Safety watchdog: if the panel never sends CID 570 unbypass confirmation,
+            // clear the flags after commandTimeOut seconds so future requests are not blocked.
+            // Roll back the HomeKit switch UI to its prior state if unbypass was not confirmed.
+            if (this.unbypassWatchdogHandle) clearTimeout(this.unbypassWatchdogHandle);
+            this.unbypassWatchdogHandle = setTimeout(() => {
+                if (this.alarm.isProcessingUnBypass) {
+                    this.log.warn(`[Zone ${this.zoneNumber}] Unbypass time exceeded, panel did not confirm unbypass. ${this.alarm.processingUnBypassqueue} zones were still pending.`);
+                    this.alarm.isProcessingUnBypass = false;
+                    this.alarm.processingUnBypassqueue = 0;
+                    this.alarm.commandreferral = 0;
+                    this.alarm.targetUnbypassZoneNumber = 0;
+                    // Roll back the HomeKit switch to reflect that unbypass was not confirmed
+                    this.bypassStatus = true;
+                    const bypassSwitch = this.accessory.getService(this.Service.Switch);
+                    if (bypassSwitch) bypassSwitch.updateCharacteristic(this.Characteristic.On, true);
+                }
+                this.unbypassWatchdogHandle = undefined;
+            }, this.commandTimeOut * SECONDS);
+        }
+        // bypassStatus is intentionally NOT set here — it is owned by cidUpdate() on
+        // panel confirmation (CID 570), or by the watchdog on failure. Setting it here
+        // optimistically would leave the UI showing the wrong state if the panel rejects
+        // the command and the watchdog fires.
     } else {
-      this.bypassStatus = !value;
-      this.log(`Alarm is ${this.alarm.alarmSystemMode} can't change bypass state. Ignoring bypass request.`);
-    } 
-    return callback(null);
+        this.bypassStatus = !value;
+        this.log(`Alarm is ${this.alarm.alarmSystemMode} can't change bypass state. Ignoring bypass request.`);
+    }
   }
 }
 

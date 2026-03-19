@@ -113,29 +113,29 @@ class EnvisalinkCustomAccessory {
   async getChime(callback) {
     return callback(null,  this.envisakitCurrentStatus);
   }
+  
+  async setChime(value, callback) {
+    this.log.debug('setChime: Chime set - ', value);
+    callback(null);  // ← acknowledge HomeKit immediately
 
-  async setChime(value,callback) {
-    this.log.debug('setChime: Chime set - ', value );
-    // Determine if chime command is in process
-    if (this.isProcessingChimeOnOff){
-      this.log('Already processing a Chime toggle request. Command ignored.');
+    if (this.isProcessingChimeOnOff) {
+        this.log('Already processing a Chime toggle request. Command ignored.');
+        return;
     }
-    else if (this.envisakitCurrentStatus !== value) {
-      var l_alarmCommand = this.pin + tpidefs.alarmcommand.togglechime
-      this.alarm.commandreferral = tpidefs.alarmcommand.togglechime;
-      if(this.alarm.sendCommand(l_alarmCommand)) {
-        this.envisakitCurrentStatus = value;     
-        this.isProcessingChimeOnOff = true;
-        if (this.chimeOnOffTimeOut) clearTimeout(this.chimeOnOffTimeOut);
-        this.chimeOnOffTimeOut = setTimeout(this.processChimeOffTimer.bind(this), this.commandTimeOut * SECONDS);
-      }          
-      } 
-      else {
-        this.log('Chime already in requested state. Command ignored.');
-      }
-    return callback(null,this.envisakitCurrentStatus);
-  }   
 
+    if (this.envisakitCurrentStatus !== value) {
+        var l_alarmCommand = this.pin + tpidefs.alarmcommand.togglechime;
+        this.alarm.commandreferral = tpidefs.alarmcommand.togglechime;
+        if (this.alarm.sendCommand(l_alarmCommand)) {
+            this.isProcessingChimeOnOff = true;  // ← set before any async gap
+            this.envisakitCurrentStatus = value;
+            if (this.chimeOnOffTimeOut) clearTimeout(this.chimeOnOffTimeOut);
+            this.chimeOnOffTimeOut = setTimeout(this.processChimeOffTimer.bind(this), this.commandTimeOut * SECONDS);
+        }
+    } else {
+        this.log('Chime already in requested state. Command ignored.');
+    }
+  }
   processChimeOffTimer() {
     if (this.isProcessingChimeOnOff) {
         this.log.warn(`Chime toggle request did not return successfully in the allocated time.`);
@@ -175,141 +175,125 @@ class EnvisalinkCustomAccessory {
         // (locSetValue = false) before the disarm command was sent in READY_BYPASS path.
     }
   }
+
   async setByPass(value, callback) {
-    this.log.debug('setByPass:  Bypass set - ', value);
-    // Determine if processing another bypass command.
+    this.log.debug('setByPass: Bypass set - ', value);
+    callback(null);  // ← acknowledge HomeKit immediately
+
     if (this.alarm.isProcessingBypass || this.alarm.isProcessingUnBypass) {
         this.log("Already processing Bypass or UnBypass request. Command ignored.");
-        return callback(null, this.ENVISA_BYPASS_TO_HOMEKIT[this.envisakitCurrentStatus]);
+        return;
     }
-    else
-    {
-        var locSetValue = value;
-        // Set busy status on process Bypass
-        this.alarm.isProcessingBypass = true;
-        this.alarm.processingBypassqueue = 0;
-        // Get the button service and updated switch soon after set function is complete 
-        var switchService = this.accessory.getService(this.Service.Switch);
-        // Determine alarm status and execute bypass on status
-        switch (this.envisakitCurrentStatus) {
-            case 'NOT_READY':
-                // System not ready, review candidate for zone bypass 
-                if (value) {
-                    this.log(`Reviewing fault zones for bypassing...`);
-                    var l_alarmCommand;
-                    if (this.quickbypass) {
-                        this.log(`Quick Bypass configured. Quick bypass of fault zones.`);
-                        l_alarmCommand = this.pin + tpidefs.alarmcommand.quickbypass;
-                        this.alarm.commandreferral = tpidefs.alarmcommand.quickbypass;
-                        // Set queue to 1 so the guard at the bottom does NOT
-                        // immediately clear isProcessingBypass before any CID 570 arrives.
-                        // Without this, rapid taps bypass the throttle entirely.
-                        this.alarm.processingBypassqueue = 1;
-                        this.alarm.sendCommand(l_alarmCommand);
-                        this.byPassTimeOut = setTimeout(this.processBypassTimer.bind(this), this.commandTimeOut * SECONDS);
-                        break;
-                    }
-                    // Reviewing zone that are being monitored and are bypass enabled (allowed to be bypass)
-                    if (this.zoneDevices.length == 0) {
-                        this.log(`Nothing to bypass. There are no zones defined.`);
-                        setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,false)}.bind(this),CHARACTERISTICTIMEOUT);
-                        break;
-                    }
-                    var bypassCount = 0;
-                    var formattedZone = "";
-                    var bValue = false;
-                    for (var i = 0; i < this.zoneDevices.length; i++) {
-                        var zoneinfo = this.zoneDevices[i];
-                        if (zoneinfo) {
-                            // Only bypass zone that are open and has been enabled for bypass, default is false for all zone define in configuration file.
-                            this.log.debug(`setByPass: Reviewing zone - ${zoneinfo.name}, ${zoneinfo.bypassEnabled}`);
-                            if ((zoneinfo.envisakitCurrentStatus != "close") && (zoneinfo.bypassEnabled)) {
-                                this.log(`Requesting bypassing of ${zoneinfo.name} ...`);
-                                if (zoneinfo.envisakitCurrentStatus == "check") this.warn(`${zoneinfo.name} is generating a check message, which requires your attention. This could result in unexpected results with bypass function.`);
-                                if (formattedZone.length > 1) formattedZone = formattedZone + ","; 
-                                // Require leading zero for zone numbers which are not two or three digit (128 Panel)
-                                formattedZone = (this.deviceType === "128FBP")
-                                    ? (("00" + zoneinfo.zoneNumber).slice(-3))
-                                    : (("0" + zoneinfo.zoneNumber).slice(-2));
-                                bypassCount++;
-                            }
-                        }
-                    } 
-                    if (bypassCount == 0) {
-                        this.log("No zones were enabled for bypass. Please set bypassEnabled flag for zone(s) wanting to enable for bypass by Homekit.")
-                        bValue = false;
-                    }
-                    else {
-                        l_alarmCommand = this.pin + tpidefs.alarmcommand.bypass + formattedZone;
-                        this.alarm.commandreferral = tpidefs.alarmcommand.bypass;
-                        this.alarm.processingBypassqueue = bypassCount;
-                        this.alarm.sendCommand(l_alarmCommand);
-                        await sleep(BYPASS_DELAY * this.delayfactor);
-                        bValue = true;
-                        this.log(`${bypassCount} zone(s) queued for bypass.`);
-                        if (this.byPassTimeOut) clearTimeout(this.byPassTimeOut);
-                        this.byPassTimeOut = setTimeout(this.processBypassTimer.bind(this), this.commandTimeOut * SECONDS);
-                    }
-                
-                }
-                setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,bValue)}.bind(this),CHARACTERISTICTIMEOUT);
-                locSetValue = bValue;
-            break;
-            case 'READY_BYPASS':
-            case 'NOT_READY_BYPASS':
-                // Clear bypass zones
-                if (value == false) {
-                    this.log(`Clearing bypass zones...`)
-                    var l_alarmCommand = this.pin + tpidefs.alarmcommand.disarm;
-                    this.alarm.commandreferral = tpidefs.alarmcommand.disarm;
-                    this.alarm.isProcessingUnBypass = true;
-                    this.alarm.isProcessingBypass = false;
-                    this.alarm.processingUnBypassqueue = 1;
-                    this.alarm.targetUnbypassZoneNumber = 0;
+
+    // Set busy flag immediately — before any await or branch logic —
+    // so re-entrant calls from HomeKit are blocked from this point on.
+    this.alarm.isProcessingBypass = true;
+    this.alarm.processingBypassqueue = 0;
+
+    var locSetValue = value;
+    var switchService = this.accessory.getService(this.Service.Switch);
+
+    switch (this.envisakitCurrentStatus) {
+        case 'NOT_READY':
+            if (value) {
+                this.log(`Reviewing fault zones for bypassing...`);
+                var l_alarmCommand;
+                if (this.quickbypass) {
+                    this.log(`Quick Bypass configured. Quick bypass of fault zones.`);
+                    l_alarmCommand = this.pin + tpidefs.alarmcommand.quickbypass;
+                    this.alarm.commandreferral = tpidefs.alarmcommand.quickbypass;
+                    this.alarm.processingBypassqueue = 1;
                     this.alarm.sendCommand(l_alarmCommand);
-                    // Add unbypass watchdog so isProcessingUnBypass cannot
-                    // stay true forever if the panel never sends CID 570 qualifier=3.
-                    if (this.unByPassTimeOut) clearTimeout(this.unByPassTimeOut);
-                    this.unByPassTimeOut = setTimeout(this.processUnBypassTimer.bind(this), this.commandTimeOut * SECONDS);
+                    this.byPassTimeOut = setTimeout(this.processBypassTimer.bind(this), this.commandTimeOut * SECONDS);
+                    break;
                 }
-                locSetValue = false;
-            break;
-            case 'READY':
-                if (value == true) {
-                  this.log(`Alarm is ${this.envisakitCurrentStatus} no action required. Ignoring bypass request.`);
-                  // Turn off switch, since no action was completed.
-                  setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,false)}.bind(this),CHARACTERISTICTIMEOUT);
+                if (this.zoneDevices.length == 0) {
+                    this.log(`Nothing to bypass. There are no zones defined.`);
+                    setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On, false)}.bind(this), CHARACTERISTICTIMEOUT);
+                    break;
                 }
-                locSetValue = false;
-            break;
-            default:
-                // Nothing to process, return to previous state, 
-                setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,!value)}.bind(this),CHARACTERISTICTIMEOUT);
-                locSetValue = !value;
-            break;
-        }
-        // Clear the processing flag only if nothing is queued. The quickbypass and
-        // multi-zone bypass paths now set processingBypassqueue > 0 before reaching here,
-        // so this guard correctly leaves isProcessingBypass set until CID 570 confirms.
-        // The unbypass path sets isProcessingBypass = false directly and uses isProcessingUnBypass.
-        if (this.alarm.processingBypassqueue == 0 ) this.alarm.isProcessingBypass = false;
-        return callback(null, locSetValue);
+                var bypassCount = 0;
+                var formattedZone = "";
+                var bValue = false;
+                for (var i = 0; i < this.zoneDevices.length; i++) {
+                    var zoneinfo = this.zoneDevices[i];
+                    if (zoneinfo) {
+                        this.log.debug(`setByPass: Reviewing zone - ${zoneinfo.name}, ${zoneinfo.bypassEnabled}`);
+                        if ((zoneinfo.envisakitCurrentStatus != "close") && (zoneinfo.bypassEnabled)) {
+                            this.log(`Requesting bypassing of ${zoneinfo.name} ...`);
+                            if (zoneinfo.envisakitCurrentStatus == "check") this.log.warn(`${zoneinfo.name} is generating a check message, which requires your attention. This could result in unexpected results with bypass function.`);
+                            if (formattedZone.length > 1) formattedZone = formattedZone + ",";
+                            formattedZone = (this.deviceType === "128FBP")
+                                ? (("00" + zoneinfo.zoneNumber).slice(-3))
+                                : (("0" + zoneinfo.zoneNumber).slice(-2));
+                            bypassCount++;
+                        }
+                    }
+                }
+                if (bypassCount == 0) {
+                    this.log("No zones were enabled for bypass. Please set bypassEnabled flag for zone(s) wanting to enable for bypass by Homekit.");
+                    bValue = false;
+                } else {
+                    l_alarmCommand = this.pin + tpidefs.alarmcommand.bypass + formattedZone;
+                    this.alarm.commandreferral = tpidefs.alarmcommand.bypass;
+                    this.alarm.processingBypassqueue = bypassCount;
+                    this.alarm.sendCommand(l_alarmCommand);
+                    await sleep(BYPASS_DELAY * this.delayfactor);
+                    bValue = true;
+                    this.log(`${bypassCount} zone(s) queued for bypass.`);
+                    if (this.byPassTimeOut) clearTimeout(this.byPassTimeOut);
+                    this.byPassTimeOut = setTimeout(this.processBypassTimer.bind(this), this.commandTimeOut * SECONDS);
+                }
+            }
+            setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On, bValue)}.bind(this), CHARACTERISTICTIMEOUT);
+            locSetValue = bValue;
+        break;
+
+        case 'READY_BYPASS':
+        case 'NOT_READY_BYPASS':
+            if (value == false) {
+                this.log(`Clearing bypass zones...`);
+                var l_alarmCommand = this.pin + tpidefs.alarmcommand.disarm;
+                this.alarm.commandreferral = tpidefs.alarmcommand.disarm;
+                this.alarm.isProcessingUnBypass = true;
+                this.alarm.isProcessingBypass = false;
+                this.alarm.processingUnBypassqueue = 1;
+                this.alarm.targetUnbypassZoneNumber = 0;
+                this.alarm.sendCommand(l_alarmCommand);
+                if (this.unByPassTimeOut) clearTimeout(this.unByPassTimeOut);
+                this.unByPassTimeOut = setTimeout(this.processUnBypassTimer.bind(this), this.commandTimeOut * SECONDS);
+            }
+            locSetValue = false;
+        break;
+
+        case 'READY':
+            if (value == true) {
+                this.log(`Alarm is ${this.envisakitCurrentStatus} no action required. Ignoring bypass request.`);
+                setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On, false)}.bind(this), CHARACTERISTICTIMEOUT);
+            }
+            locSetValue = false;
+        break;
+
+        default:
+            setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On, !value)}.bind(this), CHARACTERISTICTIMEOUT);
+            locSetValue = !value;
+        break;
     }
+
+    if (this.alarm.processingBypassqueue == 0) this.alarm.isProcessingBypass = false;
   }
-  async setSpeedKey(value,callback) {
-  
+
+  async setSpeedKey(value, callback) {
+    callback(null);  // ← acknowledge HomeKit immediately
+
     if (value) {
-        // Get the button service and updated switch soon after set function is complete
         var switchService = this.accessory.getService(this.Service.Switch);
-        // Replace token values with pin
         var l_alarmCommand = this.speedKeyCommand;
-        this.log(`Sending panel command for speed key ${this.name}`);  
-        this.log.debug(`Sending command string sent ${l_alarmCommand}`);  
+        this.log(`Sending panel command for speed key ${this.name}`);
+        this.log.debug(`Sending command string sent ${l_alarmCommand}`);
         this.alarm.sendCommand(l_alarmCommand);
-        // turn off after 2 sec
-        setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On,false)}.bind(this),CHARACTERISTICTIMEOUT);
+        setTimeout(function () {switchService.updateCharacteristic(this.Characteristic.On, false)}.bind(this), CHARACTERISTICTIMEOUT);
     }
-    return callback(null); 
   }
 
 }
