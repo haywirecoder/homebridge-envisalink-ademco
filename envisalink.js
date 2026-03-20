@@ -472,24 +472,6 @@ class EnvisaLink extends EventEmitter {
               source: this.activezones[z].source + " Low Batt Resolved."
             });
           }
-          // Synthetic unbypass signal: the keypad has stopped reporting this zone as
-          // bypassed for openZoneTimeout seconds, meaning the panel cleared the bypass.
-          // This fires as a fallback in two cases:
-          //   1. Physical keypad unbypass — plugin never initiated it, no CID 570
-          //      qualifier 3 arrived, and partitionUpdate did not fire.
-          //   2. Plugin-initiated unbypass where neither CID 570 qualifier 3 nor
-          //      partitionUpdate completed the operation within openZoneTimeout.
-          
-          if (this.activezones[z].eventtype == "bypassed.") {
-            this.emit('cidupdate', {
-              type: "zone",
-              code: ZONE_BYPASS,
-              zone: this.activezones[z].zone,
-              name: this.activezones[z].source,
-              qualifier: 3,
-              source: this.activezones[z].source + " Unbypass."
-            });
-          }
           this.activezones.splice(z, 1);
         } else {
           currZoneTime = l_zonetimeout - currZoneTime;

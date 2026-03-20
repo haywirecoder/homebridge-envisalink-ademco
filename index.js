@@ -547,10 +547,11 @@ class EnvisalinkPlatform {
                     partition.bypassedZones.clear();
                     partition.saveBypassedZones();
                 } else {
-                    this.log(`partitionUpdate: Removing zone ${alarm.targetUnbypassZoneNumber} from bypass memory (non-targeted path).`);
+                    this.log(`partitionUpdate: Removing zone ${alarm.targetUnbypassZoneNumber} from bypass memory (targeted path).`);
                     partition.bypassedZones.delete(alarm.targetUnbypassZoneNumber);
                     partition.saveBypassedZones();
                     alarm.targetUnbypassZoneNumber = 0;
+                    await partition.reestablishZoneBypass();
                 }
                 alarm.commandreferral = 0;
             }
