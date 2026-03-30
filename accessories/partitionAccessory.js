@@ -36,12 +36,10 @@ class EnvisalinkPartitionAccessory {
       // Use lowercase throughout — index.js reads/writes partition.clearzonebypass (all lowercase).
       // The previous clearZoneBypass (capital Z) was a different property and was never read.
       this.clearzonebypass = false;
-      this.delayfactor = config.delayfactor ? config.delayfactor : 1;
-      // Respect user config — the line that unconditionally overwrote this with true has been removed.
-      this.bypassedZonesMemory = config.bypassedZonesMemory ? config.bypassedZonesMemory : false;
+      this.bypassedZonesMemory = config.bypassedZonesMemory;
    
 
-        this.ENVISA_TO_HOMEKIT_CURRENT = {
+      this.ENVISA_TO_HOMEKIT_CURRENT = {
         'NOT_READY':            Characteristic.SecuritySystemCurrentState.DISARMED,
         'NOT_READY_TROUBLE':    Characteristic.SecuritySystemCurrentState.DISARMED,  
         'NOT_READY_BYPASS':     Characteristic.SecuritySystemCurrentState.DISARMED,
@@ -60,7 +58,7 @@ class EnvisalinkPartitionAccessory {
         'EXIT_DELAY':           Characteristic.SecuritySystemCurrentState.DISARMED
         };
 
-        this.ENVISA_TO_HOMEKIT_TARGET = {
+      this.ENVISA_TO_HOMEKIT_TARGET = {
         'NOT_READY':            Characteristic.SecuritySystemTargetState.DISARM,
         'NOT_READY_TROUBLE':    Characteristic.SecuritySystemTargetState.DISARM,
         'NOT_READY_BYPASS':     Characteristic.SecuritySystemTargetState.DISARM,
@@ -350,7 +348,7 @@ class EnvisalinkPartitionAccessory {
     } else {
         smartDelay = 1200;  // High Reliability Mode
     }
-    return (smartDelay * this.delayfactor);
+    return (smartDelay);
   }
 
   // Reestablish zone bypasses from plug-in memory. The plugin tracks bypassed zones in the bypassedZones set, 
@@ -363,7 +361,7 @@ class EnvisalinkPartitionAccessory {
         return;
     }
 
-    this.log(`Reestablishing bypass for ${this.bypassedZones.size} zone(s) individually to support Ready state.`);
+    this.log(`Reestablishing bypass for ${this.bypassedZones.size} zone(s).`);
 
     // Usage of individual bypass commands with delay is required to prevent panel from dropping bypass
     // requests due to buffer overflow when multiple zones are bypassed.
@@ -379,10 +377,9 @@ class EnvisalinkPartitionAccessory {
 
     // Iterate through each zone and send a discrete bypass command
     for (const zoneNumber of this.bypassedZones) {
-        // Format zone based on panel type
         const formattedZone = (this.deviceType === "128FBP")
-                ? (("00" + zoneNumber).slice(-3))
-                : (("0" + zoneNumber).slice(-2));
+        ? (("00" + Number(zoneNumber)).slice(-3))
+        : (("0" + Number(zoneNumber)).slice(-2));
 
         // Construct individual command: PIN + 6 + ZONE
         const l_alarmCommand = this.pin + tpidefs.alarmcommand.bypass + formattedZone;
@@ -431,7 +428,7 @@ class EnvisalinkPartitionAccessory {
 
         const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
         if (Array.isArray(data.bypassedZones)) {
-            this.bypassedZones = new Set(data.bypassedZones);
+            this.bypassedZones = new Set(data.bypassedZones.map(Number));
             this.log(`restoreBypassedZones: [Partition ${this.partitionNumber}] Restored zones: ${Array.from(this.bypassedZones)}`);
             return true;
         }

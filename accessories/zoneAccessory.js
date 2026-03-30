@@ -3,7 +3,6 @@ var tpidefs = require('./../tpi.js');
 
 const ENVISALINK_MANUFACTURER = "Envisacor Technologies Inc."
 const SECONDS = 1000;
-const ACCESSORIESTIMEOUT = 1000;
 const PARTITION_SWITCH_DELAY = 2000; // Partition switch: Long delay
 const BYPASS_DELAY = 800;  // Bypass: Medium delay
 const DISARM_CLEAR_DELAY = 1200; // Disarm/Clear: Long delay
@@ -301,7 +300,7 @@ async setByPass(value, callback) {
                     if (bypassSwitch) bypassSwitch.updateCharacteristic(this.Characteristic.On, false);
                 }
                 this.bypassWatchdogHandle = undefined;
-            }, this.commandTimeOut * SECONDS);
+            }, this.commandTimeOut);
 
         } else {
             // Set flags immediately before any await — same reasoning as bypass branch above.
@@ -341,7 +340,7 @@ async setByPass(value, callback) {
                     if (bypassSwitch) bypassSwitch.updateCharacteristic(this.Characteristic.On, true);
                 }
                 this.unbypassWatchdogHandle = undefined;
-            }, this.commandTimeOut * SECONDS);
+            }, this.commandTimeOut);
         }
         // bypassStatus is intentionally NOT set here — it is owned by cidUpdate() on
         // panel confirmation (CID 570), or by the watchdog on failure. Setting it here
