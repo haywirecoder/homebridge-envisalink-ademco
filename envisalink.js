@@ -38,6 +38,13 @@ class EnvisaLink extends EventEmitter {
   alarmSystemMode;
   tpiproxyServer;
   wcForwardServer;
+  bypassScanInProgress;
+  bypassScanZones;
+  bypassScanTimeout;
+  bypassScanNoResponseTimeout;
+  bypassProbeZone;
+  bypassScanRequested;
+  
 
   constructor(log, config) {
     super();
@@ -89,6 +96,12 @@ class EnvisaLink extends EventEmitter {
     this.targetUnbypassZoneNumber = 0;
     this.alarmSystemMode = 'READY';
     this.commandreferral = "";
+    this.bypassScanInProgress = false;
+    this.bypassScanZones = new Set();
+    this.bypassScanTimeout = undefined;
+    this.bypassScanNoResponseTimeout = undefined;
+    this.bypassProbeZone = 99; // overridden by index.js if configured
+    this.bypassScanRequested = false;
 
     // Instance-level state for zone tracking and session trouble flag.
     // Previously module-level variables, which caused stale state to persist
@@ -603,10 +616,49 @@ class EnvisaLink extends EventEmitter {
       if ((keypadledstatus.low_battery) && (keypad_txt.includes('LOBAT'))) {
         zoneTimerOpen(tpi, userOrZone, "lowbatt.");
       }
-      if ((keypad_txt.substring(0, 5) == 'BYPAS') && (!keypadledstatus.not_used2) && ((mode == 'NOT_READY_BYPASS') || (mode == 'READY_BYPASS'))) {
-        zoneTimerOpen(tpi, userOrZone, "bypassed.");
-      }
+      if ((keypad_txt.substring(0, 5) == 'BYPAS') &&
+          (!keypadledstatus.not_used2) &&
+          ((mode == 'NOT_READY_BYPASS') || (mode == 'READY_BYPASS') || (mode == 'READY') || (mode == 'NOT_READY'))) {
 
+          // Keep activezones tracking for existing display logic. Surpress synthetic CID, 
+          // if this was result of bypass scan probe command to avoid duplicate events for the same zone 
+          // the bypass scan event will be the source of truth for bypass status of all zones during a scan.
+          if(!this.bypassScanRequested) zoneTimerOpen(tpi, userOrZone, "bypassed.");
+
+          // Only collect into the bypass scan if syncBypassedZones() requested it.
+          // This prevents reestablishZoneBypass() BYPAS confirmations from being
+          // mistaken for a probe scan response and corrupting bypassedZones.
+          if (this.bypassScanRequested) {
+              const zoneNum = parseInt(userOrZone, 10);
+              if (!isNaN(zoneNum) && zoneNum > 0 && zoneNum !== this.bypassProbeZone) {
+                  this.bypassScanZones.add(zoneNum);
+                  this.bypassScanInProgress = true;
+              }
+
+              // Cancel no-response timeout — panel confirmed it has bypassed zones.
+              if (this.bypassScanNoResponseTimeout) {
+                  clearTimeout(this.bypassScanNoResponseTimeout);
+                  this.bypassScanNoResponseTimeout = undefined;
+              }
+
+              // Reset settling timer — fires when no new BYPAS arrives for settlingMs.
+              const settlingMs = 3000;
+              if (this.bypassScanTimeout) clearTimeout(this.bypassScanTimeout);
+              this.bypassScanTimeout = setTimeout(() => {
+                  if (this.bypassScanInProgress) {
+                      this.log.debug(`updateKeypad: Bypass scan complete — zones: ${Array.from(this.bypassScanZones)}`);
+                      this.emit('bypassscan', {
+                          zones: new Set(this.bypassScanZones),
+                          partition: parseInt(partition, 10)
+                      });
+                      this.bypassScanZones.clear();
+                      this.bypassScanInProgress = false;
+                      this.bypassScanRequested = false;  // ← clear flag on completion
+                      this.bypassScanTimeout = undefined;
+                  }
+              }, settlingMs);
+          }
+      }
       this.emit('keypadupdate', {
         partition: partition,
         code: {
@@ -806,18 +858,76 @@ class EnvisaLink extends EventEmitter {
   }
 
 /**
- * Retrieves zone status from the alarm panel using the virtual keypad.
- * Uses keypad command sequence "*" to display zone status.
- * The zones will be displayed on the virtual keypad.
- * @param {string} pin - The user PIN code to authenticate the request.
+ * Probes the panel for all currently bypassed zones by sending a bypass
+ * command for an unused probe zone. The panel responds by scrolling through
+ * all currently bypassed zones on the keypad display before acknowledging
+ * the probe zone — these BYPAS keypad updates are captured by updateKeypad
+ * and collected into a bypassscan event once the scroll settles.
+ *
+ * The probe zone should be a zone number that is not wired to any physical
+ * sensor on the panel (default: 99). Configure bypassProbeZone in the
+ * plugin config to match your panel's unused zone range.
+ *
+ * Only valid when panel is disarmed and in a bypass-capable state.
+ *
+ * @param {string} pin - User PIN to authenticate the bypass command.
+ * @param {number} probeZone - Unused zone number to probe with (default: 99).
  */
-  syncZones(pin) {
-    // On an Ademco Vista panel, the * key is a "Read-Only" or "Status" button.
-    var to_send = '0301*';
-    this.lastsentcommand = "0301*";
-    this.sendCommand(to_send);
-  }
+syncBypassedZones(pin, probeZone = 99, partitionNumber = 1) {
+    if (this.isMaintenanceMode) {
+        this.log.warn('Maintenance mode active zone synchronization, command not sent.');
+        return;
+    }
+    if (!tpiserverSocket || !this.isConnected) {
+        this.log.warn('Envisalink plug-in not connected, cannot sync bypass state.');
+        return;
+    }
+    // Only probe when panel is in a bypass-capable disarmed state.
+    // Sending bypass during ARMED or ALARM state would be incorrect.
+    if (this.alarmSystemMode.includes('ARMED') || this.alarmSystemMode.includes('ALARM')) {
+        this.log.warn('Panel is ARMED or in ALARM — skipping probe.');
+        return;
+    }
+    // Do not probe while a bypass or unbypass operation is in flight.
+    // The probe command would interfere with the in-progress operation,
+    // and the scan result would reflect a partial/transient panel state.
+    if (this.isProcessingBypass || this.isProcessingUnBypass) {
+        this.log.debug('syncBypassedZones: Bypass or unbypass in progress — deferring probe.');
+        return;
+    }
+    const formattedZone = probeZone >= 100
+        ? String(probeZone)
+        : String(probeZone).padStart(2, '0');
+    this.bypassScanRequested = true;
+    this.bypassScanZones.clear();
+    this.bypassScanInProgress = false;
+    this.log.info(`Starting bypass zone probe using zone ${formattedZone} to enumerate bypassed zones.`);
+    const command = pin + '6' + formattedZone;  // PIN + bypass function code + zone
+    this.sendCommand(command);
 
+    // No-response timeout: if the panel sends no BYPAS keypad updates within
+    // noResponseMs after the probe command, it means no zones are currently
+    // bypassed. Emit an empty bypassscan so index.js can clear any stale
+    // bypassedZones entries that remain from before the restart.
+    // This timeout is cancelled by updateKeypad the moment the first BYPAS
+    // update arrives, since bypassScanInProgress will be true by then.
+    const noResponseMs = 5000;
+    if (this.bypassScanNoResponseTimeout) {
+        clearTimeout(this.bypassScanNoResponseTimeout);
+    }
+    this.bypassScanNoResponseTimeout = setTimeout(() => {
+        if (!this.bypassScanInProgress) {
+            this.log.debug('syncBypassedZones: No BYPAS updates received — ' +
+                          'panel has no bypassed zones.');
+            this.emit('bypassscan', {
+                zones: new Set(),
+                partition: partitionNumber
+            });
+        }
+        this.bypassScanRequested = false;
+        this.bypassScanNoResponseTimeout = undefined;
+    }, noResponseMs);
+}
 /**
  * Changes the active partition on the EnvisaLink module.
  * Uses TPI command 01 to switch between partitions.

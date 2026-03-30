@@ -172,6 +172,11 @@
         "default": false,
         "description": "Setting allow Plug-in to remember which zones were bypassed and restore after disarming. This also enables individual zone bypasses to be toggle on and off.  <b>Note:</b> This option will cause multiple bypass commands to be sent to the panel on alarm reset, which can increase the time it take for the alarm panel to be ready for processing commands."
       },
+      "bypassProbeZone": {
+        "title": "Zone number for bypass probe",
+        "type": "integer",
+        "description": "Zone number to use for bypass probe. The plugin will use this zone trigger panel to list current open zones. <b>Note:</b> Verify this zone is not wired on your panel to assure this will not cause problems."
+      },
       "partitions": {
         "description": "List of partitions",
         "type": "array",
@@ -219,12 +224,12 @@
             },
             "partition": {
               "title": "Sensor Partition Number",
-              "type": "string",
+              "type": "integer",
               "required": true
             },
             "zoneNumber": {
               "title": "Zone Number",
-              "type": "string",
+              "type": "integer",
               "required": false
             },
             "sensorType": {
@@ -473,6 +478,7 @@
         "ignoreFireTrouble",
         "ignoreSystemTrouble",
         "bypassedZonesMemory",
+        "bypassProbeZone",
         "proxyEnabled",
         "batteryRunTime",
         "envisalinkFailureSuppress",
