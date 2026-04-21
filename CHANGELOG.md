@@ -1,8 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
-# v2.1.2 (2026-02-28) 
+# v2.2.0 (2026-04-20) 
 ## Enhancements
+* Rebuild Envisalink module engine
 * Add support for titl sensors as an occupancy sensor.
+* Add support zone memory functionality. The Plug-in will remember which zones were bypassed and restore after disarming. This also enables individual zone bypasses.
+
 
 ## Break fixes
 * Fix zone bypass switches on alarm disarm event. Thanks @joshjohanning

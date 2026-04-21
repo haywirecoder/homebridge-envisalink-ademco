@@ -166,17 +166,6 @@
         "default": false,
         "description": "Allow the sharing of Envisalink TPI connection with two other clients. Since the connection to the Envisalink server is being shared, a secondary TPI client can cause this plug-in to malfunction."
       },
-      "bypassedZonesMemory" : {
-        "title": "Enable bypassed zones memory",
-        "type": "boolean",
-        "default": false,
-        "description": "Setting allow Plug-in to remember which zones were bypassed and restore after disarming. This also enables individual zone bypasses to be toggle on and off.  <b>Note:</b> This option will cause multiple bypass commands to be sent to the panel on alarm reset, which can increase the time it take for the alarm panel to be ready for processing commands."
-      },
-      "bypassProbeZone": {
-        "title": "Zone number for bypass probe",
-        "type": "integer",
-        "description": "Zone number to use for bypass probe. The plugin will use this zone trigger panel to list current open zones. <b>Note:</b> Verify this zone is not wired on your panel to assure this will not cause problems."
-      },
       "partitions": {
         "description": "List of partitions",
         "type": "array",
@@ -312,6 +301,27 @@
             "quickbypass": {
               "title": "Panel support quick (i.e: force) bypass",
               "type": "boolean",
+              "required": false
+            }
+          }
+        }
+      },
+      "bypassedMemory": {
+        "description": "Enable bypassed zones memory",
+        "type": "array",
+        "maxItems": 1,
+        "items": {
+          "title": "Bypass Zone Memory Options",
+          "type": "object",
+          "properties": {
+            "zoneMemory": {
+              "title": "Enabled to allow plugin to remember which zones were bypassed and restore after disarming. This also enables individual zone bypasses to be toggle on and off.",
+              "type": "boolean",
+              "default": false
+            },
+            "probeZone": {
+              "title": "Zone number for bypass probe, unpon startup and after any change in bypass state, the plugin will use this zone trigger panel to list current open zones. <b>Note:</b> Verify this zone is not wired on your panel to assure this will not cause problems.",
+              "type": "integer",
               "required": false
             }
           }
@@ -475,10 +485,18 @@
         "autoReconnect",
         "sessionWatcher",
         "heartbeatInterval",
+        {
+          "key": "bypassedMemory",
+          "title": "Bypassed Zones Memory",
+          "description": "Enable bypassed zones memory, which allows the plugin to remember which zones were bypassed and restore after disarming. This also enables individual zone bypasses to be toggle on and off.",
+          "type": "array",
+          "items": [
+            "bypassedMemory[].zoneMemory",
+            "bypassedMemory[].probeZone"
+          ]
+        },
         "ignoreFireTrouble",
         "ignoreSystemTrouble",
-        "bypassedZonesMemory",
-        "bypassProbeZone",
         "proxyEnabled",
         "batteryRunTime",
         "envisalinkFailureSuppress",

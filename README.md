@@ -27,7 +27,7 @@ Limitations:
 
 * This plug-in uses two indicators for <i>NIGHT STAY</i>. "Arm-Instant (Zero Delay-Stay)" is similar to STAY mode but without the entry delay feature and is usually associated with <i>NIGHT STAY</i>. The plug-in also uses virtual keypad text as an indicator of night mode.
 
-* To receive updates for RF low battery, AC failure, low panel battery, and bypass status, reporting must be enabled for the Envisalink module. Refer to https://www.eyezon.com/EZMAIN/evl4honeywell.php, section "Panel Programming Options." 
+* To receive updates for RF low battery, AC failure, low panel battery, and bypass status, reporting must be enabled for the Envisalink module. Refer to https://www.eyezon.com/EZMAIN/evl4honeywell.php, section "Panel Programming Options." Functionality such as bypass memory will be impacted is not properly configured. 
 
 **Please Note:** It is recommended not to use the master user or installer code in the configuration file. Create a separate alarm user with the proper access permissions (please refer to your panel guide).
   
@@ -48,6 +48,7 @@ Limitations:
 | commandTimeOut    | *(optional)* Timeout value for alarm commands to return, provided in seconds. The default is 10 seconds.                        |
 | autoReconnect     | *(optional)* Automatically reconnect to the server if the network channel is broken. This value is automatically set to true if sessionWatcher is enabled. The default is true.                                |
 | chimeToggle       | *(optional)* Create a switch to enable and disable the chime bell. The panel only allows a change in bell status when the alarm is not armed. The default is false.                         |
+| bypassedZonesMemory    | *(optional)* allow Plug-in to remember which zones were bypassed and restore after disarming. This also enables individual zone bypasses. <p><p>**Note:** Panel reporting must be enabled, for plug-in to properly monitor zone bypasses. Refer to Envisalink Installation Guide.|  
 | batteryRunTime    | *(optional)* User-supplied runtime of the main system backup battery in hours. This value allows the plug-in to estimate the remaining time when the system switches to backup battery power. |  
 | ignoreFireTrouble   | *(optional)* When the virtual keypad sends a fire trouble signal, treat it as a warning and allow the system to arm the alarm. The default is false. |
 | ignoreSystemTrouble   | *(optional)* When the virtual keypad sends a system trouble signal, treat it as a warning and allow the system to arm the alarm. The default is false. |
@@ -75,7 +76,7 @@ Limitations:
 
 **bypass** *(Optional section)*
 
-> - enabledbyPass: true | false - A true value creates a global bypass switch in HomeKit to bypass faulted zones with bypassEnabled set to true. A false value (default) allows for the creation of a zone-specific switch associated with each zone with bypassEnabled. The direct zone bypass switch can bypass zones that are faulted and/or normal. Unbypassing one zone will unbypass all zones; this is a limitation of the alarm panel. *Note: Once your system is disarmed, bypassed zones will need to be bypassed again to arm your system again.* 
+> - enabledbyPass: true | false - A true value creates a global bypass switch in HomeKit to bypass faulted zones with bypassEnabled set to true. A false value (default) allows for the creation of a zone-specific switch associated with each zone with bypassEnabled. The direct zone bypass switch can bypass zones that are faulted and/or normal. Unbypassing one zone will unbypass all zones; this is a limitation of the alarm panel. *Note: Once your system is disarmed, bypassed zones will need to be bypassed again to arm your system again. An optional feature is aviable to allow Plug-in to remember zone status. Please refer to bypassedZonesMemory attribute.* 
 > - quickbypass: true | false - Must be pre-configured on the alarm panel (please refer to your alarm panel programming guide). If programmed, "Quick Bypass" allows you to easily bypass all open (faulted) zones without having to configure zones individually and performs operations quickly. *This is a required value for this section.*
 
 **speedkeys** *(Optional section)*
