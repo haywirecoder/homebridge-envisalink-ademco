@@ -705,13 +705,14 @@ class EnvisalinkPlatform {
                     case 570: // Bypass event
                         if (data.qualifier == 1) {
                             this.log(`${accessory.name} has been bypassed.`);
+
                             if (alarm.isProcessingBypass) { 
                                 alarm.processingBypassqueue = Math.max(0, alarm.processingBypassqueue - 1);
                                 this.log.debug(`cidUpdate: processingBypassqueue decremented, new value: ${alarm.processingBypassqueue}`);
                             }
-
+              
                             // Add zone to bypass memory and persist.
-                            partition.bypassedZones.add(Number(accessory.zoneNumber));                
+                            partition.bypassedZones.add(Number(accessory.zoneNumber));  
                             // the panel is still processing the unbypass command.
                             if (!alarm.isProcessingUnBypass) {
                                 alarm.processingUnBypassqueue = partition.bypassedZones.size;

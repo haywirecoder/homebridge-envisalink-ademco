@@ -34,6 +34,7 @@ class EnvisaLink extends EventEmitter {
   processingUnBypassqueue;
   targetUnbypassZoneNumber;
   isConnected;
+  isSyntheticEventAllowed;
   commandreferral;
   alarmSystemMode;
   tpiproxyServer;
@@ -102,6 +103,7 @@ class EnvisaLink extends EventEmitter {
     this.bypassScanNoResponseTimeout = undefined;
     this.bypassProbeZone = 99; // overridden by index.js if configured
     this.bypassScanRequested = false;
+    this.isSyntheticEventAllowed = true;
 
     // Instance-level state for zone tracking and session trouble flag.
     // Previously module-level variables, which caused stale state to persist
@@ -292,10 +294,6 @@ class EnvisaLink extends EventEmitter {
       }
     });
 
-    // --- Inner functions ---
-    // All converted to arrow functions so 'this' is inherited from startSession()
-    // and refers to the EnvisaLink instance throughout. No 'self' alias needed.
-
     const isConnectionIdle = () => {
       // We didn't receive any messages for greater than heartbeatInterval seconds.
       // Assume the session dropped and re-connect.
@@ -424,14 +422,16 @@ class EnvisaLink extends EventEmitter {
         this.emit('zoneevent', {
           zone: numZone,
           mode: "open",
-          source: tpi.name + " Zone fault"
+          origin: "zoneTimerOpen",
+          source: tpi.name
         });
       }
       if (triggerCheckEvent) {
         this.emit('zoneevent', {
           zone: numZone,
           mode: "check",
-          source: tpi.name + " Check fault"
+          origin: "zoneTimerOpen",
+          source: tpi.name
         });
       }
       if (triggerLowbatteryEvent) {
@@ -441,17 +441,19 @@ class EnvisaLink extends EventEmitter {
           code: RF_LOW_BATTERY,
           name: tpi.name,
           qualifier: 1,
-          source: tpi.name + " Low Batt"
+          origin: "zoneTimerOpen",
+          source: tpi.name
         });
       }
-      if (triggerBypassedEvent) {
+      if (triggerBypassedEvent && this.isSyntheticEventAllowed) {
         this.emit('cidupdate', {
           type: "zone",
           zone: numZone,
           code: ZONE_BYPASS,
           name: tpi.name,
           qualifier: 1,
-          source: tpi.name + " Bypassed"
+          origin: "zoneTimerOpen",
+          source: tpi.name
         });
       }
     };
@@ -482,6 +484,7 @@ class EnvisaLink extends EventEmitter {
               zone: this.activezones[z].zone,
               name: this.activezones[z].source,
               qualifier: 3,
+              origin: "zoneTimerClose",
               source: this.activezones[z].source + " Low Batt Resolved."
             });
           }
@@ -799,13 +802,16 @@ class EnvisaLink extends EventEmitter {
         code: code,
         type: cid_obj.type,
         subject: cid_obj.label,
+        origin: "cidEvent",
         status: tpi.name
       };
       cidupdate_object[cid_obj.type] = zone_or_user;
       this.emit('cidupdate', cidupdate_object);
     };
 
-  } // end startSession()
+  } 
+  // end startSession()
+
 
 /**
  * Terminates the current TPI session with the EnvisaLink module.
