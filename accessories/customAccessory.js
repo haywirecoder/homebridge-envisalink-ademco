@@ -222,10 +222,15 @@ class EnvisalinkCustomAccessory {
                         if ((zoneinfo.envisakitCurrentStatus != "close") && (zoneinfo.bypassEnabled)) {
                             this.log(`Requesting bypassing of ${zoneinfo.name} ...`);
                             if (zoneinfo.envisakitCurrentStatus == "check") this.log.warn(`${zoneinfo.name} is generating a check message, which requires your attention. This could result in unexpected results with bypass function.`);
-                            if (formattedZone.length > 1) formattedZone = formattedZone + ",";
-                            formattedZone = (this.deviceType === "128FBP")
+                            
+                            // Add orginal zone number to the end of the formattedZone string, 
+                            // separated by comma if there are already zones in the string.
+                            const addZone = (this.deviceType === "128FBP")
                                 ? (("00" + zoneinfo.zoneNumber).slice(-3))
                                 : (("0" + zoneinfo.zoneNumber).slice(-2));
+                            formattedZone = formattedZone.length > 0 
+                                ? formattedZone + "," + addZone 
+                                : addZone;
                             bypassCount++;
                         }
                     }
