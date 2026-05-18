@@ -1,8 +1,8 @@
 # Change Log
 All notable changes to this project will be documented in this file. This project uses [Semantic Versioning](https://semver.org/).
-# v2.2.1 (2026-05-17) 
+# v2.2.2 (2026-05-17) 
 ## Break fixes
-* Fix global bypass switch not processing all eligible zones.
+* Fix global bypass switch not process all eligible zones.
 
 # v2.2.0 (2026-04-20) 
 ## Enhancements
