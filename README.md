@@ -27,7 +27,7 @@ Limitations:
 
 * This plug-in uses two indicators for <i>NIGHT STAY</i>. "Arm-Instant (Zero Delay-Stay)" is similar to STAY mode but without the entry delay feature and is usually associated with <i>NIGHT STAY</i>. The plug-in also uses virtual keypad text as an indicator of night mode.
 
-* To receive updates for RF low battery, AC failure, low panel battery, and bypass status, reporting must be enabled for the Envisalink module. Refer to https://www.eyezon.com/EZMAIN/evl4honeywell.php, section "Panel Programming Options." Functionality such as bypass memory will be impacted is not properly configured. 
+* To receive updates for RF low battery, AC failure, low panel battery, and bypass status, reporting must be enabled for the Envisalink module. Refer to https://www.eyezon.com/EZMAIN/evl4honeywell.php, section "Panel Programming Options." Functionality such as bypass memory will be impacted if not properly configured. 
 
 **Please Note:** It is recommended not to use the master user or installer code in the configuration file. Create a separate alarm user with the proper access permissions (please refer to your panel guide).
   
