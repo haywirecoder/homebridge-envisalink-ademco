@@ -1,5 +1,5 @@
 const net = require('net');
-const TPILOGINTIMEOUT = 10000; // 10 seconds timeout for TPI login
+const TPILOGINTIMEOUT = 30000; // 30 seconds timeout for TPI login
 const MAXCLIENTS = 3; // Maximum number of clients that can connect to the proxy
 const MAXRETRY = 5; // Maximum number of retry after failure
 
@@ -75,7 +75,7 @@ class EnvisalinkProxyShared {
         clientSocket.cleanedUp = false; // Flag to prevent multiple cleanup calls
         clientSocket.ready = false;
 
-        clientSocket.write("Login:\n");
+        clientSocket.write("Login:\r\n");
         clientSocket.setTimeout(TPILOGINTIMEOUT);
         
         let loginState = {
@@ -100,14 +100,14 @@ class EnvisalinkProxyShared {
 
         clientSocket.on('data', data => {
             const trimmed = data.toString('utf8').trim();
+            this.log.debug(`Envisalink TPI Proxy: Client sent data ${trimmed}`);
 
             if (loginState.step === 'awaitingPassword') {
                 if (trimmed === this.password) {
                     clientSocket.setTimeout(0);
                     clientSocket.authenticated = true;
-                    clientSocket.write("OK\n");
+                    clientSocket.write("OK\r\n");
                     this.log.info(`Envisalink TPI Proxy: ${clientSocket.remoteAddress} authenticated`);
-                    this.clients.add(clientSocket);
 
                     // Add small delay before marking ready and adding to clients
                     setTimeout(() => {
@@ -121,7 +121,7 @@ class EnvisalinkProxyShared {
 
                 } else {
                     this.log.warn(`Envisalink TPI Proxy: Client failed login from ${clientSocket.remoteAddress}`);
-                    clientSocket.write("FAILED\n");
+                    clientSocket.write("FAILED\r\n");
                     cleanup();
                 }
                 return;
@@ -130,7 +130,7 @@ class EnvisalinkProxyShared {
             if (clientSocket.authenticated && this.sharedSocket && !this.sharedSocket.destroyed) {
                 this.log.debug(`Envisalink TPI Proxy: Client sent data ${trimmed}`);
                 if (!this.validationRegex || this.validationRegex.test(trimmed)) {
-                    this.sharedSocket.write(trimmed + "\n");
+                    this.sharedSocket.write(trimmed + "\r\n");
                 } else {
                     this.log.warn(`Envisalink TPI Proxy: Invalid formatted data from client ${clientSocket.remoteAddress}: "${trimmed}" ignoring.`);
                 }
@@ -139,7 +139,7 @@ class EnvisalinkProxyShared {
 
         clientSocket.on('timeout', () => {
             this.log.info(`Envisalink TPI Proxy: Client Timeout from ${clientSocket.remoteAddress}`);
-            clientSocket.write("Timed Out\n");
+            clientSocket.write("Timed Out\r\n");
             cleanup();
         });
 

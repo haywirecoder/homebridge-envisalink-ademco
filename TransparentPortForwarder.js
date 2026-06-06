@@ -1,5 +1,4 @@
 const net = require('net');
-const MAXCLIENTS = 3; // Maximum number of clients that can be forwarded
 const MAXRETRY = 5; // Maximum number of retry after failure
 
 class TransparentPortForwarder {
@@ -21,7 +20,7 @@ class TransparentPortForwarder {
 
         return new Promise((resolve, reject) => {
             this.tcpFowardServer = net.createServer((clientSocket) => {
-            this.log.debug(`EnvisaLink Web Forward: New connection from ${clientSocket.remoteAddress}:${clientSocket.remotePort}`);
+            this.log(`EnvisaLink Web Forward: New connection from ${clientSocket.remoteAddress}:${clientSocket.remotePort}`);
             
             // Create connection to target server
             const targetSocket = net.createConnection({
@@ -80,17 +79,23 @@ class TransparentPortForwarder {
             
             targetSocket.on('close', () => {
                 this.log.debug('EnvisaLink Web Forward: Target connection closed');
-                cleanup();
+                if (!targetSocket.destroyed) targetSocket.destroy();
             });
             
             clientSocket.on('timeout', () => {
                 this.log.debug(`EnvisaLink Web Forward: Client connection timeout`);
-                cleanup();
+                if (!clientSocket.destroyed) clientSocket.end();
+                setTimeout(() => {
+                    if (!clientSocket.destroyed) clientSocket.destroy();
+                }, 2000).unref();
             });
             
             targetSocket.on('timeout', () => {
                 this.log.debug(`EnvisaLink Web Forward: Target connection timeout`);
-                cleanup();
+                 if (!targetSocket.destroyed) targetSocket.end();
+                setTimeout(() => {
+                    if (!targetSocket.destroyed) targetSocket.destroy();
+                }, 2000).unref();
             });
             
             // Set timeouts
@@ -108,8 +113,6 @@ class TransparentPortForwarder {
                 cleanup();
             });
         });
-        
-        this.tcpFowardServer.maxConnections = MAXCLIENTS;
         
         // Set up listening event
         this.tcpFowardServer.on('listening', () => {
