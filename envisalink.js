@@ -17,6 +17,8 @@ var EnvisaPortForwarder = require('./TransparentPortForwarder');
 // by the existing destroyed/isConnected guards in sendCommand() and endSession().
 var tpiserverSocket;
 
+// Longest partial line kept between reads; TPI messages are well under 100 characters.
+const MAX_PARTIAL_LINE = 1024;
 const RF_LOW_BATTERY = 384;
 const ZONE_BYPASS = 570;
 const SESSION_TIMEOUT = 5000;
@@ -131,6 +133,7 @@ class EnvisaLink extends EventEmitter {
     // previous session do not carry over into the new session on reconnect.
     this.activezones = [];
     this.activeZoneTimeOut = undefined;
+    this.partialLine = '';
 
     // Display starting of connection.
     this.log.info(`Starting connection to envisalink module at: ${this.options.host}, port: ${this.options.port}`);
@@ -203,7 +206,15 @@ class EnvisaLink extends EventEmitter {
     });
 
     tpiserverSocket.on('data', async (data) => {
-      var dataslice = data.toString().replace(/[\n\r]/g, '|').split('|');
+      // TCP delivers a stream, not messages: one read can end partway through a
+      // line or hold several lines. Handle complete lines only, and keep the
+      // unfinished end for the next read.
+      var dataslice = (this.partialLine + data.toString()).split(/\r\n|\r|\n/);
+      this.partialLine = dataslice.pop();
+      if (this.partialLine.length > MAX_PARTIAL_LINE) {
+        this.log.warn("Envisalink data stream has no line breaks; discarding: " + this.partialLine);
+        this.partialLine = '';
+      }
       var source = "session_connect_status";
 
       this.log.debug("TPI Data stream: " + dataslice);
@@ -246,7 +257,7 @@ class EnvisaLink extends EventEmitter {
             }
           } else {
             if (this.options.proxyEnabled) {
-              this.tpiproxyServer.writeToClients(data); // Forward data to all connected proxy clients.
+              this.tpiproxyServer.writeToClients(datapacket + '\r\n'); // Forward this line to all connected proxy clients.
             }
             var tpi_str = datapacket.match(/^%(.+)\$/); // pull out everything between the % and $
             if (tpi_str == null) {
