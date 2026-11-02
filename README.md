@@ -22,7 +22,7 @@ This plugin works with the Ademco Envisalink module and Vista series alarm panel
 
 * When the system is armed, the panel no longer reports the state of each zone. All zones age out and are considered restored once the system is armed. **Note:** A bypassed zone automatically shows as faulted (open) once the alarm is disarmed.
 
-* The Envisalink TPI supports only one connection. Once this plugin is connected, any other connection attempt results in an error. Conversely, if Envisalink is being used for another purpose, this plugin cannot connect. The proxy server function provided by this plugin may offer an alternative way to share the connection (see `proxyEnabled` in [Configuration Options](#configuration-options)).
+* The Envisalink TPI supports only one connection. Once this plugin is connected, any other connection attempt results in an error. Conversely, if Envisalink is being used for another purpose, this plugin cannot connect. The proxy server option provided by this plugin offer an alternative way to share the connection (see `proxyEnabled` in [Configuration Options](#configuration-options)).
 
 * Confirm that you have a stable network connection to the Envisalink module before installing this plugin. The auto-reconnect option is designed for occasional network issues only.
 
