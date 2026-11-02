@@ -26,6 +26,38 @@ const SESSION_TIMEOUT = 5000;
 
 const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
 
+/**
+ * Reassembles newline-terminated lines from an arbitrary TCP byte stream.
+ * TCP does not preserve message boundaries: one read can end partway through a
+ * line or hold several lines. push() returns only complete, non-empty lines and
+ * keeps the unfinished tail for the next read.
+ */
+class LineBuffer {
+  constructor(maxPartial = MAX_PARTIAL_LINE, onOverflow = () => {}) {
+    this.partial = '';
+    this.maxPartial = maxPartial;
+    this.onOverflow = onOverflow;
+  }
+
+  push(chunk) {
+    const lines = (this.partial + chunk).split(/\r\n|\r|\n/);
+    this.partial = lines.pop();
+
+    // The panel's login prompt ("Login:") is not guaranteed to end in a line
+    // break; waiting for one would stall the login until the idle watcher fires.
+    if (this.partial === 'Login:') {
+      lines.push(this.partial);
+      this.partial = '';
+    }
+
+    if (this.partial.length > this.maxPartial) {
+      this.onOverflow(this.partial);
+      this.partial = '';
+    }
+    return lines.filter((l) => l !== '');
+  }
+}
+
 
 class EnvisaLink extends EventEmitter {
 
@@ -133,7 +165,6 @@ class EnvisaLink extends EventEmitter {
     // previous session do not carry over into the new session on reconnect.
     this.activezones = [];
     this.activeZoneTimeOut = undefined;
-    this.partialLine = '';
 
     // Display starting of connection.
     this.log.info(`Starting connection to envisalink module at: ${this.options.host}, port: ${this.options.port}`);
@@ -205,26 +236,38 @@ class EnvisaLink extends EventEmitter {
       }
     });
 
-    tpiserverSocket.on('data', async (data) => {
-      // TCP delivers a stream, not messages: one read can end partway through a
-      // line or hold several lines. Handle complete lines only, and keep the
-      // unfinished end for the next read.
-      var dataslice = (this.partialLine + data.toString()).split(/\r\n|\r|\n/);
-      this.partialLine = dataslice.pop();
-      if (this.partialLine.length > MAX_PARTIAL_LINE) {
-        this.log.warn("Envisalink data stream has no line breaks; discarding: " + this.partialLine);
-        this.partialLine = '';
-      }
-      var source = "session_connect_status";
+    // Line buffer is local to this socket so a late event from a previous
+    // connection can never write into a new session's buffer.
+    const lineBuffer = new LineBuffer(MAX_PARTIAL_LINE, (discarded) => {
+      this.log.warn("Envisalink data stream has no line breaks; discarding: " + discarded);
+    });
 
-      this.log.debug("TPI Data stream: " + dataslice);
+    // Decode through the socket's StringDecoder so a multi-byte character split
+    // across two reads is not mangled.
+    tpiserverSocket.setEncoding('utf8');
+
+    // Lines from successive reads are processed strictly in order. Handling a
+    // line can await (proxy start/restart on 'OK'), and without this queue a
+    // second read could start processing while the first is paused.
+    let processing = Promise.resolve();
+    tpiserverSocket.on('data', (chunk) => {
+      const lines = lineBuffer.push(chunk);
+      this.log.debug("TPI Data stream: " + lines);
       this.lastmessage = Date.now(); // Every time a message comes in, reset the lastmessage timer
+      if (lines.length === 0) return;
+      processing = processing
+        .then(() => processLines(lines))
+        .catch((err) => this.log.error("EnvisaLink: error processing TPI data: ", err));
+    });
+
+    const processLines = async (dataslice) => {
+      var source = "session_connect_status";
 
       for (var i = 0; i < dataslice.length; i++) {
         var datapacket = dataslice[i];
         if (datapacket !== '') {
           if (datapacket.substring(0, 5) === 'Login') {
-            this.log.debug("Login requested. Sending response " + this.options.password);
+            this.log.debug("Login requested. Sending credentials.");
             this.isConnected = true;
             this.sendCommand(this.options.password);
           } else if ((datapacket.substring(0, 6) === 'FAILED') || (datapacket.substring(0, 9) === 'Timed Out')) {
@@ -278,7 +321,7 @@ class EnvisaLink extends EventEmitter {
                 if (tpi.bytes === '' || tpi.bytes === 0) {
                   this.log.warn(tpi.pre + ' - ' + tpi.post);
                 } else {
-                  this.log.debug(tpi.pre + ' | ' + tpi_str + ' | ' + tpi.post);
+                  this.log.debug(tpi.pre + ' | ' + tpi_str[1] + ' | ' + tpi.post);
                   this.log.debug('Envisakit Operation: ' + tpi.action);
                   switch (tpi.action) {
                     case 'updatezone':
@@ -303,7 +346,7 @@ class EnvisaLink extends EventEmitter {
           }
         }
       }
-    });
+    };
 
     const isConnectionIdle = () => {
       // We didn't receive any messages for greater than heartbeatInterval seconds.
@@ -848,7 +891,7 @@ class EnvisaLink extends EventEmitter {
   sendCommand(command) {
     if (!this.isMaintenanceMode) {      
       if (tpiserverSocket !== undefined && this.isConnected) {
-        this.log.debug('!WARNING! PIN/CODE may appear in the clear TX > ', command);
+        this.log.debug('TPI TX: command sent (contents redacted; may contain a password or PIN/code).');
         tpiserverSocket.write(command + '\r\n');
         return true;
       } else {
@@ -1140,3 +1183,4 @@ syncBypassedZones(pin, probeZone = 99, partitionNumber = 1) {
 
 }
 module.exports = EnvisaLink
+module.exports.LineBuffer = LineBuffer
