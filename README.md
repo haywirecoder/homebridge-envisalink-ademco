@@ -1,182 +1,209 @@
 # Homebridge-Envisalink-Ademco
+
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
 [![NPM Version](https://img.shields.io/npm/v/homebridge-envisalink-ademco.svg)](https://www.npmjs.com/package/homebridge-envisalink-ademco)
 [![npm](https://img.shields.io/npm/dt/homebridge-envisalink-ademco.svg?style=flat-square)](https://www.npmjs.com/package/homebridge-envisalink-ademco)
 
 <p align="center">
-     <img src="https://github.com/homebridge/branding/blob/latest/logos/homebridge-color-round-stylized.png" width="150">
-     <img src="https://github.com/haywirecoder/homebridge-envisalink-ademco/blob/master/img/link.png?raw=true" width="50">
-     <img src="https://github.com/haywirecoder/homebridge-envisalink-ademco/blob/master/img/EyezOn_logo_signature_size.png?raw=true" width="150">
-
- </p>
-
+  <img src="https://github.com/homebridge/branding/blob/latest/logos/homebridge-color-round-stylized.png" width="150">
+  <img src="https://github.com/haywirecoder/homebridge-envisalink-ademco/blob/master/img/link.png?raw=true" width="50">
+  <img src="https://github.com/haywirecoder/homebridge-envisalink-ademco/blob/master/img/EyezOn_logo_signature_size.png?raw=true" width="150">
+</p>
 
 ----------------------------------
 
-This module is designed to work with the Ademco Envisalink module and Vista series alarm panels. It supports alarm operations (e.g., arm, disarm, night, and stay), zone bypassing, and special function keys (e.g., fire, panic, medical), and exposes alarm system sensors to Homebridge. <b>Note:</b> This module uses the Envisalink Third Party Interface (TPI). Ensure TPI is enabled (i.e., Alert is checked) for your module.
+This plugin works with the Ademco Envisalink module and Vista series alarm panels. It supports alarm operations (arm, disarm, night, and stay), zone bypassing, and special function keys (fire, panic, and medical), and it exposes alarm system sensors to Homebridge.
 
-Limitations:
+> **Note:** This plugin uses the Envisalink Third Party Interface (TPI). Ensure TPI is enabled (that is, *Alert* is checked) for your module.
 
-* Ademco panels provide limited zone information to their peripherals. The panel only provides real-time information when a zone is faulted (open) but not when it is restored (closed). However, the virtual keypad is continuously updated with zone information. This module automatically sets faulted zones (open) to restored (closed) based on the value set by the *openZoneTimeout* attribute. The default configuration results in the zone closing 30 seconds after the virtual keypad no longer reports a fault for that specific zone.
+## Limitations
 
-* When the system is armed, the panel no longer reports the state of each zone. All zones will age out and be considered restored once armed. Note: A bypassed zone will automatically show as faulted (open) once the alarm is disarmed.
+* Ademco panels provide limited zone information to their peripherals. The panel reports a zone in real time only when it is faulted (open), not when it is restored (closed). However, the virtual keypad is continuously updated with zone information. This plugin automatically sets faulted zones (open) to restored (closed) based on the `openZoneTimeout` attribute. With the default configuration, a zone closes 30 seconds after the virtual keypad stops reporting a fault for that zone.
 
-* The Envisalink TPI interface only supports one connection. Once this plug-in is connected, any other connection attempts will result in an error. Conversely, if Envisalink is being used for another purpose, this module will not be able to connect. The proxy server function provided by this plug-in may provide an alternative method for sharing this connection. Please see notes below.
+* When the system is armed, the panel no longer reports the state of each zone. All zones age out and are considered restored once the system is armed. **Note:** A bypassed zone automatically shows as faulted (open) once the alarm is disarmed.
 
-* Confirm you have a stable network connection to the Envisalink module before installing this plug-in. While the auto-reconnect logic option is available, it is designed for occasional network issues.
+* The Envisalink TPI supports only one connection. Once this plugin is connected, any other connection attempt results in an error. Conversely, if Envisalink is being used for another purpose, this plugin cannot connect. The proxy server function provided by this plugin may offer an alternative way to share the connection (see `proxyEnabled` in [Configuration Options](#configuration-options)).
 
-* This plug-in uses two indicators for <i>NIGHT STAY</i>. "Arm-Instant (Zero Delay-Stay)" is similar to STAY mode but without the entry delay feature and is usually associated with <i>NIGHT STAY</i>. The plug-in also uses virtual keypad text as an indicator of night mode.
+* Confirm that you have a stable network connection to the Envisalink module before installing this plugin. The auto-reconnect option is designed for occasional network issues only.
 
-* To receive updates for RF low battery, AC failure, low panel battery, and bypass status, reporting must be enabled for the Envisalink module. Refer to https://www.eyezon.com/EZMAIN/evl4honeywell.php, section "Panel Programming Options." Functionality such as bypass memory will be impacted if not properly configured. 
+* This plugin uses two indicators for *NIGHT STAY*. "Arm-Instant (Zero Delay-Stay)" is similar to STAY mode but without the entry delay feature, and it is usually associated with *NIGHT STAY*. The plugin also uses the virtual keypad text as an indicator of night mode.
 
-**Please Note:** It is recommended not to use the master user or installer code in the configuration file. Create a separate alarm user with the proper access permissions (please refer to your panel guide).
-  
+* To receive updates for RF low battery, AC failure, low panel battery, and bypass status, reporting must be enabled for the Envisalink module. Refer to the "Panel Programming Options" section of the [Envisalink Honeywell installation guide](https://www.eyezon.com/EZMAIN/evl4honeywell.php). Functionality such as bypass memory is affected if reporting is not properly configured.
+
+> **Please note:** Do not use the master user code or installer code in the configuration file. Create a separate alarm user with the proper access permissions (refer to your panel guide).
 
 ## Configuration Options
 
-| Attributes        | Description                                                                                                              |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| host              | Envisalink server host IP address. *Note:* The plug-in and Homebridge will shut down if not configured.                      |
-| port              | Envisalink server port address. The default is 4025.                                                                         |
-| deviceType        | Device model. The default is "Honeywell Vista."                                                                              |
-| password          | Envisalink server password. The default is "user."                                                                           |
-| pin               | Your local alarm PIN. It is recommended to create a separate alarm user for this plug-in. The default PIN is 1234.                     |
-| **partitions**    | List of partitions to monitor in HomeKit.                                                                                 |
-| openZoneTimeout   | *(optional)* Timeout value for zones, provided in seconds. The default is 30 seconds.                                           |
-| sessionsWatcher   | *(optional)* Automatically disconnect and create a new session if the module detects a hung session. This is done by periodically (i.e., heartbeatInterval) checking the last updates from the virtual keypad. Setting this value to true will cause the "autoReconnect" setting to be ignored in the configuration file and will always set "autoReconnect" to true. The default is true. |
-| heartbeatInterval | *(optional)* Heartbeat interval to determine if the Envisalink session is hung. <b>Please note:</b> Setting this value below 30 seconds may cause incorrect identification of a hung state. The default is 30 seconds.                      |
-| commandTimeOut    | *(optional)* Timeout value for alarm commands to return, provided in seconds. The default is 10 seconds.                        |
-| autoReconnect     | *(optional)* Automatically reconnect to the server if the network channel is broken. This value is automatically set to true if sessionWatcher is enabled. The default is true.                                |
-| chimeToggle       | *(optional)* Create a switch to enable and disable the chime bell. The panel only allows a change in bell status when the alarm is not armed. The default is false.                         |
-| bypassedZonesMemory    | *(optional)* allow Plug-in to remember which zones were bypassed and restore after disarming. This also enables individual zone bypasses. <p><p>**Note:** Panel reporting must be enabled, for plug-in to properly monitor zone bypasses. Refer to Envisalink Installation Guide.|  
-| batteryRunTime    | *(optional)* User-supplied runtime of the main system backup battery in hours. This value allows the plug-in to estimate the remaining time when the system switches to backup battery power. |  
-| ignoreFireTrouble   | *(optional)* When the virtual keypad sends a fire trouble signal, treat it as a warning and allow the system to arm the alarm. The default is false. |
-| ignoreSystemTrouble   | *(optional)* When the virtual keypad sends a system trouble signal, treat it as a warning and allow the system to arm the alarm. The default is false. |
-| proxyEnabled   | *(optional)* Create a proxy server that allows two additional Envisalink TPI clients to share the existing Envisalink TPI connection. These clients can connect to the TPI default port <i>4026</i> and HTTP (web console) default port <i>4080</i> of the Homebridge server running this plug-in. The default setting is false. <p><p>**Note:** Because the connection to the Envisalink server is being shared, a secondary TPI client may cause this plug-in to malfunction.<p>**Support Notice:** Support is limited to the proxy server itself. Issues related to third-party clients are not covered and will not be addressed.|
-| maintenanceMode   | *(optional)* Disable communication with the Envisalink module. The default is false. <p>**Note:** This will disable all updates.                      |
-| **zones**         | *(optional)* List of zones to display and monitor in HomeKit.                                                              |
-| **bypass**        | *(optional)* Creates a bypass control (a switch) to bypass zones that are open (faulted).                                |
-|                   | If "quickbypass" is not enabled, the bypass switch can only bypass zones that are being monitored in HomeKit and have the zone entry "bypassenable" attribute set to true.    |
-|                   | "quickbypass" can be used to bypass all faulted zones. This feature must be enabled in the Ademco panel *(refer to panel guide)*.                               |
-| **speedkeys**     | *(optional)* Create controls (switches) to replicate the special function keys on the Ademco keypad.                          |
+The options below are grouped to match the sections of the Homebridge configuration UI. Attributes marked *(optional)* may be omitted.
 
-**partitions**
+### General Settings
 
-> - name: Partition name - *If not present, defaults to "house."*
-> - partitionNumber: Partition number - *If not present, a consecutive number is used, which is not ideal. Not needed in a single partition configuration.*
-> - partitionPIN: Partition PIN/code - *If not present, the master configured PIN is used. Not needed in a single partition configuration.*
+| Attribute         | Description |
+| ----------------- | ----------- |
+| `name`            | *(optional)* Name of the platform instance. The default is `Envisalink-Ademco`. |
+| `host`            | Envisalink server host IP address (IPv4). **Note:** The plugin and Homebridge shut down if this is not configured. |
+| `port`            | Envisalink server port. The default is `4025`. |
+| `deviceType`      | Device model. One of `10P` (Honeywell VISTA-10P), `15P` (VISTA-15P), `20P` (VISTA-20P), `21IP` (VISTA-21IP), or `128FBP` (VISTA-128FBP). The default is the VISTA-10P (`10P`). |
+| `password`        | Envisalink server password. The default is `user`. |
+| `pin`             | Global alarm PIN/code. It must be exactly 4 digits (0–9). It is recommended to create a separate alarm user for this plugin. The default is `1234`. |
+| `changePartition` | *(optional)* For multi-partition systems, automatically change to the specific partition before executing an alarm command. A partition is a sectioned-off portion of an alarm system that can be operated independently of the rest of the system. This option slightly increases panel command execution time and is not needed for non-partitioned systems. The default is `false`. |
+| `partitions`      | *(optional)* List of partitions to monitor in HomeKit (up to 7). See [partitions](#partitions). |
+| `zones`           | *(optional)* List of zones to display, monitor, and manage in HomeKit (up to 128). See [zones](#zones). |
 
-**zones** *(Optional section -- At least one zone must be defined if used)*
+### Keypad Button Options
 
-> - name: Zone name - *This is a required value for each entry.*
-> - sensorType: co | door | glass | leak | motion | smoke | tilt | window - *This is a required value for each entry.*
-> - partition: Sensor partition number - *This is a required value for each entry.*
-> - zoneNumber: Panel zone number for the sensor. The presence of this attribute triggers consecutive or non-consecutive zone numbering (see example). *This attribute is required if your system has unused zones, uses non-consecutive zone numbering, or if you want to selectively display zones within HomeKit.*
-> - bypassEnabled: true | false - A true value allows zones to be bypassed. This setting works in conjunction with the bypass control option (below). *This is an optional element and defaults to false. The alarm system will not allow fire or emergency zones to be bypassed.*
+| Attribute      | Description |
+| -------------- | ----------- |
+| `chimeToggle`  | *(optional)* Create a switch in HomeKit to turn the chime sound on the Ademco panel on or off. The panel allows the chime to be changed only when the alarm is not armed. The default is `false`. |
+| `bypass`       | *(optional)* Creates bypass controls (switches) to bypass zones that are being monitored. See [bypass](#bypass). |
+| `speedKeys`    | *(optional)* Creates controls (switches) that replicate the special function keys on the Ademco keypad (up to 8). See [speedKeys](#speedkeys). |
 
-**bypass** *(Optional section)*
+### Advanced Settings
 
-> - enabledbyPass: true | false - A true value creates a global bypass switch in HomeKit to bypass faulted zones with bypassEnabled set to true. A false value (default) allows for the creation of a zone-specific switch associated with each zone with bypassEnabled. The direct zone bypass switch can bypass zones that are faulted and/or normal. Unbypassing one zone will unbypass all zones; this is a limitation of the alarm panel. *Note: Once your system is disarmed, bypassed zones will need to be bypassed again to arm your system again. An optional feature is aviable to allow Plug-in to remember zone status. Please refer to bypassedZonesMemory attribute.* 
-> - quickbypass: true | false - Must be pre-configured on the alarm panel (please refer to your alarm panel programming guide). If programmed, "Quick Bypass" allows you to easily bypass all open (faulted) zones without having to configure zones individually and performs operations quickly. *This is a required value for this section.*
+| Attribute                   | Description |
+| --------------------------- | ----------- |
+| `openZoneTimeout`           | *(optional)* Time, in seconds, to wait before a zone is considered closed. Allowed range: 15–120. The default is `30`. **Warning:** Setting this value too low can cause zones to clear and fault unexpectedly. |
+| `commandTimeOut`            | *(optional)* Time, in seconds, to wait for an alarm command to return. Allowed range: 10–30. Bypass commands automatically triple this value because those operations take longer. The default is `10`. |
+| `autoReconnect`             | *(optional)* Automatically reconnect to the Envisalink server if the session is terminated. This value is automatically set to `true` if `sessionWatcher` is enabled. The default is `true`. |
+| `sessionWatcher`            | *(optional)* Automatically disconnect and create a new session if the plugin detects a hung or dropped session. This is done by periodically (every `heartbeatInterval`) checking the last updates from the virtual keypad. Setting this value to `true` causes the `autoReconnect` setting to be ignored and always set to `true`. The default is `true`. |
+| `heartbeatInterval`         | *(optional)* Heartbeat interval, in seconds, used to determine whether the Envisalink session is hung. Allowed range: 15–600. The default is `30`. **Note:** Setting this value below 30 seconds may cause hung sessions to be identified incorrectly. |
+| `bypassedMemory`            | *(optional)* Enables bypassed zones memory. See [bypassedMemory](#bypassedmemory). |
+| `ignoreFireTrouble`         | *(optional)* When the virtual keypad sends a fire trouble signal, treat it as a warning and allow the system to arm. The default is `false`. |
+| `ignoreSystemTrouble`       | *(optional)* When the virtual keypad sends a system trouble signal, treat it as a warning and allow the system to arm. The default is `false`. |
+| `proxyEnabled`              | *(optional)* Create a proxy server that allows two additional Envisalink TPI clients to share the existing Envisalink TPI connection. These clients can connect to the default TPI port (`4026`) and the default HTTP (web console) port (`4080`) of the Homebridge server running this plugin. The default is `false`. **Note:** Because the connection to the Envisalink server is shared, a secondary TPI client may cause this plugin to malfunction. **Support notice:** Support is limited to the proxy server itself. Issues related to third-party clients are not covered and will not be addressed. |
+| `batteryRunTime`            | *(optional)* User-supplied runtime of the main system backup battery, in hours (1–168). This value allows the plugin to estimate the remaining time when the system switches to backup battery power. |
+| `envisalinkFailureSuppress` | *(optional)* Turn off alarm tamper events associated with Envisalink module communication errors. **Note:** These errors are still logged in Homebridge. The default is `false`. |
+| `maintenanceMode`           | *(optional)* Place the plugin in maintenance mode, which disables communication with the Envisalink module. This allows testing or replacement of the module without affecting existing automations or filling the logs with error messages. **Warning:** This disables all updates and operations. The default is `false`. |
 
-**speedkeys** *(Optional section)*
-> - name: Name of the special function key to display in HomeKit - *This is a required value for this section, and each name must be unique.*
-> - speedcommand: A | B | C | D | Custom - Indicates which special function key (e.g., A, B, C, and D keys) will be associated with this switch. The special keys are located to the left of the numeric keys and can be programmed with special functions at the alarm panel. "Custom" allows the use of a command field to input a custom automated input sequence that imitates keypad inputs. *This is a required value for this section.* 
-> - command: Input a custom automated input sequence that imitates keypad inputs. The special '@pin' notation will be replaced with the configured master PIN/code. *This is required if "custom" is selected as speedcommand.*
+### partitions
 
-An example configuration is below:
+- `name`: Partition name. *Required for each entry. The default is "House."*
+- `partitionNumber`: Direct management of a specific partition number. *If not present, a consecutive number is used, which is not ideal. Not needed in a single-partition configuration.*
+- `partitionPin`: Partition PIN/code. It must be exactly 4 digits (0–9) and overrides the global PIN for this partition. *If not present, the global PIN is used. Not needed in a single-partition configuration.*
 
-```javascript
-...
+### zones
 
-"platforms": [
+*Optional section. If used, at least one zone must be defined.*
 
+- `name`: Zone name. *Required for each entry.*
+- `sensorType`: `co` (carbon monoxide) | `door` | `glass` (glassbreak) | `leak` | `motion` | `smoke` | `tilt` | `window`. *Required for each entry.*
+- `partition`: Sensor partition number. *Required for each entry.*
+- `zoneNumber`: Panel zone number for the sensor. Including this attribute enables non-consecutive zone numbering (see [Non-Consecutive Zones](#non-consecutive-zones)). *Required if your system has unused zones, uses non-consecutive zone numbering, or if you want to selectively display zones in HomeKit.*
+- `bypassEnabled`: `true` | `false`. A value of `true` allows the zone to be bypassed from HomeKit. This setting works in conjunction with the bypass control option (see [bypass](#bypass)). *Optional; defaults to `false`. The alarm system does not allow fire or emergency zones to be bypassed.*
+
+### bypass
+
+*Optional section. Only one entry is allowed.*
+
+- `enabledbyPass`: `true` | `false`.
+  - `true` creates a global bypass switch in HomeKit that bypasses faulted zones with `bypassEnabled` set to `true`.
+  - `false` (default) creates a zone-specific switch for each zone with `bypassEnabled` set to `true`. A zone-specific switch can bypass zones that are faulted or normal. Unbypassing one zone unbypasses all zones; this is a limitation of the alarm panel.
+
+  **Note:** Once your system is disarmed, bypassed zones must be bypassed again before the system can be armed. An optional feature allows the plugin to remember zone status; see [bypassedMemory](#bypassedmemory).
+- `quickbypass`: `true` | `false`. *Optional.* Indicates that the panel supports quick (force) bypass, which must be pre-configured on the alarm panel (refer to your panel programming guide). If `quickbypass` is not enabled, the bypass switch can only bypass zones that are monitored in HomeKit and have `bypassEnabled` set to `true`. If it is enabled, "Quick Bypass" lets you bypass all open (faulted) zones without configuring zones individually, and performs the operation quickly.
+
+### bypassedMemory
+
+*Optional section. Only one entry is allowed.*
+
+- `zoneMemory`: `true` | `false`. Allows the plugin to remember which zones were bypassed and restore them after disarming. This also enables individual zone bypasses to be toggled on and off. The default is `false`. **Note:** Panel reporting must be enabled for the plugin to monitor zone bypasses properly. Refer to the Envisalink installation guide.
+- `probeZone`: Zone number used as a bypass probe. On startup, and after any change in bypass state, the plugin uses this zone to trigger the panel to list the currently open zones. *Optional.* **Note:** Verify that this zone is not wired on your panel to ensure it does not cause problems.
+
+### speedKeys
+
+*Optional section. Up to 8 entries are allowed.*
+
+- `name`: Name (label) of the special function key to display in HomeKit. Maximum 12 characters. *Required for each entry. Each name must be unique.*
+- `speedcommand`: `A` | `B` | `C` | `D` | `custom`. Indicates which special function key (A, B, C, or D) is associated with this switch. The special keys are usually located on the left side of the keypad, next to the numeric keys, and execute automated sequences pre-stored in the system's memory. `custom` allows you to enter an automated input sequence that imitates keypad input in the `customcommand` field. *Required for each entry.*
+- `customcommand`: A custom automated input sequence (macro) to send to the alarm panel. The special `@pin` notation is replaced with the master PIN/code. *Required if `speedcommand` is `custom`.*
+
+## Example Configuration
+
+```json
 {
-
-    "platform": "Envisalink-Ademco",
-    "host": "192.168.YYY.XXX",
-    "deviceType": "20P",
-    "password": "---envisalink password (default is user)---",
-    "pin": "---panel pin for arming/disarming---",
-    "partitions": [
+  "platforms": [
     {
-        "name": "House"
+      "platform": "Envisalink-Ademco",
+      "host": "192.168.YYY.XXX",
+      "deviceType": "20P",
+      "password": "---envisalink password (default is user)---",
+      "pin": "---panel pin for arming/disarming---",
+      "partitions": [
+        {
+          "name": "House"
+        }
+      ],
+      "zones": [
+        {
+          "name": "Front Door",
+          "sensorType": "door",
+          "partition": 1
+        },
+        {
+          "name": "Master Bedroom Window",
+          "sensorType": "window",
+          "partition": 1,
+          "bypassEnabled": true
+        }
+      ],
+      "bypass": [
+        {
+          "enabledbyPass": true,
+          "quickbypass": false
+        }
+      ],
+      "speedKeys": [
+        {
+          "name": "Panic",
+          "speedcommand": "A"
+        },
+        {
+          "name": "Special key",
+          "speedcommand": "custom",
+          "customcommand": "@pin03"
+        }
+      ]
     }
-
-    ],
-    "zones": [
-        {
-        "name": "Front Door",
-        "sensorType": "door",   
-        "partition": 1
-        },
-        {
-        "name": "Master Bedroom Window",
-        "sensorType": "window",
-        "partition": 1,
-        "bypassEnabled": true
-        }
-    ],
-    "bypass": [
-        {
-        "enabledbyPass": true,
-        "quickbypass": false
-        }
-    ],
-    "speedkeys" : [
-        {
-        "name": "Panic",
-        "speedcommand": "A"
-        },
-        {
-        "name": "Special key",
-        "speedcommand": "custom",
-        "command": "@pin03"
-        }
-    ]
+  ]
 }
-...
-
 ```
 
 ## Non-Consecutive Zones
 
-If your system has unused zones, simply include a *zoneNumber* integer property on ***each*** zone you have in the config. Make sure you add the property to each zone. This is the recommended configuration if you don't wish to monitor (display) all zones within HomeKit or don't know the ordering of your system zones.
+If your system has unused zones, include a `zoneNumber` integer property on **each** zone in the configuration. This is the recommended configuration if you do not want to monitor (display) all zones in HomeKit or do not know the ordering of your system zones.
 
 Example:
 
-```javascript
-
-...
-
-"zones": [
+```json
+{
+  "zones": [
     {
-    "name": "Front Entry",
-    "sensorType": "door",
-    "partition": 1,
-    "zoneNumber": 9,
-    "bypassEnabled": true
+      "name": "Front Entry",
+      "sensorType": "door",
+      "partition": 1,
+      "zoneNumber": 9,
+      "bypassEnabled": true
     },
     {
-    "name": "Patio Door",
-    "sensorType": "door",
-    "partition": 1,
-    "zoneNumber": 12,
-    "bypassEnabled": true
+      "name": "Patio Door",
+      "sensorType": "door",
+      "partition": 1,
+      "zoneNumber": 12,
+      "bypassEnabled": true
     },
     {
-    "name": "Bedroom Window",
-    "sensorType": "window",
-    "partition": 1,
-    "zoneNumber": 16,
-    "bypassEnabled": false
+      "name": "Bedroom Window",
+      "sensorType": "window",
+      "partition": 1,
+      "zoneNumber": 16,
+      "bypassEnabled": false
     },
     {
-    "name": "Garage Door",
-    "sensorType": "door",
-    "partition": 1,
-    "zoneNumber": 5
+      "name": "Garage Door",
+      "sensorType": "door",
+      "partition": 1,
+      "zoneNumber": 5
     }
-]
-
-...
+  ]
+}
+```

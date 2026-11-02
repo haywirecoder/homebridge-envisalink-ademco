@@ -2,7 +2,7 @@
   "pluginAlias": "Envisalink-Ademco",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "<p align='center'><img width='100px'src='https://raw.githubusercontent.com/homebridge/branding/6ef3a1685e79f79a2ecdcc83824e53775ec0475d/logos/homebridge-color-round-stylized.svg'><img width='100px'src='https://raw.githubusercontent.com/haywirecoder/homebridge-envisalink-ademco/master/img/EyezOn_logo_signature_size.png'></p>",
+  "headerDisplay": "<p align='center'><img width='100px' src='https://raw.githubusercontent.com/homebridge/branding/6ef3a1685e79f79a2ecdcc83824e53775ec0475d/logos/homebridge-color-round-stylized.svg'><img width='100px' src='https://raw.githubusercontent.com/haywirecoder/homebridge-envisalink-ademco/master/img/EyezOn_logo_signature_size.png'></p>",
   "footerDisplay": "Envisalink Ademco Panel Configuration",
   "schema": {
     "type": "object",
@@ -20,7 +20,7 @@
         "format": "ipv4"
       },
       "port": {
-        "title": "Envisalink Host IP Port address",
+        "title": "Envisalink Host Port",
         "type": "integer",
         "default": 4025,
         "required": true
@@ -29,7 +29,7 @@
         "title": "Device Model",
         "type": "string",
         "required": true,
-        "default": "Honeywell VISTA-10P",
+        "default": "10P",
         "oneOf": [
           {
             "title": "Honeywell VISTA-10P",
@@ -68,15 +68,15 @@
         "type": "string",
         "required": true,
         "default": "user",
-        "description": "Password to Envisalink server."
+        "description": "Password for the Envisalink server."
       },
       "pin": {
         "title": "Global Alarm PIN/Code",
         "type": "string",
         "pattern": "^[0-9]+$",
         "required": true,
-        "default": 1234,
-        "description": "Your global system alarm PIN. <b>Please Note:</b> The PIN must be 4 digits, 0–9.",
+        "default": "1234",
+        "description": "Your global system alarm PIN. <b>Please Note:</b> The PIN must be exactly 4 digits, 0–9.",
         "minLength": 4,
         "maxLength": 4
       },
@@ -84,10 +84,10 @@
         "title": "Multi-partition system, automatically change partition(s)",
         "type": "boolean",
         "default": false,
-        "description": "A partition refers to a sectioned-off portion of an alarm system that can be operated independently from the rest of the system.\n This option will automatically change to the specific partition prior to executing an alarm command.\n <b>This is not needed for a non-partition system.</b> This option does slightly increase panel command execution time. "
+        "description": "A partition is a sectioned-off portion of an alarm system that can be operated independently of the rest of the system.\nThis option automatically changes to the specific partition before executing an alarm command.\n<b>This is not needed for a non-partitioned system.</b> This option slightly increases panel command execution time."
       },
       "openZoneTimeout": {
-        "title": "Zone timeout value in seconds",
+        "title": "Zone timeout in seconds",
         "type": "integer",
         "default": 30,
         "description": "Length of time to wait before a zone is considered closed. Default: 30 seconds. <b>Warning:</b> Setting this value too low can cause zones to clear and fault unexpectedly.",
@@ -95,10 +95,10 @@
         "maximum": 120
       },
       "heartbeatInterval": {
-        "title": "Heartbeat value in seconds",
+        "title": "Heartbeat interval in seconds",
         "type": "integer",
         "default": 30,
-        "description": "Heartbeat interval to check for disconnected Envisalink session. Default: 30 seconds.",
+        "description": "Heartbeat interval to check for a disconnected Envisalink session. Default: 30 seconds. <b>Note:</b> Values below 30 seconds may cause hung sessions to be identified incorrectly.",
         "minimum": 15,
         "maximum": 600
       },
@@ -106,65 +106,64 @@
         "title": "Command timeout in seconds",
         "type": "integer",
         "default": 10,
-        "description": "Length of time to wait for alarm command to return. Bypass command will automatically triple this value due to length of those operations. Default: 10 seconds.",
-        "minimum": 15,
+        "description": "Length of time to wait for an alarm command to return. Bypass commands automatically triple this value because those operations take longer. Default: 10 seconds.",
+        "minimum": 10,
         "maximum": 30
       },
       "autoReconnect": {
-        "title": "Automatic re-connect to Envisakit server",
+        "title": "Automatically reconnect to Envisalink server",
         "type": "boolean",
         "default": true,
-        "description": "Automatic reconnect to Envisakit server, if session is terminated."
+        "description": "Automatically reconnect to the Envisalink server if the session is terminated."
       },
       "sessionWatcher": {
-        "title": "Enable session watcher for Envisakit server",
+        "title": "Enable session watcher for Envisalink server",
         "type": "boolean",
         "default": true,
-        "description": "Enable session watcher for drop connections. The heartbeat value will determine the internal to checking for connection."
+        "description": "Enable the session watcher to detect dropped connections. The heartbeat value determines the interval for checking the connection."
       },
       "chimeToggle": {
-        "title": "Display a switch in Homekit to toggle chime sound On/Off",
+        "title": "Display a switch in HomeKit to toggle the chime sound on/off",
         "type": "boolean",
         "default": false,
-        "description": "Create a switch in HomeKit to allow turning On/Off of the chime sound on the Ademco panel."
+        "description": "Create a switch in HomeKit to turn the chime sound on the Ademco panel on or off."
       },
       "batteryRunTime": {
-        "title": "Expected runtime of battery backup.",
+        "title": "Expected runtime of battery backup",
         "type": "integer",
-        "description": "Run time of battery backup in hours.",
+        "description": "Runtime of the battery backup, in hours.",
         "minimum": 1,
         "maximum": 168
       },
       "envisalinkFailureSuppress": {
-        "title": "Turn off Envisalink module alarm Tamper events.",
+        "title": "Turn off Envisalink module alarm tamper events",
         "type": "boolean",
         "default": false,
-        "description": "Turn off alarm Tamper events associated with Envisalink module communication error. <b>Note:</b> It will still be logged in Homebridge." 
-
+        "description": "Turn off alarm tamper events associated with Envisalink module communication errors. <b>Note:</b> These errors are still logged in Homebridge."
       },
-      "ignoreFireTrouble" : {
+      "ignoreFireTrouble": {
         "title": "Allow alarm arming when in Fire trouble state.",
         "type": "boolean",
         "default": false,
-        "description": "When the virtual keypad send a fire trouble, treat it as a warning and allow the arming" 
+        "description": "When the virtual keypad sends a fire trouble signal, treat it as a warning and allow arming."
       },
-      "ignoreSystemTrouble" : {
-        "title": "Allow alarm arming when in System trouble state. ",
+      "ignoreSystemTrouble": {
+        "title": "Allow alarm arming when in System trouble state.",
         "type": "boolean",
         "default": false,
-        "description": "When the virtual keypad send a system trouble, treat it as a warning and allow the arming" 
+        "description": "When the virtual keypad sends a system trouble signal, treat it as a warning and allow arming."
       },
       "maintenanceMode": {
-        "title": "Disabled connection to Envisalink module for maintenance. <b>WARNING:</b> This will disable all updates and operations.",
+        "title": "Disable connection to Envisalink module for maintenance",
         "type": "boolean",
         "default": false,
-        "description": "Place the plug-in in maintenance mode, to allow testing and/or replacement of the Envisalink module without impacting previous automations or filling logs with error messages."
+        "description": "Place the plugin in maintenance mode to allow testing and/or replacement of the Envisalink module without affecting existing automations or filling the logs with error messages. <b>WARNING:</b> This disables all updates and operations."
       },
       "proxyEnabled": {
         "title": "Allow sharing of Envisalink TPI connection",
         "type": "boolean",
         "default": false,
-        "description": "Allow the sharing of Envisalink TPI connection with two other clients. Since the connection to the Envisalink server is being shared, a secondary TPI client can cause this plug-in to malfunction."
+        "description": "Allow the Envisalink TPI connection to be shared with two other clients. Because the connection to the Envisalink server is shared, a secondary TPI client can cause this plugin to malfunction."
       },
       "partitions": {
         "description": "List of partitions",
@@ -184,14 +183,14 @@
               "title": "Number",
               "required": false,
               "type": "string",
-              "description": "Direct management of specific partition number. <b>Note:</b> Not needed for non-partition systems. "
+              "description": "Direct management of a specific partition number. <b>Note:</b> Not needed for non-partitioned systems."
             },
             "partitionPin": {
               "title": "Partition PIN/Code",
               "type": "string",
               "pattern": "^[0-9]+$",
               "required": false,
-              "description": "If arming with a non-global PIN. <b>Please Note:</b> The PIN must be 4 digits, 0–9. This value will override the global PIN value for this partition.",
+              "description": "Use when arming with a non-global PIN. <b>Please Note:</b> The PIN must be exactly 4 digits, 0–9. This value overrides the global PIN for this partition.",
               "minLength": 4,
               "maxLength": 4
             }
@@ -280,7 +279,7 @@
               "title": "Zone Bypass Enabled",
               "type": "boolean",
               "required": false,
-              "description": "Allow this zone to be Bypass by HomeKit."
+              "description": "Allow this zone to be bypassed from HomeKit."
             }
           }
         }
@@ -294,12 +293,12 @@
           "type": "object",
           "properties": {
             "enabledbyPass": {
-              "title": "Display a switch in Homekit to enable and disable zone bypass",
+              "title": "Display a switch in HomeKit to enable and disable zone bypass",
               "type": "boolean",
               "default": false
             },
             "quickbypass": {
-              "title": "Panel support quick (i.e: force) bypass",
+              "title": "Panel supports quick (i.e., force) bypass",
               "type": "boolean",
               "required": false
             }
@@ -315,23 +314,25 @@
           "type": "object",
           "properties": {
             "zoneMemory": {
-              "title": "Enabled to allow plugin to remember which zones were bypassed and restore after disarming. This also enables individual zone bypasses to be toggle on and off.",
+              "title": "Remember bypassed zones",
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Allow the plugin to remember which zones were bypassed and restore them after disarming. This also enables individual zone bypasses to be toggled on and off."
             },
             "probeZone": {
-              "title": "Zone number for bypass probe, unpon startup and after any change in bypass state, the plugin will use this zone trigger panel to list current open zones. <b>Note:</b> Verify this zone is not wired on your panel to assure this will not cause problems.",
+              "title": "Bypass probe zone number",
               "type": "integer",
-              "required": false
+              "required": false,
+              "description": "Upon startup and after any change in bypass state, the plugin uses this zone to trigger the panel to list the currently open zones. <b>Note:</b> Verify that this zone is not wired on your panel to ensure this does not cause problems."
             }
           }
         }
       },
       "speedKeys": {
-      "description": "Display Speed Keypad keys",
-      "type": "array",
-      "maxItems": 8,
-      "items": {
+        "description": "Display Speed Keypad keys",
+        "type": "array",
+        "maxItems": 8,
+        "items": {
           "title": "Speed keys options",
           "type": "object",
           "properties": {
@@ -342,10 +343,10 @@
               "maxLength": 12
             },
             "speedcommand": {
-            "title": "Speed Key Code",
-            "type": "string",
-            "required": true,
-            "oneOf": [
+              "title": "Speed Key Code",
+              "type": "string",
+              "required": true,
+              "oneOf": [
                 {
                   "title": "A Key",
                   "enum": [
@@ -376,13 +377,13 @@
                     "custom"
                   ]
                 }
-              ]      
+              ]
             },
             "customcommand": {
               "title": "Custom macro command",
               "type": "string",
               "required": false,
-              "description": "For custom macro, provide the command string to send to alarm panel. An escape string of <b>@pin</b> will replace with master PIN/Code"
+              "description": "For a custom macro, provide the command string to send to the alarm panel. The escape string <b>@pin</b> is replaced with the master PIN/code."
             }
           }
         }
@@ -392,7 +393,7 @@
   "layout": [
     {
       "type": "section",
-      "title": "General Setting",
+      "title": "General Settings",
       "expandable": true,
       "expanded": true,
       "items": [
@@ -410,16 +411,18 @@
       "title": "Partition Information",
       "expandable": true,
       "expanded": false,
-      "items": [{
-        "key": "partitions",
-        "type": "array",
-        "orderable": false,
-        "items": [
-          "partitions[].name",
-          "partitions[].partitionNumber",
-          "partitions[].partitionPin"
-        ]
-      }]
+      "items": [
+        {
+          "key": "partitions",
+          "type": "array",
+          "orderable": false,
+          "items": [
+            "partitions[].name",
+            "partitions[].partitionNumber",
+            "partitions[].partitionPin"
+          ]
+        }
+      ]
     },
     {
       "type": "section",
@@ -428,16 +431,16 @@
       "expanded": false,
       "items": [
         {
-        "key": "zones",
-        "type": "array",
-        "orderable": false,
-        "buttonText": "Add Zone",
-        "items": [
-          "zones[].name",
-          "zones[].partition",
-          "zones[].zoneNumber",
-          "zones[].sensorType",
-          "zones[].bypassEnabled"
+          "key": "zones",
+          "type": "array",
+          "orderable": false,
+          "buttonText": "Add Zone",
+          "items": [
+            "zones[].name",
+            "zones[].partition",
+            "zones[].zoneNumber",
+            "zones[].sensorType",
+            "zones[].bypassEnabled"
           ]
         }
       ]
@@ -452,7 +455,7 @@
         {
           "key": "bypass",
           "title": "Zone Bypass",
-          "description": "Display a Homekit switch for bypassing zones that are being monitored.",
+          "description": "Display a HomeKit switch for bypassing zones that are being monitored.",
           "type": "array",
           "items": [
             "bypass[].enabledbyPass",
@@ -462,7 +465,7 @@
         {
           "key": "speedKeys",
           "title": "Speed Key (Macro) keys",
-          "description": "These Keys (A,B,C and/or D) are usually on the left side of the alarm keypad. They execute pre-stored automated sequences in the system's memory or input custom automated input sequence that imitates keypad inputs. Each Key name must be unique",
+          "description": "These keys (A, B, C, and/or D) are usually on the left side of the alarm keypad. They execute pre-stored automated sequences in the system's memory, or you can enter a custom automated input sequence that imitates keypad input. Each key name must be unique.",
           "type": "array",
           "orderable": false,
           "buttonText": "Add Speed Key",
@@ -476,7 +479,7 @@
     },
     {
       "type": "section",
-      "title": "Advanced Setting (Optional)",
+      "title": "Advanced Settings (Optional)",
       "expandable": true,
       "expanded": false,
       "items": [
@@ -488,7 +491,7 @@
         {
           "key": "bypassedMemory",
           "title": "Bypassed Zones Memory",
-          "description": "Enable bypassed zones memory, which allows the plugin to remember which zones were bypassed and restore after disarming. This also enables individual zone bypasses to be toggle on and off.",
+          "description": "Enable bypassed zones memory, which allows the plugin to remember which zones were bypassed and restore them after disarming. This also enables individual zone bypasses to be toggled on and off.",
           "type": "array",
           "items": [
             "bypassedMemory[].zoneMemory",
