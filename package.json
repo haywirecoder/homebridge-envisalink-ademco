@@ -1,14 +1,14 @@
 {
   "name": "homebridge-envisalink-ademco",
   "displayName": "Homebridge Envisalink Ademco",
-  "version": "2.2.2",
+  "version": "2.2.4",
   "description": "Homebridge Plug-in Envisalink for Ademco/Honeywell",
   "main": "index.js",
   "directories": {
     "doc": "doc"
   },
   "scripts": {
-    "test": "node --test test/"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
