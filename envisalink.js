@@ -84,6 +84,18 @@ class EnvisaLink extends EventEmitter {
   constructor(log, config) {
     super();
     this.log = log;
+
+    // The proxy validation filter must be a RegExp. Accept a string from a JSON config too.
+    let proxyFilter = config.validationFilter ? config.validationFilter : null;
+    if (typeof proxyFilter === 'string') {
+      try {
+        proxyFilter = new RegExp(proxyFilter);
+      } catch (err) {
+        this.log.warn(`Invalid proxy validationFilter "${proxyFilter}" ignored: ${err.message}`);
+        proxyFilter = null;
+      }
+    }
+
     this.options = {
       host: config.host,
       port: config.port ? config.port : 4025,
@@ -91,7 +103,7 @@ class EnvisaLink extends EventEmitter {
       // Envisalink Proxy server settings
       proxyEnabled: config.proxyEnabled ? config.proxyEnabled : false, 
       proxyPort: config.proxyPort ? config.proxyPort : 4026,
-      proxyValidationFilter: config.validationFilter ? config.validationFilter : null,
+      proxyValidationFilter: proxyFilter,
       // Envisalink Web console port settings
       wcForwardPort: config.wcForwardPort ? config.wcForwardPort : 4080,
       wcPort: config.wcPort ? config.wcPort : 80
@@ -117,11 +129,16 @@ class EnvisaLink extends EventEmitter {
     this.isMaintenanceMode = config.maintenanceMode ? config.maintenanceMode : false;
 
     // Set interval for testing connection and how long a zone should be considered without any update.
-    this.options.heartbeatInterval = Math.min(600, Math.max(10, config.heartbeatInterval));  
-    this.options.openZoneTimeout = Math.min(120, Math.max(5, config.openZoneTimeout));  
+    // Missing or invalid values fall back to the defaults; limits match config_schema.json.
+    const clampSetting = (value, min, max, fallback) => {
+      const n = (value === undefined || value === null) ? NaN : Number(value);
+      return Math.min(max, Math.max(min, Number.isFinite(n) ? n : fallback));
+    };
+    this.options.heartbeatInterval = clampSetting(config.heartbeatInterval, 15, 600, 30);
+    this.options.openZoneTimeout = clampSetting(config.openZoneTimeout, 15, 120, 30);
     
     this.zones = {};
-    this.lastmessage = new Date();
+    this.lastmessage = Date.now();
     this.lastsentcommand = "";
     this.isProcessingBypass = false;
     this.isProcessingAlarm = false;
@@ -159,7 +176,14 @@ class EnvisaLink extends EventEmitter {
     this.shouldReconnect = this.options.autoreconnect;
     this.isConnected = false;
     this.lastmessage = Date.now();
+
+    // Tear down anything left over from a previous session: timers that would otherwise fire
+    // a second time, and a socket that is still open. Events from the old socket are ignored
+    // (see the stale-socket guards below).
+    clearTimeout(this.isConnectionIdleHandle);
     this.isConnectionIdleHandle = undefined;
+    clearTimeout(this.activeZoneTimeOut);
+    if (tpiserverSocket && !tpiserverSocket.destroyed) tpiserverSocket.destroy();
 
     // Reset per-session zone tracking state so stale zone faults from a
     // previous session do not carry over into the new session on reconnect.
@@ -169,10 +193,14 @@ class EnvisaLink extends EventEmitter {
     // Display starting of connection.
     this.log.info(`Starting connection to envisalink module at: ${this.options.host}, port: ${this.options.port}`);
    
-    tpiserverSocket = net.createConnection({
+    // Handlers below use this local reference. A late event from a previous socket
+    // (for example a delayed 'close') must not mark the new session as disconnected
+    // or stop the proxy that belongs to the new session.
+    const socket = net.createConnection({
       port: this.options.port,
       host: this.options.host
     });
+    tpiserverSocket = socket;
 
     if (this.options.proxyEnabled) {
       if (!this.tpiproxyServer) {
@@ -186,7 +214,8 @@ class EnvisaLink extends EventEmitter {
     // --- Socket event handlers ---
     // All converted to arrow functions so 'this' refers to the EnvisaLink instance.
 
-    tpiserverSocket.on('error', (ex) => {
+    socket.on('error', (ex) => {
+      if (socket !== tpiserverSocket) return; // Stale socket from a previous session
       this.log.error("EnvisaLink Network Error: ", ex);
       this.isConnected = false;
       if (!this.inTrouble) {
@@ -203,7 +232,8 @@ class EnvisaLink extends EventEmitter {
       }
     });
 
-    tpiserverSocket.on('close', (hadError) => {
+    socket.on('close', (hadError) => {
+      if (socket !== tpiserverSocket) return; // Stale socket from a previous session
       if (hadError) this.log.error("EnvisaLink server connection closed due to a transmission error.");
       this.isConnected = false;
       if (!this.inTrouble) {
@@ -226,7 +256,8 @@ class EnvisaLink extends EventEmitter {
       }
     });
 
-    tpiserverSocket.on('end', () => {
+    socket.on('end', () => {
+      if (socket !== tpiserverSocket) return; // Stale socket from a previous session
       this.log.info('TPI session disconnected.');
       this.isConnected = false;
       // Stop proxy services
@@ -244,13 +275,14 @@ class EnvisaLink extends EventEmitter {
 
     // Decode through the socket's StringDecoder so a multi-byte character split
     // across two reads is not mangled.
-    tpiserverSocket.setEncoding('utf8');
+    socket.setEncoding('utf8');
 
     // Lines from successive reads are processed strictly in order. Handling a
     // line can await (proxy start/restart on 'OK'), and without this queue a
     // second read could start processing while the first is paused.
     let processing = Promise.resolve();
-    tpiserverSocket.on('data', (chunk) => {
+    socket.on('data', (chunk) => {
+      if (socket !== tpiserverSocket) return; // Stale socket from a previous session
       const lines = lineBuffer.push(chunk);
       this.log.debug("TPI Data stream: " + lines);
       this.lastmessage = Date.now(); // Every time a message comes in, reset the lastmessage timer
@@ -266,83 +298,87 @@ class EnvisaLink extends EventEmitter {
       for (var i = 0; i < dataslice.length; i++) {
         var datapacket = dataslice[i];
         if (datapacket !== '') {
-          if (datapacket.substring(0, 5) === 'Login') {
-            this.log.debug("Login requested. Sending credentials.");
-            this.isConnected = true;
-            this.sendCommand(this.options.password);
-          } else if ((datapacket.substring(0, 6) === 'FAILED') || (datapacket.substring(0, 9) === 'Timed Out')) {
-            this.log.error("EnvisaLink: Login failed.");
-            this.isConnected = false;
-          } else if (datapacket.substring(0, 2) === 'OK') {
-            this.log.info(`Successful TPI session established.`);
-            if (this.options.proxyEnabled) {
-              this.log.info(`Starting TPI proxy server and Console Forwarder...`);
-              if (this.tpiproxyServer.isRunning()) await this.tpiproxyServer.restart(tpiserverSocket);
-              else await this.tpiproxyServer.start(tpiserverSocket);
-              if (this.wcForwardServer.isRunning()) await this.wcForwardServer.restart();
-              else await this.wcForwardServer.start();
-            }
-            // If connection had issue prior, clear and generate restore event.
-            // Qualifier: 1 = Event, 3 = Restore
-            if (this.inTrouble) {
-              this.emit('envisalinkupdate', {
-                source: source,
-                qualifier: 3
-              });
-              this.inTrouble = false;
-            }
-            // Determine if option to monitor connection is enabled.
-            if (this.shouldReconnect && this.options.sessionwatcher) {
-              this.log.info(`Checking for disconnected session every: ${this.options.heartbeatInterval} seconds.`);
-              this.isConnectionIdleHandle = setTimeout(isConnectionIdle, (this.options.heartbeatInterval * 1000));
-            } else {
-              this.log.warn("Warning: Session monitoring is disabled. Envisalink-Ademco will not watch for hung sessions.");
-            }
-          } else {
-            if (this.options.proxyEnabled) {
-              this.tpiproxyServer.writeToClients(datapacket + '\r\n'); // Forward this line to all connected proxy clients.
-            }
-            var tpi_str = datapacket.match(/^%(.+)\$/); // pull out everything between the % and $
-            if (tpi_str == null) {
-              tpi_str = datapacket.match(/\^(.+)\$/); // module command string — could be result of previous command
-              if (tpi_str == null) {
-                this.log.warn("Envisalink data steam format invalid. Packets must be encapsulated within the % and $ sentinels: " + datapacket + ". Ignoring update.");
+          try {
+            if (datapacket.substring(0, 5) === 'Login') {
+              this.log.debug("Login requested. Sending credentials.");
+              this.isConnected = true;
+              this.sendCommand(this.options.password);
+            } else if ((datapacket.substring(0, 6) === 'FAILED') || (datapacket.substring(0, 9) === 'Timed Out')) {
+              this.log.error("EnvisaLink: Login failed.");
+              this.isConnected = false;
+            } else if (datapacket.substring(0, 2) === 'OK') {
+              this.log.info(`Successful TPI session established.`);
+              if (this.options.proxyEnabled) {
+                this.log.info(`Starting TPI proxy server and Console Forwarder...`);
+                // Not awaited: a proxy that cannot bind its port (retries take about 15 seconds)
+                // must not stall TPI processing, or stop the session from being marked healthy below.
+                this.startProxyServices(socket);
+              }
+              // If connection had issue prior, clear and generate restore event.
+              // Qualifier: 1 = Event, 3 = Restore
+              if (this.inTrouble) {
+                this.emit('envisalinkupdate', {
+                  source: source,
+                  qualifier: 3
+                });
+                this.inTrouble = false;
+              }
+              // Determine if option to monitor connection is enabled.
+              if (this.shouldReconnect && this.options.sessionwatcher) {
+                this.log.info(`Checking for disconnected session every: ${this.options.heartbeatInterval} seconds.`);
+                this.isConnectionIdleHandle = setTimeout(isConnectionIdle, (this.options.heartbeatInterval * 1000));
               } else {
-                if (this.lastsentcommand == tpi_str[1].split(',')[0])
-                  this.log.info(`Envisakit module command return: ${tpidefs.command_response_codes[tpi_str[1].split(',')[1]]}`);
+                this.log.warn("Warning: Session monitoring is disabled. Envisalink-Ademco will not watch for hung sessions.");
               }
             } else {
-              var data_array = tpi_str[1].split(','); // everything between % and $
-              var command = data_array[0]; // The first element is the command.
-              var tpi = tpidefs.tpicommands[command];
-              if (tpi) {
-                // tpi.bytes === '' or === 0 means this command carries no data payload —
-                // log a warning and skip dispatch rather than calling handlers with empty data.
-                if (tpi.bytes === '' || tpi.bytes === 0) {
-                  this.log.warn(tpi.pre + ' - ' + tpi.post);
+              if (this.options.proxyEnabled) {
+                this.tpiproxyServer.writeToClients(datapacket); // Forward this line to all connected proxy clients (the proxy adds the \r\n terminator).
+              }
+              var tpi_str = datapacket.match(/^%(.+)\$/); // pull out everything between the % and $
+              if (tpi_str == null) {
+                tpi_str = datapacket.match(/\^(.+)\$/); // module command string — could be result of previous command
+                if (tpi_str == null) {
+                  this.log.warn("Envisalink data stream format invalid. Packets must be encapsulated within the % and $ sentinels: " + datapacket + ". Ignoring update.");
                 } else {
-                  this.log.debug(tpi.pre + ' | ' + tpi_str[1] + ' | ' + tpi.post);
-                  this.log.debug('Envisakit Operation: ' + tpi.action);
-                  switch (tpi.action) {
-                    case 'updatezone':
-                      updateZone(tpi, data_array);
-                      break;
-                    case 'updatepartition':
-                      updatePartition(tpi, data_array);
-                      break;
-                    case 'updatekeypad':
-                      updateKeypad(tpi, data_array);
-                      break;
-                    case 'cidEvent':
-                      cidEvent(tpi, data_array);
-                      break;
-                    case 'zonetimerdump':
-                      zoneTimerDump(tpi, data_array);
-                      break;
+                  if (this.lastsentcommand == tpi_str[1].split(',')[0])
+                    this.log.info(`Envisalink module command return: ${tpidefs.command_response_codes[tpi_str[1].split(',')[1]]}`);
+                }
+              } else {
+                var data_array = tpi_str[1].split(','); // everything between % and $
+                var command = data_array[0]; // The first element is the command.
+                var tpi = tpidefs.tpicommands[command];
+                if (tpi) {
+                  // tpi.bytes === '' or === 0 means this command carries no data payload —
+                  // log a warning and skip dispatch rather than calling handlers with empty data.
+                  if (tpi.bytes === '' || tpi.bytes === 0) {
+                    this.log.warn(tpi.pre + ' - ' + tpi.post);
+                  } else {
+                    this.log.debug(tpi.pre + ' | ' + tpi_str[1] + ' | ' + tpi.post);
+                    this.log.debug('Envisalink Operation: ' + tpi.action);
+                    switch (tpi.action) {
+                      case 'updatezone':
+                        updateZone(tpi, data_array);
+                        break;
+                      case 'updatepartition':
+                        updatePartition(tpi, data_array);
+                        break;
+                      case 'updatekeypad':
+                        updateKeypad(tpi, data_array);
+                        break;
+                      case 'cidEvent':
+                        cidEvent(tpi, data_array);
+                        break;
+                      case 'zonetimerdump':
+                        zoneTimerDump(tpi, data_array);
+                        break;
+                    }
                   }
                 }
               }
             }
+          } catch (err) {
+            // A malformed packet is logged and skipped; the remaining lines are still processed.
+            this.log.error(`EnvisaLink: error processing TPI line "${datapacket}": ${err.message}`);
           }
         }
       }
@@ -381,7 +417,7 @@ class EnvisaLink extends EventEmitter {
       var zone_bits = data[1];
       var zone_array = [];
       for (var i = 0; i < zone_bits.length; i = i + 2) {
-        var byte = parseInt(zone_bits.substr(i, 2), 16);
+        var byte = parseInt(zone_bits.substring(i, i + 2), 16);
         var position = (i * 4) + 1;
         for (var n = byte; n > 0; n = n >> 1) {
           if ((n & 0x01) == 1) {
@@ -413,7 +449,7 @@ class EnvisaLink extends EventEmitter {
       // See section 3.4 of the EnvisaLink Vista TPI programmer's document for state values.
       var partition_string = data[1];
       for (var i = 0; i < partition_string.length; i = i + 2) {
-        var byte = parseInt(partition_string.substr(i, 2), 10);
+        var byte = parseInt(partition_string.substring(i, i + 2), 10);
         var partition = (i / 2) + 1;
         var mode = modeToHumanReadable(byte);
         this.emit('updatepartition', {
@@ -649,7 +685,7 @@ class EnvisaLink extends EventEmitter {
       var keypadledstatus = getKeyPadLedStatus(data[2]);
       var userOrZone = data[3];
       var beep = tpidefs.virtual_keypad_beep[data[4]];
-      var keypad_txt = data[5];
+      var keypad_txt = data[5] || '';
       var icon_array = [];
       var position = 0;
       var mode = keyPadToHumanReadable(keypadledstatus, keypad_txt);
@@ -756,9 +792,9 @@ class EnvisaLink extends EventEmitter {
       for (var i = 0; i < aHexStringInt.length; i = i + 4) {
         byte = aHexStringInt.substring(i, i + 4);
         zonenum += 1;
-        swappedBits = '';
         swappedBits = byte.substring(2, 6);
         swappedBits += byte.substring(0, 2);
+        swappedBits = swappedBits.toUpperCase();
         beHexStr += swappedBits;
         zoneClosedTimeCountDown = (MAXINT - parseInt(swappedBits.toString(), 16)) * 5;
         if (swappedBits === "FFFF") {
@@ -868,13 +904,39 @@ class EnvisaLink extends EventEmitter {
 
 
 /**
+ * Starts (or restarts) the TPI proxy server and the web console forwarder for the current session.
+ * Failures are logged rather than thrown so they cannot interrupt session handling.
+ * @param {net.Socket} socket - The TPI socket of the session the proxy should share.
+ */
+  async startProxyServices(socket) {
+    try {
+      if (this.tpiproxyServer.isRunning()) await this.tpiproxyServer.restart(socket);
+      else await this.tpiproxyServer.start(socket);
+    } catch (err) {
+      this.log.error(`EnvisaLink: TPI proxy server failed to start: ${err.message}`);
+    }
+    try {
+      if (this.wcForwardServer.isRunning()) await this.wcForwardServer.restart();
+      else await this.wcForwardServer.start();
+    } catch (err) {
+      this.log.error(`EnvisaLink: Web console forwarder failed to start: ${err.message}`);
+    }
+    // The session may have dropped while the services were starting; don't leave them running.
+    if (socket.destroyed || socket !== tpiserverSocket) {
+      await this.tpiproxyServer.stop();
+      await this.wcForwardServer.stop();
+    }
+  }
+
+/**
  * Terminates the current TPI session with the EnvisaLink module.
- * Cleanly closes the socket connection if it exists and is not already destroyed.
+ * Destroys the socket if it exists and is not already destroyed. end() is not enough here:
+ * it only half-closes the connection and never completes if the session is hung.
  * @returns {boolean} True if connection was successfully terminated, false if already closed.
  */
   endSession() {
     if (tpiserverSocket && !tpiserverSocket.destroyed) {
-      tpiserverSocket.end();
+      tpiserverSocket.destroy();
       return true;
     } else {
       return false;
@@ -890,13 +952,12 @@ class EnvisaLink extends EventEmitter {
  */
   sendCommand(command) {
     if (!this.isMaintenanceMode) {      
-      if (tpiserverSocket !== undefined && this.isConnected) {
+      if (tpiserverSocket !== undefined && !tpiserverSocket.destroyed && this.isConnected) {
         this.log.debug('TPI TX: command sent (contents redacted; may contain a password or PIN/code).');
         tpiserverSocket.write(command + '\r\n');
         return true;
       } else {
         this.log.error(`Command not successful. Current session connected status is: ${this.isConnected} and data stream object is defined: ${tpiserverSocket !== undefined}`);
-        this.log.debug(`Data Stream: data stream is: ${JSON.stringify(tpiserverSocket)}`);
         return false;
       }
     } else {
@@ -925,39 +986,45 @@ class EnvisaLink extends EventEmitter {
  * and collected into a bypassscan event once the scroll settles.
  *
  * The probe zone should be a zone number that is not wired to any physical
- * sensor on the panel (default: 99). Configure bypassProbeZone in the
- * plugin config to match your panel's unused zone range.
+ * sensor on the panel (default: 99, or the bypassProbeZone property when set).
+ * Configure the probe zone in the plugin config to match your panel's unused zone range.
  *
  * Only valid when panel is disarmed and in a bypass-capable state.
  *
  * @param {string} pin - User PIN to authenticate the bypass command.
- * @param {number} probeZone - Unused zone number to probe with (default: 99).
+ * @param {number} probeZone - Unused zone number to probe with (default: this.bypassProbeZone).
+ * @param {number} partitionNumber - Partition reported in the resulting bypassscan event (default: 1).
  */
-syncBypassedZones(pin, probeZone = 99, partitionNumber = 1) {
+  syncBypassedZones(pin, probeZone = this.bypassProbeZone, partitionNumber = 1) {
     if (this.isMaintenanceMode) {
-        this.log.warn('Maintenance mode active zone synchronization, command not sent.');
-        return;
+      this.log.warn('Maintenance mode active zone synchronization, command not sent.');
+      return;
     }
     if (!tpiserverSocket || !this.isConnected) {
-        this.log.warn('Envisalink plug-in not connected, cannot sync bypass state.');
-        return;
+      this.log.warn('Envisalink plugin not connected, cannot sync bypass state.');
+      return;
     }
     // Only probe when panel is in a bypass-capable disarmed state.
     // Sending bypass during ARMED or ALARM state would be incorrect.
     if (this.alarmSystemMode.includes('ARMED') || this.alarmSystemMode.includes('ALARM')) {
-        this.log.warn('Panel is ARMED or in ALARM — skipping probe.');
-        return;
+      this.log.warn('Panel is ARMED or in ALARM — skipping probe.');
+      return;
     }
     // Do not probe while a bypass or unbypass operation is in flight.
     // The probe command would interfere with the in-progress operation,
     // and the scan result would reflect a partial/transient panel state.
     if (this.isProcessingBypass || this.isProcessingUnBypass) {
-        this.log.debug('syncBypassedZones: Bypass or unbypass in progress — deferring probe.');
-        return;
+      this.log.debug('syncBypassedZones: Bypass or unbypass in progress — deferring probe.');
+      return;
     }
+
+    // updateKeypad() excludes this.bypassProbeZone from the scan results, so it must
+    // always match the zone actually probed here, otherwise the probe zone itself would
+    // be reported as a bypassed zone.
+    this.bypassProbeZone = probeZone;
     const formattedZone = probeZone >= 100
-        ? String(probeZone)
-        : String(probeZone).padStart(2, '0');
+      ? String(probeZone)
+      : String(probeZone).padStart(2, '0');
     this.bypassScanRequested = true;
     this.bypassScanZones.clear();
     this.bypassScanInProgress = false;
@@ -973,21 +1040,22 @@ syncBypassedZones(pin, probeZone = 99, partitionNumber = 1) {
     // update arrives, since bypassScanInProgress will be true by then.
     const noResponseMs = 5000;
     if (this.bypassScanNoResponseTimeout) {
-        clearTimeout(this.bypassScanNoResponseTimeout);
+      clearTimeout(this.bypassScanNoResponseTimeout);
     }
     this.bypassScanNoResponseTimeout = setTimeout(() => {
-        if (!this.bypassScanInProgress) {
-            this.log.debug('syncBypassedZones: No BYPAS updates received — ' +
-                          'panel has no bypassed zones.');
-            this.emit('bypassscan', {
-                zones: new Set(),
-                partition: partitionNumber
-            });
-        }
-        this.bypassScanRequested = false;
-        this.bypassScanNoResponseTimeout = undefined;
+      if (!this.bypassScanInProgress) {
+        this.log.debug('syncBypassedZones: No BYPAS updates received — ' +
+                       'panel has no bypassed zones.');
+        this.emit('bypassscan', {
+          zones: new Set(),
+          partition: partitionNumber
+        });
+      }
+      this.bypassScanRequested = false;
+      this.bypassScanNoResponseTimeout = undefined;
     }, noResponseMs);
-}
+  }
+
 /**
  * Changes the active partition on the EnvisaLink module.
  * Uses TPI command 01 to switch between partitions.
@@ -1017,8 +1085,28 @@ syncBypassedZones(pin, probeZone = 99, partitionNumber = 1) {
       this.lastsentcommand = "03";
       this.sendCommand(to_send);
     } else {
-      this.log.error(`Invalid Partition Number ${partitionNumber} specified when trying to change partition, ignoring.`);
+      this.log.error(`Invalid Partition Number ${partitionNumber} specified when trying to send a command to a partition, ignoring.`);
     }
+  }
+
+/**
+ * Sends keypad keys to the panel after a delay. Rejects if the command could not be sent
+ * (for example the session dropped), so a multi-step sequence stops instead of continuing blindly.
+ * @param {string} keys - The keys to send.
+ * @param {number} delayMs - Delay before sending, in milliseconds.
+ * @returns {Promise<void>}
+ */
+  sendKeystroke(keys, delayMs = 300) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        try {
+          if (this.sendCommand(keys)) resolve();
+          else reject(new Error('command not sent'));
+        } catch (err) {
+          reject(err);
+        }
+      }, delayMs);
+    });
   }
 
 /**
@@ -1030,8 +1118,6 @@ syncBypassedZones(pin, probeZone = 99, partitionNumber = 1) {
  * @returns {Promise<boolean>} True if command sequence started successfully, false otherwise.
  */
   async syncAlarmDateTime(programmerCode = '4112', partitionNumber = 1) {
-    // 'const self = this' removed — sendKeystroke is an arrow function and
-    // inherits 'this' correctly from the enclosing async method.
     if (this.isMaintenanceMode) {
       this.log.warn('This module is running in maintenance mode, time sync command not sent.');
       return false;
@@ -1052,7 +1138,7 @@ syncBypassedZones(pin, probeZone = 99, partitionNumber = 1) {
     const minutes = now.getMinutes().toString().padStart(2, '0');
     const month   = (now.getMonth() + 1).toString().padStart(2, '0'); // getMonth() is 0-indexed
     const day     = now.getDate().toString().padStart(2, '0');
-    const year    = now.getFullYear().toString().substr(-2);
+    const year    = now.getFullYear().toString().slice(-2);
     
     // Build the time/date string: HHMMMMDDYY (no day of week for *20 entry)
     const timeString = hours + minutes + month + day + year;
@@ -1060,31 +1146,21 @@ syncBypassedZones(pin, probeZone = 99, partitionNumber = 1) {
     this.log.info(`Syncing alarm panel time to: ${now.toLocaleString()}`);
     this.log.debug(`Time string to send: ${timeString}`);
     
-    // Arrow function — 'this' inherited correctly, no self alias needed.
-    const sendKeystroke = (keys, delayMs = 300) => {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          this.sendCommand(keys);
-          resolve();
-        }, delayMs);
-      });
-    };
-
     try {
-      await sendKeystroke('*6' + programmerCode, 100);
+      await this.sendKeystroke('*6' + programmerCode, 100);
       this.log.debug('Enter programming mode');
-      await sendKeystroke('*20', 800);
+      await this.sendKeystroke('*20', 800);
       this.log.debug('Navigated to time/date field (*20)');
-      await sendKeystroke(timeString, 800);
+      await this.sendKeystroke(timeString, 800);
       this.log.debug('Entered time/date string');
-      await sendKeystroke('#', 800);
+      await this.sendKeystroke('#', 800);
       this.log.debug('Pressed # to save');
-      await sendKeystroke('#', 500);
+      await this.sendKeystroke('#', 500);
       this.log.info('Time sync sequence completed');
       return true;
     } catch (error) {
       this.log.error('Error during time sync sequence:', error);
-      await sendKeystroke('##', 100);
+      await this.sendKeystroke('##', 100).catch(() => {}); // Best effort: leave programming mode
       return false;
     }
   }
@@ -1107,8 +1183,6 @@ syncBypassedZones(pin, probeZone = 99, partitionNumber = 1) {
  * @returns {Promise<boolean>} True if command was sent successfully, false otherwise.
  */
   async getAlarmDateTime(programmerCode = '4112', partitionNumber = 1) {
-    // 'const self = this' removed — sendKeystroke is an arrow function and
-    // inherits 'this' correctly from the enclosing async method.
     if (this.isMaintenanceMode) {
       this.log.warn('This module is running in maintenance mode, get time command not sent.');
       return false;
@@ -1124,28 +1198,18 @@ syncBypassedZones(pin, probeZone = 99, partitionNumber = 1) {
       return false;
     }
 
-    // Arrow function — 'this' inherited correctly, no self alias needed.
-    const sendKeystroke = (keys, delayMs = 300) => {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          this.sendCommand(keys);
-          resolve();
-        }, delayMs);
-      });
-    };
-
     try {
       this.log.info('Requesting current alarm panel time from keypad...');
-      await sendKeystroke('*6' + programmerCode, 100);
+      await this.sendKeystroke('*6' + programmerCode, 100);
       this.log.debug('Enter programming mode');
-      await sendKeystroke('*20', 800);
+      await this.sendKeystroke('*20', 800);
       this.log.debug('Navigated to time/date field (*20) - check keypad display');
-      await sendKeystroke('##', 500);
+      await this.sendKeystroke('##', 500);
       this.log.info('Exited programming mode - time displayed on keypad');
       return true;
     } catch (error) {
       this.log.error('Error during get time sequence:', error);
-      await sendKeystroke('##', 100);
+      await this.sendKeystroke('##', 100).catch(() => {}); // Best effort: leave programming mode
       return false;
     }
   }
